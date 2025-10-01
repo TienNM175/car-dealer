@@ -1,0 +1,43 @@
+// ============================================
+// DEALER ORDER MODELS - Đại lý đặt xe từ hãng
+// ============================================
+
+model DealerOrder {
+  id           String           @id @default(cuid())
+  orderNumber  String           @unique @map("order_number")
+  dealerId     String           @map("dealer_id")
+  staffId      String           @map("staff_id") // Nhân viên đại lý tạo order
+  vehicleId    String           @map("vehicle_id")
+  quantity     Int
+  unitPrice    Decimal          @map("unit_price") // Giá sỉ
+  totalAmount  Decimal          @map("total_amount")
+  status       DealerOrderStatus @default(PENDING)
+  
+  orderedAt    DateTime         @default(now()) @map("ordered_at")
+  confirmedAt  DateTime?        @map("confirmed_at")
+  shippedAt    DateTime?        @map("shipped_at")
+  deliveredAt  DateTime?        @map("delivered_at")
+  
+  notes        String?          @db.Text
+  
+  dealer       Dealer   @relation(fields: [dealerId], references: [id])
+  staff        User     @relation(fields: [staffId], references: [id])
+  vehicle      Vehicle  @relation(fields: [vehicleId], references: [id])
+  
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([dealerId])
+  @@index([staffId])
+  @@index([vehicleId])
+  @@map("dealer_orders")
+}
+
+enum DealerOrderStatus {
+  PENDING     // Chờ xác nhận
+  CONFIRMED   // Đã xác nhận
+  PROCESSING  // Đang xử lý
+  SHIPPED     // Đang giao
+  DELIVERED   // Đã giao
+  CANCELLED   // Đã hủy
+}

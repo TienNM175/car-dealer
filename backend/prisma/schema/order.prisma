@@ -1,0 +1,97 @@
+// ============================================
+// ORDER & SALES MODELS
+// ============================================
+
+// Báo giá
+model Quotation {
+  id          String          @id @default(cuid())
+  quoteNumber String          @unique @map("quote_number")
+  customerId  String          @map("customer_id")
+  vehicleId   String          @map("vehicle_id")
+  staffId     String          @map("staff_id")
+  
+  basePrice   Decimal         @map("base_price")
+  discount    Decimal         @default(0)
+  finalPrice  Decimal         @map("final_price")
+  
+  paymentType PaymentType     @default(FULL) @map("payment_type")
+  installmentMonths Int?      @map("installment_months")
+  monthlyPayment    Decimal?  @map("monthly_payment")
+  
+  validUntil  DateTime        @map("valid_until")
+  status      QuotationStatus @default(DRAFT)
+  notes       String?         @db.Text
+  
+  customer    Customer @relation(fields: [customerId], references: [id])
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  staff       User     @relation(fields: [staffId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([staffId])
+  @@map("quotations")
+}
+
+// Hợp đồng bán hàng (Dealer → Customer)
+model Contract {
+  id              String         @id @default(cuid())
+  contractCode    String         @unique @map("contract_code")
+  customerId      String         @map("customer_id")
+  staffId         String         @map("staff_id")
+  vehicleId       String         @map("vehicle_id")
+  
+  basePrice       Decimal        @map("base_price")
+  discount        Decimal        @default(0)
+  finalPrice      Decimal        @map("final_price")
+  
+  paymentType     PaymentType    @default(FULL) @map("payment_type")
+  installmentMonths Int?         @map("installment_months")
+  monthlyPayment    Decimal?     @map("monthly_payment")
+  interestRate      Decimal?     @map("interest_rate")
+  
+  status          ContractStatus @default(DRAFT)
+  signedAt        DateTime?      @map("signed_at")
+  deliveryDate    DateTime?      @map("delivery_date")
+  deliveredAt     DateTime?      @map("delivered_at")
+  
+  notes           String?        @db.Text
+  
+  customer        Customer       @relation(fields: [customerId], references: [id])
+  staff           User           @relation(fields: [staffId], references: [id])
+  vehicle         Vehicle        @relation(fields: [vehicleId], references: [id])
+  feedbacks       Feedback[]
+  complaints      Complaint[]
+  customerDebts   CustomerDebt[]
+  
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([staffId])
+  @@index([vehicleId])
+  @@map("contracts")
+}
+
+enum QuotationStatus {
+  DRAFT       // Nháp
+  SENT        // Đã gửi
+  ACCEPTED    // Khách chấp nhận
+  REJECTED    // Khách từ chối
+  EXPIRED     // Hết hạn
+}
+
+enum ContractStatus {
+  DRAFT       // Nháp
+  PENDING     // Chờ ký
+  SIGNED      // Đã ký
+  DELIVERING  // Đang giao xe
+  COMPLETED   // Hoàn thành
+  CANCELLED   // Hủy
+}
+
+enum PaymentType {
+  FULL        // Trả thẳng
+  INSTALLMENT // Trả góp
+}

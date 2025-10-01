@@ -1,0 +1,31 @@
+// ============================================
+// PROMOTION MODELS - Khuyến mãi & Chiết khấu
+// ============================================
+
+model DealerDiscount {
+  id          String              @id @default(cuid())
+  dealerId    String              @map("dealer_id")
+  name        String              // Tên chương trình
+  description String?             @db.Text
+  discountType DiscountType       @default(PERCENTAGE) @map("discount_type")
+  discountValue Decimal           @map("discount_value") // % hoặc số tiền
+  minPurchase  Decimal?           @map("min_purchase") // Giá trị đơn hàng tối thiểu
+  
+  startDate   DateTime            @map("start_date")
+  endDate     DateTime?           @map("end_date")
+  isActive    Boolean             @default(true) @map("is_active")
+  
+  dealer      Dealer @relation(fields: [dealerId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([dealerId])
+  @@index([isActive])
+  @@map("dealer_discounts")
+}
+
+enum DiscountType {
+  PERCENTAGE  // Chiết khấu theo %
+  FIXED       // Chiết khấu cố định (VND/USD)
+}

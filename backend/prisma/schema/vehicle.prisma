@@ -1,0 +1,115 @@
+// ============================================
+// VEHICLE MODELS - Xe điện mới
+// ============================================
+
+model Manufacturer {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  code        String    @unique
+  country     String
+  logo        String?
+  isActive    Boolean   @default(true) @map("is_active")
+  vehicles    Vehicle[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("manufacturers")
+}
+
+model Vehicle {
+  id                String          @id @default(cuid())
+  manufacturerId    String          @map("manufacturer_id")
+  model             String
+  variant           String?
+  year              Int
+  batteryCapacity   Int             @map("battery_capacity") // kWh
+  range             Int             // km
+  chargingTime      Int?            @map("charging_time") // minutes (0-80%)
+  motorPower        Int?            @map("motor_power") // kW
+  topSpeed          Int?            @map("top_speed") // km/h
+  acceleration      Float?          // 0-100 km/h (seconds)
+  seats             Int             @default(5)
+  doors             Int             @default(4)
+  color             VehicleColor    @default(WHITE)
+  bodyType          VehicleBodyType @default(SUV)
+  
+  // Pricing
+  wholesalePrice    Decimal         @map("wholesale_price") // Giá sỉ (EVM → Dealer)
+  retailPrice       Decimal         @map("retail_price")    // Giá lẻ (Dealer → Customer)
+  currency          CurrencyCode    @default(USD)
+  
+  status            VehicleStatus   @default(ACTIVE)
+  description       String?         @db.Text
+  specifications    String?         @db.Text // JSON string
+  
+  manufacturer      Manufacturer    @relation(fields: [manufacturerId], references: [id])
+  images            VehicleImage[]
+  evmInventories    EVMInventory[]
+  dealerInventories Inventory[]
+  dealerOrders      DealerOrder[]
+  quotations        Quotation[]
+  contracts         Contract[]
+  
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  @@index([manufacturerId])
+  @@index([status])
+  @@index([retailPrice])
+  @@map("vehicles")
+}
+
+model VehicleImage {
+  id        String  @id @default(cuid())
+  vehicleId String  @map("vehicle_id")
+  url       String
+  alt       String?
+  blurhash  String?
+  isMain    Boolean @default(false) @map("is_main")
+  order     Int     @default(0)
+  
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_images")
+}
+
+enum VehicleColor {
+  BLACK
+  WHITE
+  SILVER
+  GREY
+  RED
+  BLUE
+  GREEN
+  YELLOW
+  ORANGE
+  BROWN
+  GOLD
+  BEIGE
+  OTHER
+}
+
+enum VehicleBodyType {
+  SEDAN
+  SUV
+  HATCHBACK
+  COUPE
+  WAGON
+  VAN
+  TRUCK
+  OTHER
+}
+
+enum VehicleStatus {
+  ACTIVE      // Đang bán
+  INACTIVE    // Ngừng bán
+  OUT_OF_STOCK // Hết hàng
+}
+
+enum CurrencyCode {
+  USD
+  EUR
+  GBP
+  VND
+}

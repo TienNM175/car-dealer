@@ -1,0 +1,163 @@
+// ============================================
+// CUSTOMER MODELS
+// ============================================
+
+model Customer {
+  id            String              @id @default(cuid())
+  firstName     String              @map("first_name")
+  lastName      String              @map("last_name")
+  email         String
+  phone         String?
+  address       String?
+  city          String?
+  identityCard  String?             @map("identity_card") // CMND/CCCD
+  status        CustomerStatus      @default(INTERESTED)
+  
+  lifecycle     CustomerLifecycle[]
+  contracts     Contract[]
+  quotations    Quotation[]
+  testDrives    TestDrive[]
+  feedbacks     Feedback[]
+  complaints    Complaint[]
+  customerDebts CustomerDebt[]
+  
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([phone])
+  @@map("customers")
+}
+
+// Lịch sử trạng thái khách hàng
+model CustomerLifecycle {
+  id          String         @id @default(cuid())
+  customerId  String         @map("customer_id")
+  status      CustomerStatus
+  notes       String?        @db.Text
+  changedBy   String?        @map("changed_by") // User ID
+  
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@map("customer_lifecycle")
+}
+
+// Lịch hẹn lái thử
+model TestDrive {
+  id            String           @id @default(cuid())
+  customerId    String           @map("customer_id")
+  vehicleId     String           @map("vehicle_id")
+  staffId       String           @map("staff_id") // Dealer Staff phụ trách
+  scheduledDate DateTime         @map("scheduled_date")
+  status        TestDriveStatus  @default(SCHEDULED)
+  notes         String?          @db.Text
+  feedback      String?          @db.Text
+  
+  customer      Customer @relation(fields: [customerId], references: [id])
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id])
+  staff         User     @relation(fields: [staffId], references: [id])
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([staffId])
+  @@map("test_drives")
+}
+
+// Phản hồi khách hàng
+model Feedback {
+  id          String         @id @default(cuid())
+  customerId  String         @map("customer_id")
+  contractId  String?        @map("contract_id")
+  rating      Int            // 1-5 stars
+  comment     String?        @db.Text
+  category    FeedbackCategory
+  
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  contract    Contract? @relation(fields: [contractId], references: [id])
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@map("feedbacks")
+}
+
+// Khiếu nại
+model Complaint {
+  id          String          @id @default(cuid())
+  customerId  String          @map("customer_id")
+  contractId  String?         @map("contract_id")
+  subject     String
+  description String          @db.Text
+  status      ComplaintStatus @default(OPEN)
+  resolution  String?         @db.Text
+  resolvedAt  DateTime?       @map("resolved_at")
+  resolvedBy  String?         @map("resolved_by") // User ID
+  
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  contract    Contract? @relation(fields: [contractId], references: [id])
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([status])
+  @@map("complaints")
+}
+
+// Công nợ khách hàng
+model CustomerDebt {
+  id          String     @id @default(cuid())
+  customerId  String     @map("customer_id")
+  contractId  String     @map("contract_id")
+  totalDebt   Decimal    @map("total_debt")
+  paidAmount  Decimal    @default(0) @map("paid_amount")
+  dueDate     DateTime?  @map("due_date")
+  status      DebtStatus @default(UNPAID)
+  
+  customer    Customer @relation(fields: [customerId], references: [id])
+  contract    Contract @relation(fields: [contractId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([contractId])
+  @@map("customer_debts")
+}
+
+enum CustomerStatus {
+  INTERESTED  // Quan tâm
+  CONTACTED   // Đã liên hệ
+  TEST_DRIVE  // Đã lái thử
+  QUOTED      // Đã báo giá
+  PURCHASED   // Đã mua
+  COLD        // Không quan tâm
+}
+
+enum TestDriveStatus {
+  SCHEDULED   // Đã đặt lịch
+  CONFIRMED   // Đã xác nhận
+  COMPLETED   // Đã hoàn thành
+  CANCELLED   // Đã hủy
+  NO_SHOW     // Không đến
+}
+
+enum FeedbackCategory {
+  SERVICE     // Dịch vụ
+  PRODUCT     // Sản phẩm
+  DELIVERY    // Giao xe
+  OTHER       // Khác
+}
+
+enum ComplaintStatus {
+  OPEN        // Mới tạo
+  IN_PROGRESS // Đang xử lý
+  RESOLVED    // Đã giải quyết
+  CLOSED      // Đã đóng
+}

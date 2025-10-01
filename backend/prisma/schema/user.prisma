@@ -1,0 +1,37 @@
+// ============================================
+// USER & AUTH MODELS
+// ============================================
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  hashedPassword String    @map("hashed_password")
+  firstName      String?   @map("first_name")
+  lastName       String?   @map("last_name")
+  phone          String?
+  role           UserRole  @default(DEALER_STAFF)
+  isActive       Boolean   @default(true) @map("is_active")
+  
+  dealerId       String?   @map("dealer_id")
+  dealer         Dealer?   @relation(fields: [dealerId], references: [id])
+  
+  sessions       Session[]
+  contracts      Contract[]
+  dealerOrders   DealerOrder[]
+  quotations     Quotation[]
+  testDrives     TestDrive[]
+  
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([dealerId])
+  @@index([email])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN           // Quản trị hệ thống
+  EVM_STAFF       // Nhân viên hãng xe
+  DEALER_MANAGER  // Quản lý đại lý
+  DEALER_STAFF    // Nhân viên đại lý
+}

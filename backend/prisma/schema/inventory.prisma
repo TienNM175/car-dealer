@@ -1,0 +1,45 @@
+// ============================================
+// INVENTORY MODELS - Quản lý tồn kho
+// ============================================
+
+// Tồn kho của Hãng xe (EVM)
+model EVMInventory {
+  id          String   @id @default(cuid())
+  vehicleId   String   @map("vehicle_id")
+  quantity    Int      @default(0)
+  reserved    Int      @default(0) // Số lượng đã đặt bởi đại lý
+  available   Int      @default(0) // quantity - reserved
+  location    String?  // Kho
+  
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([vehicleId])
+  @@index([vehicleId])
+  @@map("evm_inventories")
+}
+
+// Tồn kho tại Đại lý
+model Inventory {
+  id          String   @id @default(cuid())
+  dealerId    String   @map("dealer_id")
+  vehicleId   String   @map("vehicle_id")
+  quantity    Int      @default(0)
+  reserved    Int      @default(0) // Số lượng đã có khách đặt
+  sold        Int      @default(0) // Số lượng đã bán
+  available   Int      @default(0) // quantity - reserved - sold
+  location    String?  // Vị trí trong showroom
+  
+  dealer      Dealer   @relation(fields: [dealerId], references: [id])
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([dealerId, vehicleId])
+  @@index([dealerId])
+  @@index([vehicleId])
+  @@map("inventories")
+}

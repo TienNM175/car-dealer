@@ -1,0 +1,18 @@
+// ============================================
+// SESSION MODEL - Authentication
+// ============================================
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  isActive     Boolean  @default(true) @map("is_active")
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("sessions")
+}

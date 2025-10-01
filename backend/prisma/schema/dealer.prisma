@@ -1,0 +1,110 @@
+// ============================================
+// DEALER MODELS
+// ============================================
+
+model Region {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  code    String   @unique
+  dealers Dealer[]
+  
+  @@map("regions")
+}
+
+model Dealer {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  regionId    String   @map("region_id")
+  address     String?
+  city        String?
+  phone       String?
+  email       String?
+  isActive    Boolean  @default(true) @map("is_active")
+  
+  region          Region            @relation(fields: [regionId], references: [id])
+  users           User[]
+  dealerOrders    DealerOrder[]
+  inventories     Inventory[]
+  dealerDiscounts DealerDiscount[]
+  dealerContracts DealerContract[]
+  targets         Target[]
+  dealerDebts     DealerDebt[]
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([regionId])
+  @@map("dealers")
+}
+
+// Hợp đồng giữa Hãng xe và Đại lý
+model DealerContract {
+  id              String               @id @default(cuid())
+  contractCode    String               @unique @map("contract_code")
+  dealerId        String               @map("dealer_id")
+  startDate       DateTime             @map("start_date")
+  endDate         DateTime             @map("end_date")
+  commissionRate  Decimal              @map("commission_rate") // % hoa hồng
+  status          DealerContractStatus @default(ACTIVE)
+  signedAt        DateTime?            @map("signed_at")
+  
+  dealer      Dealer   @relation(fields: [dealerId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([dealerId])
+  @@map("dealer_contracts")
+}
+
+// Chỉ tiêu doanh số
+model Target {
+  id             String   @id @default(cuid())
+  dealerId       String   @map("dealer_id")
+  year           Int
+  month          Int
+  targetAmount   Decimal  @map("target_amount")
+  achievedAmount Decimal  @default(0) @map("achieved_amount")
+  
+  dealer      Dealer   @relation(fields: [dealerId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([dealerId, year, month])
+  @@index([dealerId])
+  @@map("targets")
+}
+
+// Công nợ đại lý với hãng
+model DealerDebt {
+  id          String         @id @default(cuid())
+  dealerId    String         @map("dealer_id")
+  totalDebt   Decimal        @default(0) @map("total_debt")
+  paidAmount  Decimal        @default(0) @map("paid_amount")
+  dueDate     DateTime?      @map("due_date")
+  status      DebtStatus     @default(UNPAID)
+  
+  dealer      Dealer   @relation(fields: [dealerId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([dealerId])
+  @@map("dealer_debts")
+}
+
+enum DealerContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+enum DebtStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  OVERDUE
+}
