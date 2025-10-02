@@ -7,58 +7,177 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Import all schema files
-// User & Auth
-model User {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  hashedPassword String    @map("hashed_password")
-  firstName      String?   @map("first_name")
-  lastName       String?   @map("last_name")
-  phone          String?
-  role           UserRole  @default(DEALER_STAFF)
-  isActive       Boolean   @default(true) @map("is_active")
-  
-  dealerId       String?   @map("dealer_id")
-  dealer         Dealer?   @relation(fields: [dealerId], references: [id])
-  
-  sessions       Session[]
-  contracts      Contract[]
-  dealerOrders   DealerOrder[]
-  quotations     Quotation[]
-  testDrives     TestDrive[]
-  
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  @@index([dealerId])
+// Content from customer.prisma
+// ============================================
+// CUSTOMER MODELS
+// ============================================
+
+model Customer {
+  id            String              @id @default(cuid())
+  firstName     String              @map("first_name")
+  lastName      String              @map("last_name")
+  email         String
+  phone         String?
+  address       String?
+  city          String?
+  identityCard  String?             @map("identity_card") // CMND/CCCD
+  status        CustomerStatus      @default(INTERESTED)
+  
+  lifecycle     CustomerLifecycle[]
+  contracts     Contract[]
+  quotations    Quotation[]
+  testDrives    TestDrive[]
+  feedbacks     Feedback[]
+  complaints    Complaint[]
+  customerDebts CustomerDebt[]
+  
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
   @@index([email])
-  @@map("users")
+  @@index([phone])
+  @@map("customers")
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique @map("session_token")
-  userId       String   @map("user_id")
-  expires      DateTime
-  isActive     Boolean  @default(true) @map("is_active")
+// Lịch sử trạng thái khách hàng
+model CustomerLifecycle {
+  id          String         @id @default(cuid())
+  customerId  String         @map("customer_id")
+  status      CustomerStatus
+  notes       String?        @db.Text
+  changedBy   String?        @map("changed_by") // User ID
   
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   
-  createdAt    DateTime @default(now()) @map("created_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  @@index([userId])
-  @@map("sessions")
+  @@index([customerId])
+  @@map("customer_lifecycle")
 }
 
-enum UserRole {
-  ADMIN
-  EVM_STAFF
-  DEALER_MANAGER
-  DEALER_STAFF
+// Lịch hẹn lái thử
+model TestDrive {
+  id            String           @id @default(cuid())
+  customerId    String           @map("customer_id")
+  vehicleId     String           @map("vehicle_id")
+  staffId       String           @map("staff_id") // Dealer Staff phụ trách
+  scheduledDate DateTime         @map("scheduled_date")
+  status        TestDriveStatus  @default(SCHEDULED)
+  notes         String?          @db.Text
+  feedback      String?          @db.Text
+  
+  customer      Customer @relation(fields: [customerId], references: [id])
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id])
+  staff         User     @relation(fields: [staffId], references: [id])
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([staffId])
+  @@map("test_drives")
 }
 
-// Dealers
+// Phản hồi khách hàng
+model Feedback {
+  id          String         @id @default(cuid())
+  customerId  String         @map("customer_id")
+  contractId  String?        @map("contract_id")
+  rating      Int            // 1-5 stars
+  comment     String?        @db.Text
+  category    FeedbackCategory
+  
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  contract    Contract? @relation(fields: [contractId], references: [id])
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([customerId])
+  @@map("feedbacks")
+}
+
+// Khiếu nại
+model Complaint {
+  id          String          @id @default(cuid())
+  customerId  String          @map("customer_id")
+  contractId  String?         @map("contract_id")
+  subject     String
+  description String          @db.Text
+  status      ComplaintStatus @default(OPEN)
+  resolution  String?         @db.Text
+  resolvedAt  DateTime?       @map("resolved_at")
+  resolvedBy  String?         @map("resolved_by") // User ID
+  
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  contract    Contract? @relation(fields: [contractId], references: [id])
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([status])
+  @@map("complaints")
+}
+
+// Công nợ khách hàng
+model CustomerDebt {
+  id          String     @id @default(cuid())
+  customerId  String     @map("customer_id")
+  contractId  String     @map("contract_id")
+  totalDebt   Decimal    @map("total_debt")
+  paidAmount  Decimal    @default(0) @map("paid_amount")
+  dueDate     DateTime?  @map("due_date")
+  status      DebtStatus @default(UNPAID)
+  
+  customer    Customer @relation(fields: [customerId], references: [id])
+  contract    Contract @relation(fields: [contractId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([contractId])
+  @@map("customer_debts")
+}
+
+enum CustomerStatus {
+  INTERESTED  // Quan tâm
+  CONTACTED   // Đã liên hệ
+  TEST_DRIVE  // Đã lái thử
+  QUOTED      // Đã báo giá
+  PURCHASED   // Đã mua
+  COLD        // Không quan tâm
+}
+
+enum TestDriveStatus {
+  SCHEDULED   // Đã đặt lịch
+  CONFIRMED   // Đã xác nhận
+  COMPLETED   // Đã hoàn thành
+  CANCELLED   // Đã hủy
+  NO_SHOW     // Không đến
+}
+
+enum FeedbackCategory {
+  SERVICE     // Dịch vụ
+  PRODUCT     // Sản phẩm
+  DELIVERY    // Giao xe
+  OTHER       // Khác
+}
+
+enum ComplaintStatus {
+  OPEN        // Mới tạo
+  IN_PROGRESS // Đang xử lý
+  RESOLVED    // Đã giải quyết
+  CLOSED      // Đã đóng
+}
+
+// Content from dealer.prisma
+// ============================================
+// DEALER MODELS
+// ============================================
+
 model Region {
   id      String   @id @default(cuid())
   name    String   @unique
@@ -95,13 +214,14 @@ model Dealer {
   @@map("dealers")
 }
 
+// Hợp đồng giữa Hãng xe và Đại lý
 model DealerContract {
   id              String               @id @default(cuid())
   contractCode    String               @unique @map("contract_code")
   dealerId        String               @map("dealer_id")
   startDate       DateTime             @map("start_date")
   endDate         DateTime             @map("end_date")
-  commissionRate  Decimal              @map("commission_rate")
+  commissionRate  Decimal              @map("commission_rate") // % hoa hồng
   status          DealerContractStatus @default(ACTIVE)
   signedAt        DateTime?            @map("signed_at")
   
@@ -114,6 +234,7 @@ model DealerContract {
   @@map("dealer_contracts")
 }
 
+// Chỉ tiêu doanh số
 model Target {
   id             String   @id @default(cuid())
   dealerId       String   @map("dealer_id")
@@ -132,13 +253,14 @@ model Target {
   @@map("targets")
 }
 
+// Công nợ đại lý với hãng
 model DealerDebt {
-  id          String     @id @default(cuid())
-  dealerId    String     @map("dealer_id")
-  totalDebt   Decimal    @default(0) @map("total_debt")
-  paidAmount  Decimal    @default(0) @map("paid_amount")
-  dueDate     DateTime?  @map("due_date")
-  status      DebtStatus @default(UNPAID)
+  id          String         @id @default(cuid())
+  dealerId    String         @map("dealer_id")
+  totalDebt   Decimal        @default(0) @map("total_debt")
+  paidAmount  Decimal        @default(0) @map("paid_amount")
+  dueDate     DateTime?      @map("due_date")
+  status      DebtStatus     @default(UNPAID)
   
   dealer      Dealer   @relation(fields: [dealerId], references: [id])
   
@@ -163,7 +285,296 @@ enum DebtStatus {
   OVERDUE
 }
 
-// Vehicles
+// Content from dealerOrder.prisma
+// ============================================
+// DEALER ORDER MODELS - Đại lý đặt xe từ hãng
+// ============================================
+
+model DealerOrder {
+  id           String           @id @default(cuid())
+  orderNumber  String           @unique @map("order_number")
+  dealerId     String           @map("dealer_id")
+  staffId      String           @map("staff_id") // Nhân viên đại lý tạo order
+  vehicleId    String           @map("vehicle_id")
+  quantity     Int
+  unitPrice    Decimal          @map("unit_price") // Giá sỉ
+  totalAmount  Decimal          @map("total_amount")
+  status       DealerOrderStatus @default(PENDING)
+  
+  orderedAt    DateTime         @default(now()) @map("ordered_at")
+  confirmedAt  DateTime?        @map("confirmed_at")
+  shippedAt    DateTime?        @map("shipped_at")
+  deliveredAt  DateTime?        @map("delivered_at")
+  
+  notes        String?          @db.Text
+  
+  dealer       Dealer   @relation(fields: [dealerId], references: [id])
+  staff        User     @relation(fields: [staffId], references: [id])
+  vehicle      Vehicle  @relation(fields: [vehicleId], references: [id])
+  
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([dealerId])
+  @@index([staffId])
+  @@index([vehicleId])
+  @@map("dealer_orders")
+}
+
+enum DealerOrderStatus {
+  PENDING     // Chờ xác nhận
+  CONFIRMED   // Đã xác nhận
+  PROCESSING  // Đang xử lý
+  SHIPPED     // Đang giao
+  DELIVERED   // Đã giao
+  CANCELLED   // Đã hủy
+}
+
+// Content from inventory.prisma
+// ============================================
+// INVENTORY MODELS - Quản lý tồn kho
+// ============================================
+
+// Tồn kho của Hãng xe (EVM)
+model EVMInventory {
+  id          String   @id @default(cuid())
+  vehicleId   String   @map("vehicle_id")
+  quantity    Int      @default(0)
+  reserved    Int      @default(0) // Số lượng đã đặt bởi đại lý
+  available   Int      @default(0) // quantity - reserved
+  location    String?  // Kho
+  
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([vehicleId])
+  @@index([vehicleId])
+  @@map("evm_inventories")
+}
+
+// Tồn kho tại Đại lý
+model Inventory {
+  id          String   @id @default(cuid())
+  dealerId    String   @map("dealer_id")
+  vehicleId   String   @map("vehicle_id")
+  quantity    Int      @default(0)
+  reserved    Int      @default(0) // Số lượng đã có khách đặt
+  sold        Int      @default(0) // Số lượng đã bán
+  available   Int      @default(0) // quantity - reserved - sold
+  location    String?  // Vị trí trong showroom
+  
+  dealer      Dealer   @relation(fields: [dealerId], references: [id])
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([dealerId, vehicleId])
+  @@index([dealerId])
+  @@index([vehicleId])
+  @@map("inventories")
+}
+
+// Content from order.prisma
+// ============================================
+// ORDER & SALES MODELS
+// ============================================
+
+// Báo giá
+model Quotation {
+  id          String          @id @default(cuid())
+  quoteNumber String          @unique @map("quote_number")
+  customerId  String          @map("customer_id")
+  vehicleId   String          @map("vehicle_id")
+  staffId     String          @map("staff_id")
+  
+  basePrice   Decimal         @map("base_price")
+  discount    Decimal         @default(0)
+  finalPrice  Decimal         @map("final_price")
+  
+  paymentType PaymentType     @default(FULL) @map("payment_type")
+  installmentMonths Int?      @map("installment_months")
+  monthlyPayment    Decimal?  @map("monthly_payment")
+  
+  validUntil  DateTime        @map("valid_until")
+  status      QuotationStatus @default(DRAFT)
+  notes       String?         @db.Text
+  
+  customer    Customer @relation(fields: [customerId], references: [id])
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  staff       User     @relation(fields: [staffId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([staffId])
+  @@map("quotations")
+}
+
+// Hợp đồng bán hàng (Dealer → Customer)
+model Contract {
+  id              String         @id @default(cuid())
+  contractCode    String         @unique @map("contract_code")
+  customerId      String         @map("customer_id")
+  staffId         String         @map("staff_id")
+  vehicleId       String         @map("vehicle_id")
+  
+  basePrice       Decimal        @map("base_price")
+  discount        Decimal        @default(0)
+  finalPrice      Decimal        @map("final_price")
+  
+  paymentType     PaymentType    @default(FULL) @map("payment_type")
+  installmentMonths Int?         @map("installment_months")
+  monthlyPayment    Decimal?     @map("monthly_payment")
+  interestRate      Decimal?     @map("interest_rate")
+  
+  status          ContractStatus @default(DRAFT)
+  signedAt        DateTime?      @map("signed_at")
+  deliveryDate    DateTime?      @map("delivery_date")
+  deliveredAt     DateTime?      @map("delivered_at")
+  
+  notes           String?        @db.Text
+  
+  customer        Customer       @relation(fields: [customerId], references: [id])
+  staff           User           @relation(fields: [staffId], references: [id])
+  vehicle         Vehicle        @relation(fields: [vehicleId], references: [id])
+  feedbacks       Feedback[]
+  complaints      Complaint[]
+  customerDebts   CustomerDebt[]
+  
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([staffId])
+  @@index([vehicleId])
+  @@map("contracts")
+}
+
+enum QuotationStatus {
+  DRAFT       // Nháp
+  SENT        // Đã gửi
+  ACCEPTED    // Khách chấp nhận
+  REJECTED    // Khách từ chối
+  EXPIRED     // Hết hạn
+}
+
+enum ContractStatus {
+  DRAFT       // Nháp
+  PENDING     // Chờ ký
+  SIGNED      // Đã ký
+  DELIVERING  // Đang giao xe
+  COMPLETED   // Hoàn thành
+  CANCELLED   // Hủy
+}
+
+enum PaymentType {
+  FULL        // Trả thẳng
+  INSTALLMENT // Trả góp
+}
+
+
+// Content from promotion.prisma
+// ============================================
+// PROMOTION MODELS - Khuyến mãi & Chiết khấu
+// ============================================
+
+model DealerDiscount {
+  id          String              @id @default(cuid())
+  dealerId    String              @map("dealer_id")
+  name        String              // Tên chương trình
+  description String?             @db.Text
+  discountType DiscountType       @default(PERCENTAGE) @map("discount_type")
+  discountValue Decimal           @map("discount_value") // % hoặc số tiền
+  minPurchase  Decimal?           @map("min_purchase") // Giá trị đơn hàng tối thiểu
+  
+  startDate   DateTime            @map("start_date")
+  endDate     DateTime?           @map("end_date")
+  isActive    Boolean             @default(true) @map("is_active")
+  
+  dealer      Dealer @relation(fields: [dealerId], references: [id])
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([dealerId])
+  @@index([isActive])
+  @@map("dealer_discounts")
+}
+
+enum DiscountType {
+  PERCENTAGE  // Chiết khấu theo %
+  FIXED       // Chiết khấu cố định (VND/USD)
+}
+
+
+// Content from session.prisma
+// ============================================
+// SESSION MODEL - Authentication
+// ============================================
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  isActive     Boolean  @default(true) @map("is_active")
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Content from user.prisma
+// ============================================
+// USER & AUTH MODELS
+// ============================================
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  hashedPassword String    @map("hashed_password")
+  firstName      String?   @map("first_name")
+  lastName       String?   @map("last_name")
+  phone          String?
+  role           UserRole  @default(DEALER_STAFF)
+  isActive       Boolean   @default(true) @map("is_active")
+  
+  dealerId       String?   @map("dealer_id")
+  dealer         Dealer?   @relation(fields: [dealerId], references: [id])
+  
+  sessions       Session[]
+  contracts      Contract[]
+  dealerOrders   DealerOrder[]
+  quotations     Quotation[]
+  testDrives     TestDrive[]
+  
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([dealerId])
+  @@index([email])
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN           // Quản trị hệ thống
+  EVM_STAFF       // Nhân viên hãng xe
+  DEALER_MANAGER  // Quản lý đại lý
+  DEALER_STAFF    // Nhân viên đại lý
+}
+
+// Content from vehicle.prisma
+// ============================================
+// VEHICLE MODELS - Xe điện mới
+// ============================================
+
 model Manufacturer {
   id          String    @id @default(cuid())
   name        String    @unique
@@ -184,24 +595,25 @@ model Vehicle {
   model             String
   variant           String?
   year              Int
-  batteryCapacity   Int             @map("battery_capacity")
-  range             Int
-  chargingTime      Int?            @map("charging_time")
-  motorPower        Int?            @map("motor_power")
-  topSpeed          Int?            @map("top_speed")
-  acceleration      Float?
+  batteryCapacity   Int             @map("battery_capacity") // kWh
+  range             Int             // km
+  chargingTime      Int?            @map("charging_time") // minutes (0-80%)
+  motorPower        Int?            @map("motor_power") // kW
+  topSpeed          Int?            @map("top_speed") // km/h
+  acceleration      Float?          // 0-100 km/h (seconds)
   seats             Int             @default(5)
   doors             Int             @default(4)
   color             VehicleColor    @default(WHITE)
   bodyType          VehicleBodyType @default(SUV)
   
-  wholesalePrice    Decimal         @map("wholesale_price")
-  retailPrice       Decimal         @map("retail_price")
+  // Pricing
+  wholesalePrice    Decimal         @map("wholesale_price") // Giá sỉ (EVM → Dealer)
+  retailPrice       Decimal         @map("retail_price")    // Giá lẻ (Dealer → Customer)
   currency          CurrencyCode    @default(USD)
   
   status            VehicleStatus   @default(ACTIVE)
   description       String?         @db.Text
-  specifications    String?         @db.Text
+  specifications    String?         @db.Text // JSON string
   
   manufacturer      Manufacturer    @relation(fields: [manufacturerId], references: [id])
   images            VehicleImage[]
@@ -210,7 +622,7 @@ model Vehicle {
   dealerOrders      DealerOrder[]
   quotations        Quotation[]
   contracts         Contract[]
-  testDrives        TestDrive[]
+  testDrives  TestDrive[]
   
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
@@ -264,9 +676,9 @@ enum VehicleBodyType {
 }
 
 enum VehicleStatus {
-  ACTIVE
-  INACTIVE
-  OUT_OF_STOCK
+  ACTIVE      // Đang bán
+  INACTIVE    // Ngừng bán
+  OUT_OF_STOCK // Hết hàng
 }
 
 enum CurrencyCode {
@@ -276,361 +688,3 @@ enum CurrencyCode {
   VND
 }
 
-// Customers
-model Customer {
-  id            String              @id @default(cuid())
-  firstName     String              @map("first_name")
-  lastName      String              @map("last_name")
-  email         String
-  phone         String?
-  address       String?
-  city          String?
-  identityCard  String?             @map("identity_card")
-  status        CustomerStatus      @default(INTERESTED)
-  
-  lifecycle     CustomerLifecycle[]
-  contracts     Contract[]
-  quotations    Quotation[]
-  testDrives    TestDrive[]
-  feedbacks     Feedback[]
-  complaints    Complaint[]
-  customerDebts CustomerDebt[]
-  
-  createdAt     DateTime            @default(now()) @map("created_at")
-  updatedAt     DateTime            @updatedAt @map("updated_at")
-
-  @@index([email])
-  @@index([phone])
-  @@map("customers")
-}
-
-model CustomerLifecycle {
-  id          String         @id @default(cuid())
-  customerId  String         @map("customer_id")
-  status      CustomerStatus
-  notes       String?        @db.Text
-  changedBy   String?        @map("changed_by")
-  
-  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  @@index([customerId])
-  @@map("customer_lifecycle")
-}
-
-model TestDrive {
-  id            String           @id @default(cuid())
-  customerId    String           @map("customer_id")
-  vehicleId     String           @map("vehicle_id")
-  staffId       String           @map("staff_id")
-  scheduledDate DateTime         @map("scheduled_date")
-  status        TestDriveStatus  @default(SCHEDULED)
-  notes         String?          @db.Text
-  feedback      String?          @db.Text
-  
-  customer      Customer @relation(fields: [customerId], references: [id])
-  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id])
-  staff         User     @relation(fields: [staffId], references: [id])
-  
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  @@index([customerId])
-  @@index([vehicleId])
-  @@index([staffId])
-  @@map("test_drives")
-}
-
-model Feedback {
-  id          String           @id @default(cuid())
-  customerId  String           @map("customer_id")
-  contractId  String?          @map("contract_id")
-  rating      Int
-  comment     String?          @db.Text
-  category    FeedbackCategory
-  
-  customer    Customer  @relation(fields: [customerId], references: [id])
-  contract    Contract? @relation(fields: [contractId], references: [id])
-  
-  createdAt   DateTime  @default(now()) @map("created_at")
-
-  @@index([customerId])
-  @@map("feedbacks")
-}
-
-model Complaint {
-  id          String          @id @default(cuid())
-  customerId  String          @map("customer_id")
-  contractId  String?         @map("contract_id")
-  subject     String
-  description String          @db.Text
-  status      ComplaintStatus @default(OPEN)
-  resolution  String?         @db.Text
-  resolvedAt  DateTime?       @map("resolved_at")
-  resolvedBy  String?         @map("resolved_by")
-  
-  customer    Customer  @relation(fields: [customerId], references: [id])
-  contract    Contract? @relation(fields: [contractId], references: [id])
-  
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  @@index([customerId])
-  @@index([status])
-  @@map("complaints")
-}
-
-model CustomerDebt {
-  id          String     @id @default(cuid())
-  customerId  String     @map("customer_id")
-  contractId  String     @map("contract_id")
-  totalDebt   Decimal    @map("total_debt")
-  paidAmount  Decimal    @default(0) @map("paid_amount")
-  dueDate     DateTime?  @map("due_date")
-  status      DebtStatus @default(UNPAID)
-  
-  customer    Customer @relation(fields: [customerId], references: [id])
-  contract    Contract @relation(fields: [contractId], references: [id])
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@index([customerId])
-  @@index([contractId])
-  @@map("customer_debts")
-}
-
-enum CustomerStatus {
-  INTERESTED
-  CONTACTED
-  TEST_DRIVE
-  QUOTED
-  PURCHASED
-  COLD
-}
-
-enum TestDriveStatus {
-  SCHEDULED
-  CONFIRMED
-  COMPLETED
-  CANCELLED
-  NO_SHOW
-}
-
-enum FeedbackCategory {
-  SERVICE
-  PRODUCT
-  DELIVERY
-  OTHER
-}
-
-enum ComplaintStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
-  CLOSED
-}
-
-// Orders & Sales
-model Quotation {
-  id          String          @id @default(cuid())
-  quoteNumber String          @unique @map("quote_number")
-  customerId  String          @map("customer_id")
-  vehicleId   String          @map("vehicle_id")
-  staffId     String          @map("staff_id")
-  
-  basePrice   Decimal         @map("base_price")
-  discount    Decimal         @default(0)
-  finalPrice  Decimal         @map("final_price")
-  
-  paymentType PaymentType     @default(FULL) @map("payment_type")
-  installmentMonths Int?      @map("installment_months")
-  monthlyPayment    Decimal?  @map("monthly_payment")
-  
-  validUntil  DateTime        @map("valid_until")
-  status      QuotationStatus @default(DRAFT)
-  notes       String?         @db.Text
-  
-  customer    Customer @relation(fields: [customerId], references: [id])
-  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
-  staff       User     @relation(fields: [staffId], references: [id])
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@index([customerId])
-  @@index([staffId])
-  @@map("quotations")
-}
-
-model Contract {
-  id              String         @id @default(cuid())
-  contractCode    String         @unique @map("contract_code")
-  customerId      String         @map("customer_id")
-  staffId         String         @map("staff_id")
-  vehicleId       String         @map("vehicle_id")
-  
-  basePrice       Decimal        @map("base_price")
-  discount        Decimal        @default(0)
-  finalPrice      Decimal        @map("final_price")
-  
-  paymentType     PaymentType    @default(FULL) @map("payment_type")
-  installmentMonths Int?         @map("installment_months")
-  monthlyPayment    Decimal?     @map("monthly_payment")
-  interestRate      Decimal?     @map("interest_rate")
-  
-  status          ContractStatus @default(DRAFT)
-  signedAt        DateTime?      @map("signed_at")
-  deliveryDate    DateTime?      @map("delivery_date")
-  deliveredAt     DateTime?      @map("delivered_at")
-  
-  notes           String?        @db.Text
-  
-  customer        Customer       @relation(fields: [customerId], references: [id])
-  staff           User           @relation(fields: [staffId], references: [id])
-  vehicle         Vehicle        @relation(fields: [vehicleId], references: [id])
-  feedbacks       Feedback[]
-  complaints      Complaint[]
-  customerDebts   CustomerDebt[]
-  
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
-
-  @@index([customerId])
-  @@index([staffId])
-  @@index([vehicleId])
-  @@map("contracts")
-}
-
-model DealerOrder {
-  id           String            @id @default(cuid())
-  orderNumber  String            @unique @map("order_number")
-  dealerId     String            @map("dealer_id")
-  staffId      String            @map("staff_id")
-  vehicleId    String            @map("vehicle_id")
-  quantity     Int
-  unitPrice    Decimal           @map("unit_price")
-  totalAmount  Decimal           @map("total_amount")
-  status       DealerOrderStatus @default(PENDING)
-  
-  orderedAt    DateTime          @default(now()) @map("ordered_at")
-  confirmedAt  DateTime?         @map("confirmed_at")
-  shippedAt    DateTime?         @map("shipped_at")
-  deliveredAt  DateTime?         @map("delivered_at")
-  
-  notes        String?           @db.Text
-  
-  dealer       Dealer   @relation(fields: [dealerId], references: [id])
-  staff        User     @relation(fields: [staffId], references: [id])
-  vehicle      Vehicle  @relation(fields: [vehicleId], references: [id])
-  
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  @@index([dealerId])
-  @@index([staffId])
-  @@index([vehicleId])
-  @@map("dealer_orders")
-}
-
-enum QuotationStatus {
-  DRAFT
-  SENT
-  ACCEPTED
-  REJECTED
-  EXPIRED
-}
-
-enum ContractStatus {
-  DRAFT
-  PENDING
-  SIGNED
-  DELIVERING
-  COMPLETED
-  CANCELLED
-}
-
-enum PaymentType {
-  FULL
-  INSTALLMENT
-}
-
-enum DealerOrderStatus {
-  PENDING
-  CONFIRMED
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
-}
-
-// Inventory
-model EVMInventory {
-  id          String   @id @default(cuid())
-  vehicleId   String   @map("vehicle_id")
-  quantity    Int      @default(0)
-  reserved    Int      @default(0)
-  available   Int      @default(0)
-  location    String?
-  
-  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@unique([vehicleId])
-  @@index([vehicleId])
-  @@map("evm_inventories")
-}
-
-model Inventory {
-  id          String   @id @default(cuid())
-  dealerId    String   @map("dealer_id")
-  vehicleId   String   @map("vehicle_id")
-  quantity    Int      @default(0)
-  reserved    Int      @default(0)
-  sold        Int      @default(0)
-  available   Int      @default(0)
-  location    String?
-  
-  dealer      Dealer   @relation(fields: [dealerId], references: [id])
-  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@unique([dealerId, vehicleId])
-  @@index([dealerId])
-  @@index([vehicleId])
-  @@map("inventories")
-}
-
-// Promotions
-model DealerDiscount {
-  id            String       @id @default(cuid())
-  dealerId      String       @map("dealer_id")
-  name          String
-  description   String?      @db.Text
-  discountType  DiscountType @default(PERCENTAGE) @map("discount_type")
-  discountValue Decimal      @map("discount_value")
-  minPurchase   Decimal?     @map("min_purchase")
-  
-  startDate     DateTime     @map("start_date")
-  endDate       DateTime?    @map("end_date")
-  isActive      Boolean      @default(true) @map("is_active")
-  
-  dealer        Dealer @relation(fields: [dealerId], references: [id])
-  
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  @@index([dealerId])
-  @@index([isActive])
-  @@map("dealer_discounts")
-}
-
-enum DiscountType {
-  PERCENTAGE
-  FIXED
-}
