@@ -8,8 +8,10 @@
     "prisma:merge": "node prisma/merge-schema.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
+    "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:migrate": "prisma migrate dev",
-    "dev":"nodemon"
+    "dev": "nodemon",
+    "format": "prettier --write \"src/**/*.ts\""
   },
   "keywords": [],
   "author": "",
@@ -43,5 +45,8 @@
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }
