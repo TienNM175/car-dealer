@@ -36,7 +36,7 @@ export class AuthController {
     }
   }
 
-  async refreshToken(req: Request, res: Response, next: NextFunction) {
+  async refreshToken(req: Request, res: Response, _next: NextFunction) {
     try {
       const { refreshToken } = req.body;
 

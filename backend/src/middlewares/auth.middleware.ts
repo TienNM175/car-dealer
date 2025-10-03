@@ -49,7 +49,7 @@ export class AuthMiddleware {
     }
   }
 
-  static optional(req: Request, res: Response, next: NextFunction): void {
+  static optional(req: Request, _res: Response, next: NextFunction): void {
     const authHeader = req.headers.authorization;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {

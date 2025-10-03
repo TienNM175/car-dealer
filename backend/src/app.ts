@@ -7,7 +7,7 @@ import config from './config/environment';
 import { ErrorMiddleware } from './middlewares/error.middleware';
 
 // Import routes (sẽ tạo sau)
-// import authRoutes from './modules/auth/auth.routes';
+import authRoutes from './modules/auth/auth.routes';
 // import vehicleRoutes from './modules/vehicles/vehicle.routes';
 // ... other routes
 
@@ -65,7 +65,7 @@ class App {
     const apiRouter = express.Router();
     
     // Mount routes here
-    // apiRouter.use('/auth', authRoutes);
+    apiRouter.use('/auth', authRoutes);
     // apiRouter.use('/vehicles', vehicleRoutes);
     // apiRouter.use('/dealers', dealerRoutes);
     // apiRouter.use('/customers', customerRoutes);
