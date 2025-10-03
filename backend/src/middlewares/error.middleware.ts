@@ -4,7 +4,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 export class ErrorMiddleware {
   static handle(
     error: any,
-    req: Request,
+    _req: Request,
     res: Response,
     _next: NextFunction
   ): Response {

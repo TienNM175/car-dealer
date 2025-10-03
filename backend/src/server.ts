@@ -12,17 +12,21 @@ const server = app.listen(PORT, () => {
   console.log('=================================');
 });
 
-// Graceful shutdown
-const gracefulShutdown = async (signal: string) => {
+let isShuttingDown = false;
+
+const gracefulShutdown = (signal: string) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
   console.log(`\n${signal} received. Shutting down gracefully...`);
-  
-  server.close(async () => {
+
+  server.close(() => {
     console.log('HTTP server closed');
-    
-    await prisma.$disconnect();
-    console.log('Database connection closed');
-    
-    process.exit(0);
+
+    prisma.$disconnect().then(() => {
+      console.log('Database connection closed');
+      process.exit(0);
+    });
   });
 
   // Force shutdown after 10 seconds
@@ -35,13 +39,11 @@ const gracefulShutdown = async (signal: string) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Handle unhandled rejections
-process.on('unhandledRejection', (reason: Error) => {
+process.on('unhandledRejection', (reason: any) => {
   console.error('Unhandled Rejection:', reason);
   gracefulShutdown('unhandledRejection');
 });
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (error: Error) => {
   console.error('Uncaught Exception:', error);
   gracefulShutdown('uncaughtException');

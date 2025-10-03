@@ -53,7 +53,7 @@ class App {
 
   private setupRoutes(): void {
     // Health check
-    this.app.get('/health', (req, res) => {
+    this.app.get('/health', (_req, res) => {
       res.json({
         status: 'OK',
         timestamp: new Date().toISOString(),

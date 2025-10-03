@@ -10,7 +10,7 @@ export class AuthController {
       const result = await authService.register(req.body);
       return ResponseUtil.created(res, result, 'User registered successfully');
     } catch (error: any) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -22,7 +22,7 @@ export class AuthController {
       if (error.message.includes('Invalid email or password')) {
         return ResponseUtil.unauthorized(res, error.message);
       }
-      next(error);
+      return next(error);
     }
   }
 
@@ -32,14 +32,14 @@ export class AuthController {
       const result = await authService.logout(token);
       return ResponseUtil.success(res, result, 'Logged out successfully');
     } catch (error: any) {
-      next(error);
+      return next(error);
     }
   }
 
   async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
       const { refreshToken } = req.body;
-      
+
       if (!refreshToken) {
         return ResponseUtil.badRequest(res, 'Refresh token is required');
       }
@@ -60,7 +60,7 @@ export class AuthController {
       const user = await authService.getCurrentUser(req.user.userId);
       return ResponseUtil.success(res, user);
     } catch (error: any) {
-      next(error);
+      return next(error);
     }
   }
 }
