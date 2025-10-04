@@ -1,9 +1,14 @@
 'use client'
 import UnifiedDashboard from '@/components/shared/UnifiedDashboard';
+import { useAuth } from '@/contexts/AuthContext';
+import RouteGuard from '@/components/auth/RouteGuard';
 
 export default function EVMDashboardPage() {
-  // Lấy role từ store/context
-  const userRole = 'evm_admin'; // hoặc 'evm_staff'
-  
-  return <UnifiedDashboard userRole={userRole} />;
+  const { user } = useAuth();
+
+  return (
+    <RouteGuard allowedRoles={['EVM_STAFF', 'ADMIN']}>
+      <UnifiedDashboard userRole={user?.role || ''} />
+    </RouteGuard>
+  );
 }

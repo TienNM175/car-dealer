@@ -1,11 +1,13 @@
-'use client'
-import { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+"use client";
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+
+type UserRole = "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN";
 
 interface RouteGuardProps {
   children: React.ReactNode;
-  allowedRoles?: string[];
+  allowedRoles?: UserRole[];
 }
 
 export default function RouteGuard({ children, allowedRoles }: RouteGuardProps) {
@@ -14,42 +16,58 @@ export default function RouteGuard({ children, allowedRoles }: RouteGuardProps) 
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading) {
-      // Chưa đăng nhập
-      if (!isAuthenticated) {
-        router.push(`/login?redirect=${pathname}`);
+    if (isLoading) return; // đợi context load xong
+
+    // ❌ Chưa đăng nhập → redirect login
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=${pathname}`);
+      return;
+    }
+
+    if (user?.role) {
+      const role = user.role.toUpperCase(); // luôn normalize về uppercase
+      const isEVMUser = role === "ADMIN" || role.startsWith("EVM");
+      const isDealerUser = role.startsWith("DEALER");
+
+      const isEVMRoute = pathname.startsWith("/evm");
+      const isDealerRoute = pathname.startsWith("/dealer");
+
+      // 👉 xử lý allowedRoles: nếu yêu cầu EVM thì ADMIN cũng được vào
+      if (allowedRoles) {
+        let normalizedRoles = allowedRoles.map(r => r.toUpperCase());
+        if (normalizedRoles.some(r => r.startsWith("EVM")) && !normalizedRoles.includes("ADMIN")) {
+          normalizedRoles.push("ADMIN");
+        }
+
+        console.log("DEBUG GUARD >>>", { pathname, userRole: role, allowedRoles: normalizedRoles });
+
+        if (!normalizedRoles.includes(role)) {
+          router.push("/unauthorized");
+          return;
+        }
+      }
+
+      // ❌ EVM user mà vào Dealer route
+      if (isEVMUser && isDealerRoute) {
+        router.push("/evm/dashboard");
         return;
       }
 
-      // Đã đăng nhập nhưng không có quyền
-      if (allowedRoles && user && !allowedRoles.includes(user.role!)) {
-        router.push('/unauthorized');
+      // ❌ Dealer user mà vào EVM route
+      if (isDealerUser && isEVMRoute) {
+        router.push("/dealer/dashboard");
         return;
       }
 
-      // Check role-based routing
-      if (user) {
-        const isEVMUser = user.role?.startsWith('evm');
-        const isDealerUser = user.role?.startsWith('dealer');
-        const isEVMRoute = pathname.startsWith('/evm');
-        const isDealerRoute = pathname.startsWith('/dealer');
-
-        // EVM user trying to access dealer route
-        if (isEVMUser && isDealerRoute) {
-          router.push('/evm/dashboard');
-          return;
-        }
-
-        // Dealer user trying to access EVM route
-        if (isDealerUser && isEVMRoute) {
-          router.push('/dealer/dashboard');
-          return;
-        }
+      // ✅ Nếu đang ở trang login nhưng đã login rồi → redirect theo role
+      if (pathname.startsWith("/login")) {
+        if (isEVMUser) router.push("/evm/dashboard");
+        else if (isDealerUser) router.push("/dealer/dashboard");
       }
     }
   }, [isLoading, isAuthenticated, user, allowedRoles, pathname, router]);
 
-  // Show loading
+  // Loading UI
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -61,15 +79,9 @@ export default function RouteGuard({ children, allowedRoles }: RouteGuardProps) 
     );
   }
 
-  // Not authenticated
-  if (!isAuthenticated) {
-    return null;
-  }
+  // ❌ Không login thì không render UI
+  if (!isAuthenticated) return null;
 
-  // No permission
-  if (allowedRoles && user && !allowedRoles.includes(user.role!)) {
-    return null;
-  }
-
+  // ✅ Trường hợp hợp lệ thì render children
   return <>{children}</>;
 }

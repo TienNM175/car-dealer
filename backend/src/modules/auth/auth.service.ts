@@ -11,7 +11,7 @@ interface RegisterInput {
   phone?: string;
   role?: UserRole;
   dealerId?: string;
-}
+} 
 
 interface LoginInput {
   email: string;

@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,27 +27,28 @@ export default function DealerLayout({
   const pathname = usePathname();
   const { user, logout } = useAuth();
   
-  const userRole = user?.role || 'dealer_staff';
+  // role normalize về UPPERCASE
+  const userRole = user?.role?.toUpperCase() || 'DEALER_STAFF';
 
   const dealerMenuItems = [
-    { id: 'dashboard', icon: TrendingUp, label: 'Tổng quan', role: ['dealer_staff', 'dealer_manager'] },
-    { id: 'vehicles', icon: Car, label: 'Danh mục xe', role: ['dealer_staff', 'dealer_manager'] },
-    { id: 'orders', icon: ShoppingCart, label: 'Đơn hàng', role: ['dealer_staff', 'dealer_manager'] },
-    { id: 'contracts', icon: FileText, label: 'Hợp đồng', role: ['dealer_staff', 'dealer_manager'] },
-    { id: 'customers', icon: Users, label: 'Khách hàng', role: ['dealer_staff', 'dealer_manager'] },
-    { id: 'appointments', icon: Calendar, label: 'Lịch hẹn', role: ['dealer_staff', 'dealer_manager'] },
-    { id: 'reports', icon: BarChart3, label: 'Báo cáo', role: ['dealer_manager'] },
+    { id: 'dashboard', icon: TrendingUp, label: 'Tổng quan', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
+    { id: 'vehicles', icon: Car, label: 'Danh mục xe', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
+    { id: 'orders', icon: ShoppingCart, label: 'Đơn hàng', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
+    { id: 'contracts', icon: FileText, label: 'Hợp đồng', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
+    { id: 'customers', icon: Users, label: 'Khách hàng', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
+    { id: 'appointments', icon: Calendar, label: 'Lịch hẹn', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
+    { id: 'reports', icon: BarChart3, label: 'Báo cáo', role: ['DEALER_MANAGER'] },
   ];
 
   const filteredMenuItems = dealerMenuItems.filter(item => item.role.includes(userRole));
 
-  React.useEffect(() => {
+  useEffect(() => {
     const currentPath = pathname.split('/').pop() || 'dashboard';
     setActiveMenu(currentPath);
   }, [pathname]);
 
   return (
-    <RouteGuard allowedRoles={['dealer_staff', 'dealer_manager']}>
+    <RouteGuard allowedRoles={['DEALER_STAFF', 'DEALER_MANAGER']}>
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar */}
         <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white shadow-lg transition-all duration-300 flex flex-col`}>
@@ -90,7 +91,9 @@ export default function DealerLayout({
             {sidebarOpen && user && (
               <div className="mb-3 px-4 py-2 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500">Xin chào</p>
-                <p className="text-sm font-semibold text-gray-800">{user.name}</p>
+                <p className="text-sm font-semibold text-gray-800">
+                  {user.firstName} {user.lastName}
+                </p>
               </div>
             )}
             <button

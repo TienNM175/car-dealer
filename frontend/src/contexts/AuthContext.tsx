@@ -1,17 +1,14 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { authApi } from "@/lib/api/authApi";
 
-type UserRole =
-  | "dealer_staff"
-  | "dealer_manager"
-  | "evm_staff"
-  | "evm_admin"
-  | null;
+type UserRole = "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN" | null;
 
 interface User {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: UserRole;
 }
@@ -31,13 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // 🔹 Check token & user trong localStorage
   useEffect(() => {
-    (async () => {
-      await checkAuth();
-    })();
-  }, []);
-
-  const checkAuth = async () => {
     try {
       if (typeof window !== "undefined") {
         const token = localStorage.getItem("auth_token");
@@ -46,30 +38,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(JSON.parse(savedUser));
         } else {
           setUser(null);
-          router.push("/login");
         }
       }
     } catch (error) {
       console.error("Auth check failed:", error);
       setUser(null);
-      router.push("/login");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
+  // 🔹 Login + Redirect
   const login = async (email: string, password: string) => {
     try {
-      const mockUser: User = {
-        id: "1",
-        name: "John Doe",
-        email,
-        role: email.includes("evm") ? "evm_admin" : "dealer_manager",
-      };
-      localStorage.setItem("auth_token", "mock-token-123");
-      localStorage.setItem("user", JSON.stringify(mockUser));
-      setUser(mockUser);
-      if (mockUser.role?.startsWith("evm")) {
+      const res = await authApi.login({ email, password });
+      const { tokens, user } = res.data.data;
+
+      // Lưu token & user
+      localStorage.setItem("auth_token", tokens.accessToken);
+      localStorage.setItem("refresh_token", tokens.refreshToken);
+      localStorage.setItem("user", JSON.stringify(user));
+      setUser(user);
+
+      // 🔹 Redirect theo role
+      if (user.role === "ADMIN" || user.role?.startsWith("EVM")) {
         router.push("/evm/dashboard");
       } else {
         router.push("/dealer/dashboard");
@@ -80,9 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // 🔹 Logout
   const logout = () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("auth_token");
+      localStorage.removeItem("refresh_token");
       localStorage.removeItem("user");
       setUser(null);
       router.push("/login");

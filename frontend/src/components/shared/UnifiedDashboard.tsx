@@ -24,13 +24,7 @@ interface RankingItem {
 }
 
 interface DashboardData {
-  stats: {
-    title: string;
-    value: string;
-    icon: React.ElementType;
-    color: string;
-    trend?: string;
-  }[];
+  stats: StatCardProps[];
   activities: ActivityItem[];
   rankings: {
     title: string;
@@ -40,15 +34,14 @@ interface DashboardData {
 
 // Props
 interface UnifiedDashboardProps {
-  userRole: 'dealer_staff' | 'dealer_manager' | 'evm_staff' | 'evm_admin';
+  userRole: string; // 🔹 Cho phép role động từ BE
 }
 
 // Component
 export default function UnifiedDashboard({ userRole }: UnifiedDashboardProps) {
-  
   // Determine if user is Dealer or EVM
-  const isDealer = userRole.startsWith('dealer');
-  const isEVM = userRole.startsWith('evm');
+  const isDealer = userRole.toLowerCase().startsWith('dealer');
+  const isEVM = userRole.toLowerCase().startsWith('evm') || userRole.toLowerCase() === 'admin';
 
   // Dashboard data based on role
   const getDashboardData = (): DashboardData => {
@@ -127,8 +120,8 @@ export default function UnifiedDashboard({ userRole }: UnifiedDashboardProps) {
     </div>
   );
 
-  // Activity Item Component
-  const ActivityItem: React.FC<ActivityItem> = ({ title, time }) => (
+  // Activity Item Component (đổi tên tránh trùng)
+  const ActivityCard: React.FC<ActivityItem> = ({ title, time }) => (
     <div className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition">
       <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
         <Car className="w-5 h-5 text-blue-600" />
@@ -141,8 +134,8 @@ export default function UnifiedDashboard({ userRole }: UnifiedDashboardProps) {
     </div>
   );
 
-  // Ranking Item Component
-  const RankingItem: React.FC<RankingItem> = ({ rank, name, value }) => (
+  // Ranking Item Component (đổi tên tránh trùng)
+  const RankingCard: React.FC<RankingItem> = ({ rank, name, value }) => (
     <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition">
       <div className="flex items-center space-x-3">
         <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -184,7 +177,7 @@ export default function UnifiedDashboard({ userRole }: UnifiedDashboardProps) {
           </h3>
           <div className="space-y-2">
             {dashboardData.activities.map((activity) => (
-              <ActivityItem key={activity.id} {...activity} />
+              <ActivityCard key={activity.id} {...activity} />
             ))}
           </div>
         </div>
@@ -196,7 +189,7 @@ export default function UnifiedDashboard({ userRole }: UnifiedDashboardProps) {
           </h3>
           <div className="space-y-2">
             {dashboardData.rankings.items.map((item) => (
-              <RankingItem key={item.rank} {...item} />
+              <RankingCard key={item.rank} {...item} />
             ))}
           </div>
         </div>

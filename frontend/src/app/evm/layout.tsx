@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,26 +26,27 @@ export default function EVMLayout({
   const pathname = usePathname();
   const { user, logout } = useAuth();
   
-  const userRole = user?.role || 'evm_staff';
+  // role normalize về UPPERCASE
+  const userRole = user?.role?.toUpperCase() || 'EVM_STAFF';
 
   const evmMenuItems = [
-    { id: 'dashboard', icon: TrendingUp, label: 'Tổng quan', role: ['evm_staff', 'evm_admin'] },
-    { id: 'products', icon: Car, label: 'Quản lý sản phẩm', role: ['evm_staff', 'evm_admin'] },
-    { id: 'inventory', icon: Package, label: 'Tồn kho', role: ['evm_staff', 'evm_admin'] },
-    { id: 'dealers', icon: Users, label: 'Quản lý đại lý', role: ['evm_admin'] },
-    { id: 'pricing', icon: FileText, label: 'Giá & Chiết khấu', role: ['evm_admin'] },
-    { id: 'reports', icon: BarChart3, label: 'Báo cáo & Phân tích', role: ['evm_staff', 'evm_admin'] },
+    { id: 'dashboard', icon: TrendingUp, label: 'Tổng quan', role: ['EVM_STAFF', 'ADMIN'] },
+    { id: 'products', icon: Car, label: 'Quản lý sản phẩm', role: ['EVM_STAFF', 'ADMIN'] },
+    { id: 'inventory', icon: Package, label: 'Tồn kho', role: ['EVM_STAFF', 'ADMIN'] },
+    { id: 'dealers', icon: Users, label: 'Quản lý đại lý', role: ['ADMIN'] },
+    { id: 'pricing', icon: FileText, label: 'Giá & Chiết khấu', role: ['ADMIN'] },
+    { id: 'reports', icon: BarChart3, label: 'Báo cáo & Phân tích', role: ['EVM_STAFF', 'ADMIN'] },
   ];
 
   const filteredMenuItems = evmMenuItems.filter(item => item.role.includes(userRole));
 
-  React.useEffect(() => {
+  useEffect(() => {
     const currentPath = pathname.split('/').pop() || 'dashboard';
     setActiveMenu(currentPath);
   }, [pathname]);
 
   return (
-    <RouteGuard allowedRoles={['evm_staff', 'evm_admin']}>
+    <RouteGuard allowedRoles={['EVM_STAFF', 'ADMIN']}>
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar */}
         <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white shadow-lg transition-all duration-300 flex flex-col`}>
@@ -88,7 +89,9 @@ export default function EVMLayout({
             {sidebarOpen && user && (
               <div className="mb-3 px-4 py-2 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500">Xin chào</p>
-                <p className="text-sm font-semibold text-gray-800">{user.name}</p>
+                <p className="text-sm font-semibold text-gray-800">
+                  {user.firstName} {user.lastName}
+                </p>
               </div>
             )}
             <button

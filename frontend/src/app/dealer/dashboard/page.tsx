@@ -1,9 +1,14 @@
 'use client'
 import UnifiedDashboard from '@/components/shared/UnifiedDashboard';
+import { useAuth } from '@/contexts/AuthContext';
+import RouteGuard from '@/components/auth/RouteGuard';
 
 export default function DealerDashboardPage() {
-  // Lấy role từ store/context
-  const userRole = 'dealer_staff'; // hoặc 'dealer_manager'
-  
-  return <UnifiedDashboard userRole={userRole} />;
+  const { user } = useAuth();
+
+  return (
+    <RouteGuard allowedRoles={['DEALER_STAFF', 'DEALER_MANAGER']}>
+      <UnifiedDashboard userRole={user?.role || ''} />
+    </RouteGuard>
+  );
 }
