@@ -16,7 +16,7 @@ import orderRoutes from './modules/dealer-orders/dealer-order.routes';
 import testDriveRoutes from './modules/test-drives/test-drive.routes';
 import reportRoutes from './modules/reports/reports.routes';
 import vehicleRoutes from './modules/vehicles/vehicle.routes';
-import qsuotationsRoutes from './modules/quotations/quotations.routes';
+import quotationRoutes from './modules/quotations/quotations.routes';
 // ... other routes
 
 class App {
@@ -82,7 +82,7 @@ class App {
     apiRouter.use('/inventory', inventoryRoutes);
     apiRouter.use('/test-drives',testDriveRoutes);
     apiRouter.use('/reports', reportRoutes);
-    apiRouter.use('/quotaitions',qsuotationsRoutes);
+    apiRouter.use('/quotaitions',quotationRoutes);
 
     this.app.use('/api/v1', apiRouter);
   }
