@@ -8,6 +8,13 @@ import { ErrorMiddleware } from './middlewares/error.middleware';
 
 // Import routes (sẽ tạo sau)
 import authRoutes from './modules/auth/auth.routes';
+import inventoryRoutes from './modules/inventory/inventory.routes';
+import customerRoutes from './modules/customers/customer.routes';
+import contractRoutes from './modules/contracts/contract.routes';
+import dealerRoutes from './modules/dealers/dealer.routes';
+import orderRoutes from './modules/dealer-orders/dealer-order.routes';
+import testDriveRoutes from './modules/test-drives/test-drive.routes';
+import reportRoutes from './modules/reports/reports.routes';
 // import vehicleRoutes from './modules/vehicles/vehicle.routes';
 // ... other routes
 
@@ -67,12 +74,13 @@ class App {
     // Mount routes here
     apiRouter.use('/auth', authRoutes);
     // apiRouter.use('/vehicles', vehicleRoutes);
-    // apiRouter.use('/dealers', dealerRoutes);
-    // apiRouter.use('/customers', customerRoutes);
-    // apiRouter.use('/orders', orderRoutes);
-    // apiRouter.use('/contracts', contractRoutes);
-    // apiRouter.use('/inventory', inventoryRoutes);
-    // apiRouter.use('/reports', reportRoutes);
+    apiRouter.use('/dealers', dealerRoutes);
+    apiRouter.use('/customers', customerRoutes);
+    apiRouter.use('/orders', orderRoutes);
+    apiRouter.use('/contracts', contractRoutes);
+    apiRouter.use('/inventory', inventoryRoutes);
+    apiRouter.use('/test-drives',testDriveRoutes);
+    apiRouter.use('/reports', reportRoutes);
 
     this.app.use('/api/v1', apiRouter);
   }
