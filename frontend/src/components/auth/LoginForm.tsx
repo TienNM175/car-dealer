@@ -7,11 +7,19 @@ const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false); 
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email && password) {
-      await login(email, password);
+      setLoading(true);
+      try {
+        await login(email, password);
+      } catch (error) {
+        console.error("Login failed:", error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -51,6 +59,7 @@ const LoginPage: React.FC = () => {
               placeholder="example@email.com"
               className="w-full px-4 py-3 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
+              disabled={loading} // Vô hiệu hóa input khi loading
             />
           </div>
 
@@ -70,15 +79,27 @@ const LoginPage: React.FC = () => {
               placeholder="••••••••"
               className="w-full px-4 py-3 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
+              disabled={loading} // Vô hiệu hóa input khi loading
             />
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200 shadow-lg"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold transition duration-200 shadow-lg 
+              flex items-center justify-center
+              disabled:bg-blue-400 disabled:cursor-not-allowed
+              hover:bg-blue-700"
+            disabled={loading}
           >
-            Đăng nhập
+            {loading ? (
+              <>
+                <div className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                Đang đăng nhập...
+              </>
+            ) : (
+              "Đăng nhập"
+            )}
           </button>
         </form>
       </div>

@@ -15,7 +15,8 @@ import dealerRoutes from './modules/dealers/dealer.routes';
 import orderRoutes from './modules/dealer-orders/dealer-order.routes';
 import testDriveRoutes from './modules/test-drives/test-drive.routes';
 import reportRoutes from './modules/reports/reports.routes';
-// import vehicleRoutes from './modules/vehicles/vehicle.routes';
+import vehicleRoutes from './modules/vehicles/vehicle.routes';
+import qsuotationsRoutes from './modules/quotations/quotations.routes';
 // ... other routes
 
 class App {
@@ -73,7 +74,7 @@ class App {
     
     // Mount routes here
     apiRouter.use('/auth', authRoutes);
-    // apiRouter.use('/vehicles', vehicleRoutes);
+    apiRouter.use('/vehicles', vehicleRoutes);
     apiRouter.use('/dealers', dealerRoutes);
     apiRouter.use('/customers', customerRoutes);
     apiRouter.use('/orders', orderRoutes);
@@ -81,6 +82,7 @@ class App {
     apiRouter.use('/inventory', inventoryRoutes);
     apiRouter.use('/test-drives',testDriveRoutes);
     apiRouter.use('/reports', reportRoutes);
+    apiRouter.use('/quotaitions',qsuotationsRoutes);
 
     this.app.use('/api/v1', apiRouter);
   }
