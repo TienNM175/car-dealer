@@ -6,7 +6,6 @@ import rateLimit from 'express-rate-limit';
 import config from './config/environment';
 import { ErrorMiddleware } from './middlewares/error.middleware';
 
-// Import routes (sẽ tạo sau)
 import authRoutes from './modules/auth/auth.routes';
 import inventoryRoutes from './modules/inventory/inventory.routes';
 import customerRoutes from './modules/customers/customer.routes';
@@ -17,6 +16,7 @@ import testDriveRoutes from './modules/test-drives/test-drive.routes';
 import reportRoutes from './modules/reports/reports.routes';
 import vehicleRoutes from './modules/vehicles/vehicle.routes';
 import quotationRoutes from './modules/quotations/quotations.routes';
+import promotionRoutes from './modules/promotions/promotions.routes';
 // ... other routes
 
 class App {
@@ -83,7 +83,8 @@ class App {
     apiRouter.use('/test-drives',testDriveRoutes);
     apiRouter.use('/reports', reportRoutes);
     apiRouter.use('/quotaitions',quotationRoutes);
-
+    apiRouter.use('/promotions', promotionRoutes);
+    
     this.app.use('/api/v1', apiRouter);
   }
 

@@ -7,9 +7,9 @@ interface EnvironmentConfig {
   PORT: number;
   DATABASE_URL: string;
   JWT_SECRET: string;
-  JWT_EXPIRES_IN: string | number;          // 👈 fix type
+  JWT_EXPIRES_IN: string | number;          
   JWT_REFRESH_SECRET: string;
-  JWT_REFRESH_EXPIRES_IN: string | number;  // 👈 fix type
+  JWT_REFRESH_EXPIRES_IN: string | number;  
   CORS_ORIGIN: string;
   BCRYPT_ROUNDS: number;
   RATE_LIMIT_WINDOW_MS: number;

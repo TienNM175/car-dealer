@@ -11,13 +11,13 @@ const prisma = new PrismaClient({
 prisma
   .$connect()
   .then(() => {
-    console.log("✅ Database connected successfully");
+    console.log("Database connected successfully");
   })
   .catch((error: unknown) => {
     if (error instanceof Error) {
-      console.error("❌ Database connection failed:", error.message);
+      console.error(" Database connection failed:", error.message);
     } else {
-      console.error("❌ Database connection failed:", error);
+      console.error("Database connection failed:", error);
     }
     process.exit(1);
   });
