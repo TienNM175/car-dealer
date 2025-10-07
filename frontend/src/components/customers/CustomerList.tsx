@@ -1,7 +1,21 @@
-// frontend/src/components/customers/CustomerList.tsx
 'use client';
 import React from 'react';
-import { Search, Filter, Download, Plus, Eye, Edit, Trash2, Mail, Phone, MapPin, FileText, DollarSign, TestTube } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  Download,
+  Plus,
+  Edit,
+  Trash2,
+  Mail,
+  Phone,
+  MapPin,
+  FileText,
+  DollarSign,
+  TestTube,
+  MessageSquare,
+  AlertTriangle,
+} from 'lucide-react';
 import { Customer } from '@/lib/api/customerApi';
 
 interface CustomerListProps {
@@ -12,7 +26,8 @@ interface CustomerListProps {
   onSearchChange: (value: string) => void;
   onFilterChange: (value: string) => void;
   onCreateClick: () => void;
-  onViewClick: (customer: Customer) => void;
+  onViewFeedbacksClick: (customer: Customer) => void;
+  onViewComplaintsClick: (customer: Customer) => void;
   onEditClick: (customer: Customer) => void;
   onDeleteClick: (customer: Customer) => void;
   onExportClick: () => void;
@@ -42,27 +57,26 @@ export default function CustomerList({
   onSearchChange,
   onFilterChange,
   onCreateClick,
-  onViewClick,
+  onViewFeedbacksClick,
+  onViewComplaintsClick,
   onEditClick,
   onDeleteClick,
   onExportClick,
   pagination,
-  onPageChange
+  onPageChange,
 }: CustomerListProps) {
   const statusCounts = React.useMemo(() => {
     const counts: Record<string, number> = {
       total: customers.length,
       PURCHASED: 0,
       INTERESTED: 0,
-      COLD: 0
+      COLD: 0,
     };
-    
-    customers.forEach(customer => {
+    customers.forEach((customer) => {
       if (counts[customer.status] !== undefined) {
         counts[customer.status]++;
       }
     });
-    
     return counts;
   }, [customers]);
 
@@ -72,7 +86,9 @@ export default function CustomerList({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Quản lý khách hàng</h2>
-          <p className="text-gray-600 mt-1">Quản lý thông tin và tương tác với khách hàng</p>
+          <p className="text-gray-600 mt-1">
+            Quản lý thông tin và tương tác với khách hàng
+          </p>
         </div>
         <div className="flex gap-3">
           <button
@@ -92,7 +108,7 @@ export default function CustomerList({
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600 mb-1">Tổng khách hàng</p>
@@ -128,12 +144,13 @@ export default function CustomerList({
           <select
             value={filterStatus}
             onChange={(e) => onFilterChange(e.target.value)}
-            aria-label="Lọc theo trạng thái khách hàng"
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
           >
             <option value="">Tất cả trạng thái</option>
             {Object.entries(statusConfig).map(([key, value]) => (
-              <option key={key} value={key}>{value.label}</option>
+              <option key={key} value={key}>
+                {value.label}
+              </option>
             ))}
           </select>
           <button className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
@@ -157,12 +174,28 @@ export default function CustomerList({
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Khách hàng</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Liên hệ</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Địa chỉ</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hoạt động</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">Trạng thái</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">Hành động</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Khách hàng
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Liên hệ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Địa chỉ
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Hoạt động
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
+                    Trạng thái
+                  </th>
+                  {/* ✅ Cột phản hồi riêng */}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Phản hồi
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Hành động
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -172,29 +205,34 @@ export default function CustomerList({
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                           <span className="font-semibold text-blue-600">
-                            {customer.firstName[0]}{customer.lastName[0]}
+                            {customer.firstName[0]}
+                            {customer.lastName[0]}
                           </span>
                         </div>
                         <div>
-                          <p className="font-medium">{customer.firstName} {customer.lastName}</p>
-                          <p className="text-xs text-gray-500">CCCD: {customer.identityCard}</p>
+                          <p className="font-medium">
+                            {customer.firstName} {customer.lastName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            CCCD: {customer.identityCard}
+                          </p>
                         </div>
                       </div>
                     </td>
+
                     <td className="px-6 py-4">
-                      <div className="text-sm">
-                        <p className="flex items-center gap-1 text-gray-900">
-                          <Mail className="w-3 h-3" />
-                          {customer.email}
+                      <p className="flex items-center gap-1 text-gray-900">
+                        <Mail className="w-3 h-3" />
+                        {customer.email}
+                      </p>
+                      {customer.phone && (
+                        <p className="flex items-center gap-1 text-gray-500 mt-1">
+                          <Phone className="w-3 h-3" />
+                          {customer.phone}
                         </p>
-                        {customer.phone && (
-                          <p className="flex items-center gap-1 text-gray-500 mt-1">
-                            <Phone className="w-3 h-3" />
-                            {customer.phone}
-                          </p>
-                        )}
-                      </div>
+                      )}
                     </td>
+
                     <td className="px-6 py-4">
                       {customer.city && (
                         <div className="text-sm flex items-center gap-1">
@@ -203,6 +241,7 @@ export default function CustomerList({
                         </div>
                       )}
                     </td>
+
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         {customer._count && (
@@ -223,12 +262,51 @@ export default function CustomerList({
                         )}
                       </div>
                     </td>
+
                     <td className="px-6 py-5 w-34">
-                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusConfig[customer.status].color}`}>
+                      <span
+                        className={`px-3 py-1 text-xs font-medium rounded-full ${statusConfig[customer.status].color}`}
+                      >
                         {statusConfig[customer.status].label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 ">
+
+                    {/* ✅ Cột phản hồi */}
+                    <td className="px-6 py-4 text-center">
+  <div className="flex flex-col gap-2 items-center">
+    {/* Nút Feedback chỉ hiển thị khi có feedback */}
+    {(customer._count?.feedbacks ?? 0) > 0 && (
+      <button
+        onClick={() => onViewFeedbacksClick(customer)}
+        className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm"
+        title="Xem Feedbacks"
+      >
+        <MessageSquare className="w-4 h-4" /> Feedback
+      </button>
+    )}
+
+    {/* Nút Khiếu nại chỉ hiển thị khi có complaints */}
+    {(customer._count?.complaints ?? 0) > 0 && (
+      <button
+        onClick={() => onViewComplaintsClick(customer)}
+        className="text-yellow-600 hover:text-yellow-700 flex items-center gap-1 text-sm"
+        title="Xem Khiếu nại"
+      >
+        <AlertTriangle className="w-4 h-4" /> Khiếu nại
+      </button>
+    )}
+
+    {/* Hiển thị dấu “—” nếu không có feedback hoặc complaints */}
+    {(customer._count?.feedbacks ?? 0) === 0 &&
+      (customer._count?.complaints ?? 0) === 0 && (
+        <span className="text-gray-400 text-sm">—</span>
+      )}
+  </div>
+</td>
+
+
+                    {/* ✅ Cột hành động riêng */}
+                    <td className="px-6 py-4 text-center">
                       <div className="flex gap-3 justify-center">
                         <button
                           onClick={() => onEditClick(customer)}
@@ -257,8 +335,15 @@ export default function CustomerList({
         {!loading && customers.length > 0 && (
           <div className="flex items-center justify-between mt-6 pt-6 border-t">
             <p className="text-sm text-gray-600">
-              Hiển thị <span className="font-medium">{((pagination.page - 1) * pagination.limit) + 1}</span> đến{' '}
-              <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> trong tổng số{' '}
+              Hiển thị{' '}
+              <span className="font-medium">
+                {(pagination.page - 1) * pagination.limit + 1}
+              </span>{' '}
+              đến{' '}
+              <span className="font-medium">
+                {Math.min(pagination.page * pagination.limit, pagination.total)}
+              </span>{' '}
+              trong tổng số{' '}
               <span className="font-medium">{pagination.total}</span> khách hàng
             </p>
             <div className="flex gap-2">
@@ -269,22 +354,25 @@ export default function CustomerList({
               >
                 Trước
               </button>
-              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                const pageNumber = i + 1;
-                return (
-                  <button
-                    key={pageNumber}
-                    onClick={() => onPageChange(pageNumber)}
-                    className={`px-3 py-1 rounded ${
-                      pagination.page === pageNumber
-                        ? 'bg-blue-600 text-white'
-                        : 'border border-gray-300 hover:bg-gray-50 text-black'
-                    }`}
-                  >
-                    {pageNumber}
-                  </button>
-                );
-              })}
+              {Array.from(
+                { length: Math.min(5, pagination.totalPages) },
+                (_, i) => {
+                  const pageNumber = i + 1;
+                  return (
+                    <button
+                      key={pageNumber}
+                      onClick={() => onPageChange(pageNumber)}
+                      className={`px-3 py-1 rounded ${
+                        pagination.page === pageNumber
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-gray-300 hover:bg-gray-50 text-black'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                }
+              )}
               <button
                 onClick={() => onPageChange(pagination.page + 1)}
                 disabled={pagination.page === pagination.totalPages}
