@@ -38,7 +38,6 @@ export default function DealerLayout({
     { id: 'customers', icon: Users, label: 'Khách hàng', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
     { id: 'appointments', icon: Calendar, label: 'Lịch hẹn', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
     { id: 'reports', icon: BarChart3, label: 'Báo cáo', role: ['DEALER_MANAGER'] },
-    { id: 'feedbacks', icon: Users, label: 'Feedback', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
   ];
 
   const filteredMenuItems = dealerMenuItems.filter(item => item.role.includes(userRole));
