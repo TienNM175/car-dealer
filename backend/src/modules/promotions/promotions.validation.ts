@@ -106,6 +106,11 @@ export const updatePromotionValidation = [
       return new Date(value) instanceof Date && !isNaN(new Date(value).getTime());
     })
     .withMessage('End date must be a valid date or null'),
+
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .withMessage('isActive must be a boolean'),
 ];
 
 export const calculateDiscountValidation = [
