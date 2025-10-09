@@ -1,6 +1,7 @@
 import app from './app';
 import config from './config/environment';
 import prisma from './config/database';
+import { initScheduler, stopScheduler } from './utils/scheduler.util';
 
 const PORT = config.PORT;
 
@@ -10,6 +11,9 @@ const server = app.listen(PORT, () => {
   console.log(`📝 Environment: ${config.NODE_ENV}`);
   console.log(`🌐 API: http://localhost:${PORT}/api/v1`);
   console.log('=================================');
+  
+  // Initialize cron jobs
+  initScheduler();
 });
 
 let isShuttingDown = false;
@@ -19,6 +23,9 @@ const gracefulShutdown = (signal: string) => {
   isShuttingDown = true;
 
   console.log(`\n${signal} received. Shutting down gracefully...`);
+
+  // Stop cron jobs
+  stopScheduler();
 
   server.close(() => {
     console.log('HTTP server closed');

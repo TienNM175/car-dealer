@@ -168,6 +168,7 @@ export class PromotionsController {
         ...(req.body.endDate !== undefined && {
           endDate: req.body.endDate ? new Date(req.body.endDate) : null,
         }),
+        ...(req.body.isActive !== undefined && { isActive: req.body.isActive }),
       };
 
       const promotion = await promotionsService.update(id, data, userRole, dealerId);

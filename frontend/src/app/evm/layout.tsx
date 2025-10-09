@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   LogOut,
+  Tag
   Sparkles 
 } from 'lucide-react';
 
@@ -36,6 +37,7 @@ export default function EVMLayout({
     { id: 'products', icon: Car, label: 'Quản lý sản phẩm', role: ['EVM_STAFF', 'ADMIN'] },
     { id: 'inventory', icon: Package, label: 'Tồn kho', role: ['EVM_STAFF', 'ADMIN'] },
     { id: 'dealers', icon: Users, label: 'Quản lý đại lý', role: ['ADMIN'] },
+    { id: 'promotions', icon: Tag, label: 'Quản lý Khuyến mãi', role: ['ADMIN', 'EVM_STAFF'] },
     { id: 'pricing', icon: FileText, label: 'Giá & Chiết khấu', role: ['ADMIN'] },
     { id: 'reports', icon: BarChart3, label: 'Báo cáo & Phân tích', role: ['EVM_STAFF', 'ADMIN'] },
   ];
