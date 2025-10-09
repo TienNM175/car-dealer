@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Sparkles 
 } from 'lucide-react';
 
 export default function EVMLayout({
@@ -31,6 +32,7 @@ export default function EVMLayout({
 
   const evmMenuItems = [
     { id: 'dashboard', icon: TrendingUp, label: 'Tổng quan', role: ['EVM_STAFF', 'ADMIN'] },
+    { id: 'ai-insights', icon: Sparkles, label: 'AI Insights', role: ['ADMIN'] }, 
     { id: 'products', icon: Car, label: 'Quản lý sản phẩm', role: ['EVM_STAFF', 'ADMIN'] },
     { id: 'inventory', icon: Package, label: 'Tồn kho', role: ['EVM_STAFF', 'ADMIN'] },
     { id: 'dealers', icon: Users, label: 'Quản lý đại lý', role: ['ADMIN'] },
@@ -74,10 +76,10 @@ export default function EVMLayout({
                 href={`/evm/${item.id}`}
                 onClick={() => setActiveMenu(item.id)}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition duration-200 ${
-                  activeMenu === item.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
+                activeMenu === item.id
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
               >
                 <item.icon className="w-5 h-5" />
                 {sidebarOpen && <span className="font-medium">{item.label}</span>}
