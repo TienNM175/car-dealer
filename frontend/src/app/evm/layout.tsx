@@ -14,7 +14,6 @@ import {
   Menu,
   X,
   LogOut,
-   Sparkles,
   Tag
 } from 'lucide-react';
 
