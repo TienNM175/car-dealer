@@ -17,6 +17,7 @@ import reportRoutes from './modules/reports/reports.routes';
 import vehicleRoutes from './modules/vehicles/vehicle.routes';
 import quotationRoutes from './modules/quotations/quotations.routes';
 import promotionRoutes from './modules/promotions/promotions.routes';
+import aiAdminRoutes from './modules/ai/ai-admin.routes';
 // ... other routes
 
 class App {
@@ -84,6 +85,7 @@ class App {
     apiRouter.use('/reports', reportRoutes);
     apiRouter.use('/quotaitions',quotationRoutes);
     apiRouter.use('/promotions', promotionRoutes);
+    apiRouter.use('/ai/admin',aiAdminRoutes);
     
     this.app.use('/api/v1', apiRouter);
   }
