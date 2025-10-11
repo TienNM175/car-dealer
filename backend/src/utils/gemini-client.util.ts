@@ -1,9 +1,9 @@
-// src/utils/gemini-client.util.ts
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import crypto from 'crypto';
 
 /**
  * Gemini AI Client Utility
- * Wrapper for Google Gemini with error handling
+ * Wrapper for Google Gemini with error handling + Smart Cache 2.2 (SHA256 key)
  */
 export class GeminiClient {
   private static instance: GoogleGenerativeAI;
@@ -27,9 +27,11 @@ export class GeminiClient {
   /**
    * Get model with safety settings
    */
-  static getModel(modelName: 'gemini-2.0-flash-exp' | 'gemini-1.5-flash' = 'gemini-2.0-flash-exp') {
+  static getModel(
+    modelName: 'gemini-2.0-flash-exp' | 'gemini-1.5-flash' = 'gemini-2.0-flash-exp'
+  ) {
     const genAI = this.getInstance();
-    
+
     return genAI.getGenerativeModel({
       model: modelName,
       generationConfig: {
@@ -52,32 +54,33 @@ export class GeminiClient {
   }
 
   /**
-   * Generate JSON response
+   * Generate JSON response with Smart Cache
    */
   static async generateJSON(
     prompt: string,
     options?: {
       systemInstruction?: string;
       useCache?: boolean;
+      periodKey?: string; 
     }
   ): Promise<any> {
-    const { systemInstruction, useCache = true } = options || {};
+    const { systemInstruction, useCache = true, periodKey } = options || {};
 
-    // Check cache
+    // ✅ Smart cache key: phân biệt period, date range, systemInstruction
     if (useCache) {
-      const cacheKey = this.getCacheKey(prompt, systemInstruction);
+      const cacheKey = this.getCacheKey(prompt, systemInstruction, periodKey);
       const cached = this.getFromCache(cacheKey);
       if (cached) {
-        console.log('✅ Gemini cache hit');
+        console.log('✅ Gemini smart cache hit:', cacheKey);
         return cached;
       }
     }
 
     try {
       const model = this.getModel();
-      
+
       // Build full prompt
-      const fullPrompt = systemInstruction 
+      const fullPrompt = systemInstruction
         ? `${systemInstruction}\n\n${prompt}\n\nIMPORTANT: Return ONLY valid JSON, no markdown, no explanations.`
         : `${prompt}\n\nIMPORTANT: Return ONLY valid JSON, no markdown, no explanations.`;
 
@@ -96,36 +99,50 @@ export class GeminiClient {
 
       // Cache result
       if (useCache) {
-        const cacheKey = this.getCacheKey(prompt, systemInstruction);
+        const cacheKey = this.getCacheKey(prompt, systemInstruction, periodKey);
         this.setCache(cacheKey, jsonData);
+        console.log('💾 Gemini cache stored:', cacheKey);
       }
 
       return jsonData;
     } catch (error: any) {
       console.error('Gemini API Error:', error.message);
-      
-      // Provide fallback for common errors
+
       if (error.message.includes('quota')) {
         throw new Error('AI service quota exceeded. Please try again later.');
       }
-      
+
       throw new Error(`AI analysis failed: ${error.message}`);
     }
   }
 
   /**
-   * Cache management
+   * 🧠 Smart Cache Key Builder (SHA256 Hash)
+   * → Phân biệt dữ liệu theo periodKey, systemInstruction, prompt
    */
-  private static getCacheKey(prompt: string, systemInstruction?: string): string {
-    const combined = `${systemInstruction || ''}:${prompt}`;
-    return Buffer.from(combined).toString('base64').slice(0, 50);
+  private static getCacheKey(
+    prompt: string,
+    systemInstruction?: string,
+    periodKey?: string
+  ): string {
+    // Ưu tiên periodKey (nếu có), fallback sang prompt
+    const baseKey = periodKey
+      ? `${systemInstruction || ''}:${periodKey}`
+      : `${systemInstruction || ''}:${prompt}`;
+
+    // ⚙️ Hash SHA256 đảm bảo duy nhất tuyệt đối
+    const hash = crypto.createHash('sha256').update(baseKey).digest('hex');
+    return hash;
   }
 
+  /**
+   * Cache management
+   */
   private static getFromCache(key: string): any | null {
     const cached = this.cache.get(key);
     if (!cached) return null;
 
-    // Check if expired
+    // Check expiration
     if (Date.now() - cached.timestamp > this.CACHE_TTL) {
       this.cache.delete(key);
       return null;
@@ -135,24 +152,20 @@ export class GeminiClient {
   }
 
   private static setCache(key: string, data: any): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-    });
+    this.cache.set(key, { data, timestamp: Date.now() });
 
-    // Clean old cache entries
-    if (this.cache.size > 100) {
+    // Prevent memory leaks
+    if (this.cache.size > 200) {
       const firstKey = this.cache.keys().next().value;
-      if (firstKey) {
-        this.cache.delete(firstKey);
-      }
+      if (firstKey) this.cache.delete(firstKey);
     }
   }
 
   /**
-   * Clear cache
+   * Manual cache clear
    */
   static clearCache(): void {
     this.cache.clear();
+    console.log('🧹 Gemini cache cleared.');
   }
 }

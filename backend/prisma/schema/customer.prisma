@@ -13,6 +13,11 @@ model Customer {
   identityCard  String?             @map("identity_card") // CMND/CCCD
   status        CustomerStatus      @default(INTERESTED)
   
+  // ✅ Thêm dealerId để liên kết customer với dealer
+  dealerId      String              @map("dealer_id")
+  createdBy     String?             @map("created_by") // User ID người tạo
+  
+  dealer        Dealer              @relation(fields: [dealerId], references: [id])
   lifecycle     CustomerLifecycle[]
   contracts     Contract[]
   quotations    Quotation[]
@@ -26,6 +31,7 @@ model Customer {
 
   @@index([email])
   @@index([phone])
+  @@index([dealerId])  // ✅ Index để query nhanh hơn
   @@map("customers")
 }
 

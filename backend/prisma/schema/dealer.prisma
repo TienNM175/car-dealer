@@ -24,6 +24,7 @@ model Dealer {
   
   region          Region            @relation(fields: [regionId], references: [id])
   users           User[]
+  customers       Customer[]        // ✅ Thêm relationship với Customer
   dealerOrders    DealerOrder[]
   inventories     Inventory[]
   dealerDiscounts DealerDiscount[]
