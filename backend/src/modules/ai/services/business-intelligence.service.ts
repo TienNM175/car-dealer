@@ -9,46 +9,64 @@ export class BusinessIntelligenceService {
   /**
    * 1. Generate Executive Summary
    */
-  async generateExecutiveSummary(period: 'daily' | 'weekly' | 'monthly') {
-    const now = new Date();
-    let startDate: Date;
+  async generateExecutiveSummary(
+    period: 'daily' | 'weekly' | 'monthly',
+    baseDate?: string 
+  ) {
+    // ✅ Dùng baseDate nếu có, nếu không lấy hôm nay
+    const now = baseDate ? new Date(baseDate) : new Date();
 
-    // Calculate date range
+    // ✅ endDate: cuối ngày của baseDate
+    const endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999);
+
+    // ✅ startDate: tính theo period
+    const startDate = new Date(endDate);
     switch (period) {
       case 'daily':
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        startDate.setDate(endDate.getDate() - 1);
         break;
       case 'weekly':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDate.setDate(endDate.getDate() - 7);
         break;
       case 'monthly':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        startDate.setMonth(endDate.getMonth() - 1);
+        break;
+      default:
+        startDate.setDate(endDate.getDate() - 1);
         break;
     }
+    startDate.setHours(0, 0, 0, 0);
+
+    console.log('📅 Executive Summary Period:', {
+      period,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    });
 
     // Gather data
     const [newLeads, testDrives, quotations, contracts, revenue] = await Promise.all([
-      prisma.customer.count({ where: { createdAt: { gte: startDate } } }),
-      
+      prisma.customer.count({ where: { createdAt: { gte: startDate, lte: endDate } } }),
+
       prisma.testDrive.findMany({
-        where: { scheduledDate: { gte: startDate } },
+        where: { scheduledDate: { gte: startDate, lte: endDate } },
         include: { vehicle: true },
       }),
-      
+
       prisma.quotation.findMany({
-        where: { createdAt: { gte: startDate } },
+        where: { createdAt: { gte: startDate, lte: endDate } },
       }),
-      
+
       prisma.contract.findMany({
-        where: { 
-          signedAt: { gte: startDate },
-          status: { in: ['SIGNED', 'COMPLETED'] }
+        where: {
+          signedAt: { gte: startDate, lte: endDate },
+          status: { in: ['SIGNED', 'COMPLETED'] },
         },
       }),
-      
+
       prisma.contract.aggregate({
         where: {
-          signedAt: { gte: startDate },
+          signedAt: { gte: startDate, lte: endDate },
           status: 'COMPLETED',
         },
         _sum: { finalPrice: true },
@@ -56,18 +74,22 @@ export class BusinessIntelligenceService {
     ]);
 
     const businessData = {
-      period: { type: period, startDate, endDate: now },
+      period: {
+        type: period,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      },
       metrics: {
         newLeads,
         testDrives: {
           total: testDrives.length,
-          completed: testDrives.filter(td => td.status === 'COMPLETED').length,
-          noShows: testDrives.filter(td => td.status === 'NO_SHOW').length,
+          completed: testDrives.filter((td) => td.status === 'COMPLETED').length,
+          noShows: testDrives.filter((td) => td.status === 'NO_SHOW').length,
         },
         quotations: {
           total: quotations.length,
-          sent: quotations.filter(q => q.status === 'SENT').length,
-          accepted: quotations.filter(q => q.status === 'ACCEPTED').length,
+          sent: quotations.filter((q) => q.status === 'SENT').length,
+          accepted: quotations.filter((q) => q.status === 'ACCEPTED').length,
         },
         sales: {
           total: contracts.length,
@@ -113,25 +135,30 @@ Return JSON in Vietnamese:
 }
 `;
 
-
     const analysis = await GeminiClient.generateJSON(prompt, {
-      systemInstruction: 'You are a senior business analyst for automotive dealerships. Provide actionable insights.',
+      systemInstruction:
+        'You are a senior business analyst for automotive dealerships. Provide actionable insights.',
+      periodKey: `${period}_${startDate.toISOString()}_${endDate.toISOString()}`,
     });
 
     return {
       period,
-      dateRange: { start: startDate, end: now },
+      dateRange: { start: startDate, end: endDate },
       rawData: businessData,
       aiAnalysis: analysis,
       generatedAt: new Date(),
     };
   }
 
-  /**
-   * 2. Analyze Dealer Performance
-   */
+  // =======================================================================
+  // Các hàm còn lại giữ nguyên logic cũ (Analyze Dealer Performance + Market)
+  // =======================================================================
+
   async analyzeDealerPerformance(timeframe: 'month' | 'quarter' | 'year') {
     const now = new Date();
+    const endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999);
+
     let startDate: Date;
 
     switch (timeframe) {
@@ -144,9 +171,12 @@ Return JSON in Vietnamese:
       case 'year':
         startDate = new Date(now.getFullYear() - 1, 0, 1);
         break;
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        break;
     }
+    startDate.setHours(0, 0, 0, 0);
 
-    // Get dealers with performance data
     const dealers = await prisma.dealer.findMany({
       where: { isActive: true },
       include: {
@@ -164,8 +194,8 @@ Return JSON in Vietnamese:
       },
     });
 
-    const dealerMetrics = dealers.map(dealer => {
-      const contracts = dealer.users.flatMap(u => u.contracts);
+    const dealerMetrics = dealers.map((dealer) => {
+      const contracts = dealer.users.flatMap((u) => u.contracts);
       const totalRevenue = contracts.reduce((sum, c) => sum + Number(c.finalPrice), 0);
 
       return {
@@ -177,12 +207,12 @@ Return JSON in Vietnamese:
           totalRevenue,
           avgDealSize: contracts.length > 0 ? totalRevenue / contracts.length : 0,
           staffCount: dealer.users.length,
-          avgSalesPerStaff: dealer.users.length > 0 ? contracts.length / dealer.users.length : 0,
+          avgSalesPerStaff:
+            dealer.users.length > 0 ? contracts.length / dealer.users.length : 0,
         },
       };
     });
 
-    // AI Analysis
     const prompt = `
 You are a dealership network analyst.
 Analyze dealer performance across regions and provide fair, data-driven insights.
@@ -217,29 +247,28 @@ Return JSON in Vietnamese:
   ]
 }
 `;
-
-
     const analysis = await GeminiClient.generateJSON(prompt, {
-      systemInstruction: 'You are a dealership network analyst. Provide fair, data-driven assessments.',
+      systemInstruction:
+        'You are a dealership network analyst. Provide fair, data-driven assessments.',
+        
     });
 
     return {
       timeframe,
-      dateRange: { start: startDate, end: now },
+      dateRange: { start: startDate, end: endDate },
       dealerMetrics,
       aiAnalysis: analysis,
       generatedAt: new Date(),
     };
   }
 
-  /**
-   * 3. Analyze Market Trends
-   */
   async analyzeMarketTrends() {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    // Gather market data
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
     const [contracts, vehicles] = await Promise.all([
       prisma.contract.findMany({
         where: {
@@ -248,17 +277,15 @@ Return JSON in Vietnamese:
         },
         include: { vehicle: true },
       }),
-      
-      prisma.vehicle.findMany({
-        include: { manufacturer: true },
-      }),
+      prisma.vehicle.findMany({ include: { manufacturer: true } }),
     ]);
 
-    // Process data
     const salesByMonth: Record<string, { count: number; revenue: number }> = {};
-    contracts.forEach(c => {
+    contracts.forEach((c) => {
       if (!c.signedAt) return;
-      const key = `${c.signedAt.getFullYear()}-${String(c.signedAt.getMonth() + 1).padStart(2, '0')}`;
+      const key = `${c.signedAt.getFullYear()}-${String(
+        c.signedAt.getMonth() + 1
+      ).padStart(2, '0')}`;
       if (!salesByMonth[key]) {
         salesByMonth[key] = { count: 0, revenue: 0 };
       }
@@ -267,7 +294,7 @@ Return JSON in Vietnamese:
     });
 
     const vehicleSales: Record<string, number> = {};
-    contracts.forEach(c => {
+    contracts.forEach((c) => {
       const key = c.vehicle.model;
       vehicleSales[key] = (vehicleSales[key] || 0) + 1;
     });
@@ -276,7 +303,7 @@ Return JSON in Vietnamese:
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
       .map(([model, sales]) => {
-        const vehicle = vehicles.find(v => v.model === model);
+        const vehicle = vehicles.find((v) => v.model === model);
         return {
           vehicleName: model,
           sales,
@@ -291,7 +318,6 @@ Return JSON in Vietnamese:
       totalRevenue: contracts.reduce((sum, c) => sum + Number(c.finalPrice), 0),
     };
 
-    // AI Analysis
     const prompt = `
 You are a market research analyst for the automotive industry.
 Analyze the following sales and vehicle trend data and forecast upcoming changes.
@@ -338,7 +364,8 @@ Return JSON in Vietnamese:
 }
 `;
     const analysis = await GeminiClient.generateJSON(prompt, {
-      systemInstruction: 'You are a market research analyst for automotive industry. Provide data-driven insights.',
+      systemInstruction:
+        'You are a market research analyst for automotive industry. Provide data-driven insights.',
     });
 
     return {

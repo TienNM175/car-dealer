@@ -34,7 +34,7 @@ export class AIAdminController {
         );
       }
 
-      return next(error); // ✅ thêm return
+      return next(error);
     }
   }
 
@@ -66,7 +66,7 @@ export class AIAdminController {
         );
       }
 
-      return next(error); // ✅ thêm return
+      return next(error); 
     }
   }
 

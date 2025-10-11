@@ -1,73 +1,116 @@
-import React, { useState } from 'react';
+// src/components/admin/AdminAIDashboard.tsx
+import React, { useState, useEffect } from 'react';
 import {
   useAdminAI,
   ExecutiveSummaryResponse,
   DealerPerformanceResponse,
   MarketTrendsResponse,
 } from '../../hooks/useAdminAI';
+import { 
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, 
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+} from 'recharts';
+import { 
+  TrendingUp, TrendingDown, AlertCircle, CheckCircle, 
+  Calendar, Users, DollarSign, Target, Award, Activity 
+} from 'lucide-react';
 
 type TabType = 'executive' | 'dealer' | 'market';
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 const AdminAIDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('executive');
   const [executiveSummary, setExecutiveSummary] = useState<ExecutiveSummaryResponse | null>(null);
   const [dealerPerformance, setDealerPerformance] = useState<DealerPerformanceResponse | null>(null);
   const [marketTrends, setMarketTrends] = useState<MarketTrendsResponse | null>(null);
+  const [activePeriod, setActivePeriod] = useState<'daily' | 'weekly' | 'monthly' | null>(null);
 
   const { loading, error, generateExecutiveSummary, analyzeDealerPerformance, analyzeMarketTrends } =
     useAdminAI();
 
+  // Debug: Log state changes
+  useEffect(() => {
+    console.log('📊 Executive Summary State Updated:', executiveSummary);
+  }, [executiveSummary]);
+
   const handleGenerateExecutiveSummary = async (period: 'daily' | 'weekly' | 'monthly') => {
-    const result = await generateExecutiveSummary(period);
-    if (result) setExecutiveSummary(result);
-  };
+  console.log('🚀 Calling generateExecutiveSummary with period:', period);
+  
+  // ✅ Clear state cũ để tránh hiển thị data không đúng\
+  setActivePeriod(period);
+  setExecutiveSummary(null);
+  
+  const result = await generateExecutiveSummary(period);
+  console.log('📥 Received result:', result);
+  
+  if (result) {
+    console.log('✅ Setting executiveSummary state');
+    setExecutiveSummary(result);
+  }
+};
 
-  const handleAnalyzeDealerPerformance = async (timeframe: 'month' | 'quarter' | 'year') => {
-    const result = await analyzeDealerPerformance(timeframe);
-    if (result) setDealerPerformance(result);
-  };
+const handleAnalyzeDealerPerformance = async (timeframe: 'month' | 'quarter' | 'year') => {
+  // ✅ Tương tự cho dealer performance
+  setDealerPerformance(null);
+  
+  const result = await analyzeDealerPerformance(timeframe);
+  if (result) setDealerPerformance(result);
+};
 
-  const handleAnalyzeMarketTrends = async () => {
-    const result = await analyzeMarketTrends();
-    if (result) setMarketTrends(result);
-  };
+const handleAnalyzeMarketTrends = async () => {
+  // ✅ Tương tự cho market trends
+  setMarketTrends(null);
+  
+  const result = await analyzeMarketTrends();
+  if (result) setMarketTrends(result);
+};
 
   return (
-    <div className="container mx-auto p-6 text-black">
-      <h1 className="text-3xl font-bold mb-6">AI Phân Tích</h1>
+    <div className="min-h-screen bg-gray-50 p-6">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Phân Tích Doanh Nghiệp</h1>
+        <p className="text-gray-600">Phân tích thông minh cho quyết định chiến lược</p>
+      </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 mb-6 border-b">
-        <button
-          onClick={() => setActiveTab('executive')}
-          className={`px-4 py-2 font-semibold ${
-            activeTab === 'executive'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-600 hover:text-gray-800'
-          }`}
-        >
-          Báo cáo điều hành
-        </button>
-        <button
-          onClick={() => setActiveTab('dealer')}
-          className={`px-4 py-2 font-semibold ${
-            activeTab === 'dealer'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-600 hover:text-gray-800'
-          }`}
-        >
-          Hiệu suất đại lý
-        </button>
-        <button
-          onClick={() => setActiveTab('market')}
-          className={`px-4 py-2 font-semibold ${
-            activeTab === 'market'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-600 hover:text-gray-800'
-          }`}
-        >
-          Xu hướng thị trường
-        </button>
+      <div className="bg-white rounded-lg shadow-sm mb-6">
+        <div className="flex border-b">
+          <button
+            onClick={() => setActiveTab('executive')}
+            className={`px-6 py-4 font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'executive'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Activity className="w-5 h-5" />
+            Báo cáo điều hành
+          </button>
+          <button
+            onClick={() => setActiveTab('dealer')}
+            className={`px-6 py-4 font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'dealer'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Award className="w-5 h-5" />
+            Hiệu suất đại lý
+          </button>
+          <button
+            onClick={() => setActiveTab('market')}
+            className={`px-6 py-4 font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'market'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <TrendingUp className="w-5 h-5" />
+            Xu hướng thị trường
+          </button>
+        </div>
       </div>
 
       {/* Error Display */}
@@ -77,537 +120,521 @@ const AdminAIDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-gray-600">AI đang phân tích dữ liệu của bạn...</p>
+          </div>
+        </div>
+      )}
+
       {/* Executive Summary Tab */}
-      {activeTab === 'executive' && (
-        <div>
-          <div className="bg-white rounded-lg shadow p-6 mb-6 text-black">
-            <h2 className="text-xl font-semibold mb-4">Tạo báo cáo tổng kết điều hành</h2>
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleGenerateExecutiveSummary('daily')}
-                disabled={loading}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-              >
-                Báo cáo hàng ngày
-              </button>
-              <button
-                onClick={() => handleGenerateExecutiveSummary('weekly')}
-                disabled={loading}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-              >
-                Báo cáo hàng tuần
-              </button>
-              <button
-                onClick={() => handleGenerateExecutiveSummary('monthly')}
-                disabled={loading}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-              >
-                Báo cáo hàng tháng
-              </button>
+      {activeTab === 'executive' && !loading && (
+        <div className="space-y-6">
+          {/* Period Selector */}
+          <div className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-between">
+            <div className="flex gap-2">
+              {(['daily', 'weekly', 'monthly'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => handleGenerateExecutiveSummary(p)}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-lg font-medium capitalize transition-all ${
+                    activePeriod === p
+                      ? 'bg-blue-600 text-white shadow-lg' // ✅ Highlight button đang chọn
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {p === 'daily' ? 'Hàng ngày' : p === 'weekly' ? 'Hàng tuần' : 'Hàng tháng'}
+                </button>
+              ))}
             </div>
           </div>
 
-          {loading && (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <p className="mt-2 text-gray-600">Đang phân tích dữ liệu...</p>
-            </div>
-          )}
-
-          {executiveSummary && !loading && executiveSummary.aiAnalysis && (
-            <div className="space-y-6">
-              {/* Summary */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-3">Tổng quan điều hành</h3>
-                <p className="text-gray-700 whitespace-pre-line">
-                  {executiveSummary.aiAnalysis?.executiveSummary || 'Không có dữ liệu'}
-                </p>
-                <p className="text-sm text-gray-500 mt-3">
-                  Thời gian: {new Date(executiveSummary.dateRange?.start || new Date()).toLocaleDateString('vi-VN')}{' '}
-                  - {new Date(executiveSummary.dateRange?.end || new Date()).toLocaleDateString('vi-VN')}
-                </p>
+          {executiveSummary && executiveSummary.aiAnalysis && (
+            <>
+              {/* AI Summary Card */}
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+                <div className="flex items-start gap-3 mb-4">
+                  <Activity className="w-6 h-6 mt-1" />
+                  <div>
+                    <h2 className="text-xl font-bold mb-2">AI Executive Summary</h2>
+                    <p className="text-blue-100 text-sm">
+                      {new Date(executiveSummary.dateRange?.start || '').toLocaleDateString('vi-VN')} - {new Date(executiveSummary.dateRange?.end || '').toLocaleDateString('vi-VN')}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-lg leading-relaxed">{executiveSummary.aiAnalysis?.executiveSummary || 'Không có dữ liệu'}</p>
               </div>
 
-              {/* Key Metrics */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Chỉ số chính</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="border-l-4 border-blue-500 pl-4">
-                    <h4 className="font-semibold text-gray-700">Tạo khách hàng tiềm năng</h4>
-                    <p className="text-gray-600 text-sm mt-1">
-                      {executiveSummary.aiAnalysis?.keyMetrics?.leadGeneration || 'N/A'}
-                    </p>
+              {/* Key Metrics Grid with Icons */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <Users className="w-8 h-8 text-blue-600" />
+                    <span className="text-2xl font-bold text-gray-900">{executiveSummary.rawData?.metrics?.newLeads || 0}</span>
                   </div>
-                  <div className="border-l-4 border-green-500 pl-4">
-                    <h4 className="font-semibold text-gray-700">Tỷ lệ chuyển đổi</h4>
-                    <p className="text-gray-600 text-sm mt-1">
-                      {executiveSummary.aiAnalysis?.keyMetrics?.conversionRate || 'N/A'}
-                    </p>
+                  <h3 className="font-medium text-gray-900 mb-1">Khách hàng mới</h3>
+                  <p className="text-sm text-gray-600">{executiveSummary.aiAnalysis?.keyMetrics?.leadGeneration || 'N/A'}</p>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <Calendar className="w-8 h-8 text-green-600" />
+                    <span className="text-2xl font-bold text-gray-900">{executiveSummary.rawData?.metrics?.testDrives?.total || 0}</span>
                   </div>
-                  <div className="border-l-4 border-purple-500 pl-4">
-                    <h4 className="font-semibold text-gray-700">Hiệu suất doanh thu</h4>
-                    <p className="text-gray-600 text-sm mt-1">
-                      {executiveSummary.aiAnalysis?.keyMetrics?.revenuePerformance || 'N/A'}
-                    </p>
+                  <h3 className="font-medium text-gray-900 mb-1">Lái thử</h3>
+                  <p className="text-sm text-gray-600">
+                    {executiveSummary.rawData?.metrics?.testDrives?.completed || 0} hoàn thành, {executiveSummary.rawData?.metrics?.testDrives?.noShows || 0} vắng mặt
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <Target className="w-8 h-8 text-orange-600" />
+                    <span className="text-2xl font-bold text-gray-900">{executiveSummary.rawData?.metrics?.sales?.total || 0}</span>
                   </div>
-                  <div className="border-l-4 border-yellow-500 pl-4">
-                    <h4 className="font-semibold text-gray-700">Hài lòng khách hàng</h4>
-                    <p className="text-gray-600 text-sm mt-1">
-                      {executiveSummary.aiAnalysis?.keyMetrics?.customerSatisfaction || 'N/A'}
-                    </p>
+                  <h3 className="font-medium text-gray-900 mb-1">Hợp đồng</h3>
+                  <p className="text-sm text-gray-600">{executiveSummary.aiAnalysis?.keyMetrics?.conversionRate || 'N/A'}</p>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <DollarSign className="w-8 h-8 text-purple-600" />
+                    <span className="text-2xl font-bold text-gray-900">
+                      {((executiveSummary.rawData?.metrics?.sales?.revenue || 0) / 1000000000).toFixed(2)} tỷ
+                    </span>
                   </div>
+                  <h3 className="font-medium text-gray-900 mb-1">Doanh thu (VNĐ)</h3>
+                  <p className="text-sm text-gray-600">{executiveSummary.aiAnalysis?.keyMetrics?.revenuePerformance || 'N/A'}</p>
                 </div>
               </div>
 
               {/* Highlights & Concerns */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-green-50 rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold mb-3 text-green-800">Điểm nổi bật</h3>
-                  <ul className="space-y-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <h3 className="font-bold text-gray-900">Điểm nổi bật</h3>
+                  </div>
+                  <ul className="space-y-3">
                     {(executiveSummary.aiAnalysis?.highlights || []).map((highlight, idx) => (
-                      <li key={idx} className="flex items-start">
-                        <span className="text-green-600 mr-2">✓</span>
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-green-600 font-bold">•</span>
                         <span className="text-gray-700">{highlight}</span>
                       </li>
                     ))}
-                    {(!executiveSummary.aiAnalysis?.highlights || executiveSummary.aiAnalysis.highlights.length === 0) && (
-                      <li className="text-gray-500 text-sm">Không có dữ liệu</li>
-                    )}
                   </ul>
                 </div>
-                <div className="bg-orange-50 rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold mb-3 text-orange-800">Vấn đề cần lưu ý</h3>
-                  <ul className="space-y-2">
+
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    <h3 className="font-bold text-gray-900">Vấn đề cần lưu ý</h3>
+                  </div>
+                  <ul className="space-y-3">
                     {(executiveSummary.aiAnalysis?.concerns || []).map((concern, idx) => (
-                      <li key={idx} className="flex items-start">
-                        <span className="text-orange-600 mr-2">!</span>
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-red-600 font-bold">•</span>
                         <span className="text-gray-700">{concern}</span>
                       </li>
                     ))}
-                    {(!executiveSummary.aiAnalysis?.concerns || executiveSummary.aiAnalysis.concerns.length === 0) && (
-                      <li className="text-gray-500 text-sm">Không có dữ liệu</li>
-                    )}
                   </ul>
-                </div>
-              </div>
-
-              {/* Trends */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-3">Xu hướng</h3>
-                <div className="space-y-3">
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Mô tả:</h4>
-                    <p className="text-gray-600">{executiveSummary.aiAnalysis?.trends?.description || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Dự đoán:</h4>
-                    <p className="text-gray-600">{executiveSummary.aiAnalysis?.trends?.predictions || 'N/A'}</p>
-                  </div>
                 </div>
               </div>
 
               {/* Action Items */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Hành động đề xuất</h3>
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="font-bold text-gray-900 mb-4">Hành động ưu tiên</h3>
                 <div className="space-y-4">
                   {(executiveSummary.aiAnalysis?.actionItems || []).map((item, idx) => (
                     <div
                       key={idx}
-                      className={`border-l-4 p-4 rounded ${
-                        item.priority === 'CAO'
+                      className={`border-l-4 pl-4 py-3 ${
+                        item.priority === 'CAO' || item.priority === 'HIGH'
                           ? 'border-red-500 bg-red-50'
-                          : item.priority === 'TRUNG BÌNH'
-                          ? 'border-yellow-500 bg-yellow-50'
+                          : item.priority === 'TRUNG BÌNH' || item.priority === 'MEDIUM'
+                          ? 'border-orange-500 bg-orange-50'
                           : 'border-blue-500 bg-blue-50'
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <span
-                          className={`px-2 py-1 rounded text-xs font-semibold ${
-                            item.priority === 'CAO'
-                              ? 'bg-red-200 text-red-800'
-                              : item.priority === 'TRUNG BÌNH'
-                              ? 'bg-yellow-200 text-yellow-800'
-                              : 'bg-blue-200 text-blue-800'
+                          className={`px-2 py-1 rounded text-xs font-bold ${
+                            item.priority === 'CAO' || item.priority === 'HIGH'
+                              ? 'bg-red-600 text-white'
+                              : item.priority === 'TRUNG BÌNH' || item.priority === 'MEDIUM'
+                              ? 'bg-orange-600 text-white'
+                              : 'bg-blue-600 text-white'
                           }`}
                         >
                           {item.priority}
                         </span>
+                        <h4 className="font-bold text-gray-900">{item.action}</h4>
                       </div>
-                      <h4 className="font-semibold text-gray-800 mb-2">{item.action}</h4>
-                      <p className="text-sm text-gray-600 mb-1">
-                        <strong>Lý do:</strong> {item.reason}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        <strong>Tác động:</strong> {item.expectedImpact}
-                      </p>
+                      <p className="text-sm text-gray-700 mb-1">{item.reason}</p>
+                      <p className="text-sm text-gray-600 italic">💡 {item.expectedImpact}</p>
                     </div>
                   ))}
-                  {(!executiveSummary.aiAnalysis?.actionItems || executiveSummary.aiAnalysis.actionItems.length === 0) && (
-                    <p className="text-gray-500 text-sm">Không có dữ liệu</p>
-                  )}
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       )}
 
       {/* Dealer Performance Tab */}
-      {activeTab === 'dealer' && (
-        <div>
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Phân tích hiệu suất đại lý</h2>
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleAnalyzeDealerPerformance('month')}
-                disabled={loading}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-              >
-                Tháng này
-              </button>
-              <button
-                onClick={() => handleAnalyzeDealerPerformance('quarter')}
-                disabled={loading}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-              >
-                Quý này
-              </button>
-              <button
-                onClick={() => handleAnalyzeDealerPerformance('year')}
-                disabled={loading}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-              >
-                Năm này
-              </button>
+      {activeTab === 'dealer' && !loading && (
+        <div className="space-y-6">
+          {/* Timeframe Selector */}
+          <div className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-between">
+            <div className="flex gap-2">
+              {['month', 'quarter', 'year'].map(t => (
+                <button
+                  key={t}
+                  onClick={() => handleAnalyzeDealerPerformance(t as any)}
+                  className="px-4 py-2 rounded-lg font-medium capitalize bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  {t === 'month' ? 'Tháng' : t === 'quarter' ? 'Quý' : 'Năm'}
+                </button>
+              ))}
             </div>
           </div>
 
-          {loading && (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <p className="mt-2 text-gray-600">Đang phân tích dữ liệu...</p>
-            </div>
-          )}
-
-          {dealerPerformance && !loading && dealerPerformance.aiAnalysis && (
-            <div className="space-y-6">
-              {/* Overall Performance */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-3">Tổng quan hiệu suất</h3>
-                <p className="text-gray-700">{dealerPerformance.aiAnalysis?.overallPerformance || 'Không có dữ liệu'}</p>
+          {dealerPerformance && dealerPerformance.aiAnalysis && (
+            <>
+              {/* AI Analysis Summary */}
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+                <h2 className="text-xl font-bold mb-3">AI Performance Analysis</h2>
+                <p className="text-lg leading-relaxed">{dealerPerformance.aiAnalysis?.overallPerformance || 'Không có dữ liệu'}</p>
               </div>
 
-              {/* Ranking */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Xếp hạng đại lý</h3>
+              {/* Performance Metrics Chart */}
+              {dealerPerformance.dealerMetrics && dealerPerformance.dealerMetrics.length > 0 && (
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h3 className="font-bold text-gray-900 mb-4">So sánh hiệu suất</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dealerPerformance.dealerMetrics}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="dealerName" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="metrics.totalSales" fill="#3b82f6" name="Tổng doanh số" />
+                      <Bar dataKey="metrics.avgSalesPerStaff" fill="#10b981" name="Doanh số/nhân viên" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Dealer Ranking with Pie Charts */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="font-bold text-gray-900 mb-4 text-xl">Xếp hạng đại lý</h3>
                 <div className="space-y-4">
                   {(dealerPerformance.aiAnalysis?.ranking || []).map((dealer) => (
-                    <div
-                      key={dealer.dealerId}
-                      className="border rounded-lg p-4 hover:shadow-md transition"
-                    >
+                    <div key={dealer.dealerId} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <span className="text-2xl font-bold text-blue-600">#{dealer.rank}</span>
+                          <span
+                            className={`text-2xl font-bold w-10 h-10 rounded-full flex items-center justify-center ${
+                              dealer.rank === 1
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : dealer.rank === 2
+                                ? 'bg-gray-200 text-gray-700'
+                                : 'bg-orange-100 text-orange-700'
+                            }`}
+                          >
+                            #{dealer.rank}
+                          </span>
                           <div>
-                            <h4 className="font-semibold text-gray-800">{dealer.dealerName}</h4>
-                            <span className="text-sm text-gray-500">Điểm: {dealer.score}/100</span>
+                            <h4 className="font-bold text-gray-900">{dealer.dealerName}</h4>
+                            <p className="text-sm text-gray-600">Điểm: {dealer.score}/100</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="w-24 h-24">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={[
+                                    { value: dealer.score },
+                                    { value: 100 - dealer.score }
+                                  ]}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={25}
+                                  outerRadius={40}
+                                  dataKey="value"
+                                >
+                                  <Cell fill="#3b82f6" />
+                                  <Cell fill="#e5e7eb" />
+                                </Pie>
+                              </PieChart>
+                            </ResponsiveContainer>
                           </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <h5 className="font-semibold text-green-700 text-sm mb-2">Điểm mạnh</h5>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {(dealer.strengths || []).map((strength, idx) => (
-                              <li key={idx}>• {strength}</li>
+                          <p className="text-sm font-medium text-gray-700 mb-2">Điểm mạnh:</p>
+                          <ul className="space-y-1">
+                            {(dealer.strengths || []).map((s, idx) => (
+                              <li key={idx} className="text-sm text-green-700 flex items-start gap-1">
+                                <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                {s}
+                              </li>
                             ))}
                           </ul>
                         </div>
                         <div>
-                          <h5 className="font-semibold text-orange-700 text-sm mb-2">Điểm yếu</h5>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {(dealer.weaknesses || []).map((weakness, idx) => (
-                              <li key={idx}>• {weakness}</li>
+                          <p className="text-sm font-medium text-gray-700 mb-2">Cần cải thiện:</p>
+                          <ul className="space-y-1">
+                            {(dealer.weaknesses || []).map((w, idx) => (
+                              <li key={idx} className="text-sm text-orange-700 flex items-start gap-1">
+                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                {w}
+                              </li>
                             ))}
                           </ul>
                         </div>
                       </div>
                     </div>
                   ))}
-                  {(!dealerPerformance.aiAnalysis?.ranking || dealerPerformance.aiAnalysis.ranking.length === 0) && (
-                    <p className="text-gray-500 text-sm">Không có dữ liệu</p>
-                  )}
                 </div>
               </div>
 
               {/* Best Practices */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-3">Thực hành tốt nhất</h3>
-                <ul className="space-y-2">
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="font-bold text-gray-900 mb-4">Thực hành tốt nhất</h3>
+                <ul className="space-y-3">
                   {(dealerPerformance.aiAnalysis?.bestPractices || []).map((practice, idx) => (
-                    <li key={idx} className="flex items-start">
-                      <span className="text-blue-600 mr-2">→</span>
+                    <li key={idx} className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                      <Award className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                       <span className="text-gray-700">{practice}</span>
                     </li>
                   ))}
-                  {(!dealerPerformance.aiAnalysis?.bestPractices || dealerPerformance.aiAnalysis.bestPractices.length === 0) && (
-                    <li className="text-gray-500 text-sm">Không có dữ liệu</li>
-                  )}
                 </ul>
               </div>
-
-              {/* Strategic Recommendations */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Đề xuất chiến lược</h3>
-                <div className="space-y-4">
-                  {(dealerPerformance.aiAnalysis?.strategicRecommendations || []).map((rec, idx) => (
-                    <div key={idx} className="border-l-4 border-purple-500 pl-4 py-2">
-                      <h4 className="font-semibold text-gray-800 mb-2">{rec.recommendation}</h4>
-                      <p className="text-sm text-gray-600 mb-1">
-                        <strong>Đại lý mục tiêu:</strong> {(rec.targetDealers || []).join(', ')}
-                      </p>
-                      <p className="text-sm text-gray-600 mb-1">
-                        <strong>Tác động:</strong> {rec.expectedImpact}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        <strong>Triển khai:</strong> {rec.implementation}
-                      </p>
-                    </div>
-                  ))}
-                  {(!dealerPerformance.aiAnalysis?.strategicRecommendations || dealerPerformance.aiAnalysis.strategicRecommendations.length === 0) && (
-                    <p className="text-gray-500 text-sm">Không có dữ liệu</p>
-                  )}
-                </div>
-              </div>
-            </div>
+            </>
           )}
         </div>
       )}
 
       {/* Market Trends Tab */}
-      {activeTab === 'market' && (
-        <div>
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Phân tích xu hướng thị trường</h2>
+      {activeTab === 'market' && !loading && (
+        <div className="space-y-6">
+          {/* Refresh Button */}
+          <div className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-end">
             <button
               onClick={handleAnalyzeMarketTrends}
-              disabled={loading}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
             >
-              Phân tích xu hướng (6 tháng gần nhất)
+              Phân tích xu hướng
             </button>
           </div>
 
-          {loading && (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <p className="mt-2 text-gray-600">Đang phân tích dữ liệu...</p>
-            </div>
-          )}
-
-          {marketTrends && !loading && marketTrends.aiAnalysis && (
-            <div className="space-y-6">
-              {/* Market Summary */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-3">Tổng quan thị trường</h3>
-                <p className="text-gray-700">{marketTrends.aiAnalysis?.marketSummary || 'Không có dữ liệu'}</p>
+          {marketTrends && marketTrends.aiAnalysis && (
+            <>
+              {/* AI Market Summary */}
+              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+                <h2 className="text-xl font-bold mb-3">AI Market Analysis</h2>
+                <p className="text-lg leading-relaxed mb-4">{marketTrends.aiAnalysis?.marketSummary || 'Không có dữ liệu'}</p>
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div className="bg-white/30 backdrop-blur-sm rounded-lg p-3">
+                    <p className="text-sm text-white mb-1">Hướng tăng trưởng</p>
+                    <p className="text-lg font-bold text-white">{marketTrends.aiAnalysis?.growthTrends?.direction || 'N/A'}</p>
+                  </div>
+                  <div className="bg-white/30 backdrop-blur-sm rounded-lg p-3">
+                    <p className="text-sm text-white mb-1">Tốc độ</p>
+                    <p className="text-lg font-bold text-white">{marketTrends.aiAnalysis?.growthTrends?.rate || 'N/A'}</p>
+                  </div>
+                  <div className="bg-white/30 backdrop-blur-sm rounded-lg p-3">
+                    <p className="text-sm text-white mb-1">Độ tin cậy</p>
+                    <p className="text-lg font-bold text-white">{marketTrends.aiAnalysis?.forecastNext3Months?.confidence || 'N/A'}</p>
+                  </div>
+                </div>
               </div>
 
-              {/* Growth Trends */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Xu hướng tăng trưởng</h3>
+              {/* Sales Trend Chart */}
+              {marketTrends.marketData?.salesTrend && Object.keys(marketTrends.marketData.salesTrend).length > 0 && (
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h3 className="font-bold text-gray-900 mb-4">Xu hướng doanh số 6 tháng</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={Object.entries(marketTrends.marketData.salesTrend).map(([month, data]: [string, any]) => ({
+                      month: month.slice(5),
+                      sales: data.count,
+                      revenue: data.revenue / 1000000000
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip />
+                      <Legend />
+                      <Line yAxisId="left" type="monotone" dataKey="sales" stroke="#3b82f6" name="Số xe bán" strokeWidth={2} />
+                      <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#10b981" name="Doanh thu (tỷ VNĐ)" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-gray-700">
+                      <TrendingUp className="inline w-4 h-4 text-green-600 mr-1" />
+                      <strong>AI Insight:</strong> {(marketTrends.aiAnalysis?.growthTrends?.drivers || [])[0] || 'Đang phân tích...'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Top Vehicles */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="font-bold text-gray-900 mb-4">Xe bán chạy nhất</h3>
                 <div className="space-y-3">
+                  {(marketTrends.marketData?.topVehicles || []).map((vehicle, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl font-bold text-gray-400">#{idx + 1}</span>
+                        <div>
+                          <h4 className="font-bold text-gray-900">{vehicle.vehicleName}</h4>
+                          <p className="text-sm text-gray-600">{vehicle.price?.toLocaleString('vi-VN') || 0} VNĐ</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-blue-600">{vehicle.sales}</p>
+                        <p className="text-sm text-gray-600">xe đã bán</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Vehicle Preferences */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="font-bold text-gray-900 mb-4">Xu hướng sở thích xe</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-3">
+                      <TrendingUp className="w-5 h-5 text-green-600" />
+                      <h4 className="font-bold text-green-900">Đang thịnh hành</h4>
+                    </div>
+                    <ul className="space-y-2">
+                      {(marketTrends.aiAnalysis?.vehiclePreferences?.trending || []).map((item, idx) => (
+                        <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                          <span className="text-green-600">▲</span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="p-4 bg-red-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-3">
+                      <TrendingDown className="w-5 h-5 text-red-600" />
+                      <h4 className="font-bold text-red-900">Giảm nhu cầu</h4>
+                    </div>
+                    <ul className="space-y-2">
+                      {(marketTrends.aiAnalysis?.vehiclePreferences?.declining || []).map((item, idx) => (
+                        <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                          <span className="text-red-600">▼</span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-700">
+                    <strong>Nguyên nhân:</strong> {marketTrends.aiAnalysis?.vehiclePreferences?.reasons || 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              {/* 3-Month Forecast */}
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+                <h3 className="text-xl font-bold mb-4">Dự báo 3 tháng tới</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white/30 backdrop-blur-sm rounded-lg p-4">
+                    <p className="text-sm text-white mb-1">Sản lượng bán</p>
+                    <p className="text-lg font-bold text-white">{marketTrends.aiAnalysis?.forecastNext3Months?.salesVolume?.split('(')[0] || 'N/A'}</p>
+                    <p className="text-xs text-white/80 mt-1">{marketTrends.aiAnalysis?.forecastNext3Months?.salesVolume?.split('(')[1]?.replace(')', '') || ''}</p>
+                  </div>
+                  <div className="bg-white/30 backdrop-blur-sm rounded-lg p-4">
+                    <p className="text-sm text-white mb-1">Doanh thu</p>
+                    <p className="text-lg font-bold text-white">{marketTrends.aiAnalysis?.forecastNext3Months?.revenue || 'N/A'}</p>
+                  </div>
+                  <div className="bg-white/30 backdrop-blur-sm rounded-lg p-4">
+                    <p className="text-sm text-white mb-1">Độ tin cậy</p>
+                    <p className="text-lg font-bold text-white">{marketTrends.aiAnalysis?.forecastNext3Months?.confidence || 'N/A'}</p>
+                  </div>
+                  <div className="bg-white/30 backdrop-blur-sm rounded-lg p-4">
+                    <p className="text-sm text-white mb-1">Sản phẩm hàng đầu</p>
+                    <p className="text-lg font-bold text-white">{(marketTrends.aiAnalysis?.forecastNext3Months?.topProducts || []).length} mẫu</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <p className="text-sm text-white mb-2">Xe bán chạy dự kiến:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(marketTrends.aiAnalysis?.forecastNext3Months?.topProducts || []).map((product, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-white/30 backdrop-blur-sm rounded-full text-sm text-white">
+                        {product}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Opportunities */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="font-bold text-gray-900 mb-4">Cơ hội chiến lược</h3>
+                <div className="space-y-4">
+                  {(marketTrends.aiAnalysis?.opportunities || []).map((opp, idx) => (
+                    <div key={idx} className="border-l-4 border-green-500 pl-4 py-3 bg-green-50">
+                      <h4 className="font-bold text-gray-900 mb-2">{opp.opportunity}</h4>
+                      <div className="grid grid-cols-3 gap-4 text-sm mb-2">
+                        <div>
+                          <span className="font-medium text-gray-700">Quy mô: </span>
+                          <span className="text-gray-600">{opp.marketSize}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Timeline: </span>
+                          <span className="text-gray-600">{opp.timeline}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Ưu tiên: </span>
+                          <span className="px-2 py-1 bg-green-600 text-white text-xs font-bold rounded">CAO</span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-700">
+                        <strong>Kế hoạch:</strong> {opp.actionPlan}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Customer Behavior Insights */}
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="font-bold text-gray-900 mb-4">Insights hành vi khách hàng</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <span className="font-semibold text-gray-700">Hướng:</span>
-                    <span className="ml-2 text-gray-600">
-                      {marketTrends.aiAnalysis?.growthTrends?.direction || 'N/A'}
-                    </span>
+                    <h4 className="font-medium text-gray-900 mb-3">Mẫu hình mua hàng</h4>
+                    <p className="text-gray-700 mb-4">{marketTrends.aiAnalysis?.customerBehavior?.buyingPatterns || 'N/A'}</p>
+                    <h4 className="font-medium text-gray-900 mb-3">Thanh toán ưa chuộng</h4>
+                    <p className="text-gray-700">{marketTrends.aiAnalysis?.customerBehavior?.paymentPreferences || 'N/A'}</p>
                   </div>
                   <div>
-                    <span className="font-semibold text-gray-700">Tốc độ:</span>
-                    <span className="ml-2 text-gray-600">
-                      {marketTrends.aiAnalysis?.growthTrends?.rate || 'N/A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-semibold text-gray-700">Nhân tố thúc đẩy:</span>
-                    <ul className="ml-6 mt-2 space-y-1">
-                      {(marketTrends.aiAnalysis?.growthTrends?.drivers || []).map((driver, idx) => (
-                        <li key={idx} className="text-gray-600">
-                          • {driver}
+                    <h4 className="font-medium text-gray-900 mb-3">Yếu tố quyết định chính</h4>
+                    <ul className="space-y-2">
+                      {(marketTrends.aiAnalysis?.customerBehavior?.decisionFactors || []).map((factor, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-blue-600 font-bold">{idx + 1}.</span>
+                          <span className="text-gray-700">{factor}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 </div>
               </div>
-
-              {/* Customer Behavior */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Hành vi khách hàng</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Mẫu hình mua hàng</h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {marketTrends.aiAnalysis?.customerBehavior?.buyingPatterns || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Phân khúc giá</h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {marketTrends.aiAnalysis?.customerBehavior?.pricePoints || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Thanh toán ưa chuộng</h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {marketTrends.aiAnalysis?.customerBehavior?.paymentPreferences || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-700">Yếu tố quyết định</h4>
-                    <ul className="text-sm text-gray-600 mt-1 space-y-1">
-                      {(marketTrends.aiAnalysis?.customerBehavior?.decisionFactors || []).map((factor, idx) => (
-                        <li key={idx}>• {factor}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Vehicle Preferences */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Sở thích xe</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                  <div className="bg-green-50 p-4 rounded">
-                    <h4 className="font-semibold text-green-700 mb-2">Đang thịnh hành</h4>
-                    <ul className="text-sm text-gray-700 space-y-1">
-                      {(marketTrends.aiAnalysis?.vehiclePreferences?.trending || []).map((item, idx) => (
-                        <li key={idx}>• {item}</li>
-                      ))}
-                      {(!marketTrends.aiAnalysis?.vehiclePreferences?.trending || marketTrends.aiAnalysis.vehiclePreferences.trending.length === 0) && (
-                        <li className="text-gray-500">Không có dữ liệu</li>
-                      )}
-                    </ul>
-                  </div>
-                  <div className="bg-red-50 p-4 rounded">
-                    <h4 className="font-semibold text-red-700 mb-2">Giảm nhu cầu</h4>
-                    <ul className="text-sm text-gray-700 space-y-1">
-                      {(marketTrends.aiAnalysis?.vehiclePreferences?.declining || []).map((item, idx) => (
-                        <li key={idx}>• {item}</li>
-                      ))}
-                      {(!marketTrends.aiAnalysis?.vehiclePreferences?.declining || marketTrends.aiAnalysis.vehiclePreferences.declining.length === 0) && (
-                        <li className="text-gray-500">Không có dữ liệu</li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600">
-                  <strong>Nguyên nhân:</strong> {marketTrends.aiAnalysis?.vehiclePreferences?.reasons || 'N/A'}
-                </p>
-              </div>
-
-              {/* Opportunities */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Cơ hội kinh doanh</h3>
-                <div className="space-y-4">
-                  {(marketTrends.aiAnalysis?.opportunities || []).map((opp, idx) => (
-                    <div key={idx} className="border rounded-lg p-4 bg-blue-50">
-                      <h4 className="font-semibold text-gray-800 mb-2">{opp.opportunity}</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                        <div>
-                          <span className="font-semibold text-gray-700">Quy mô thị trường:</span>
-                          <p className="text-gray-600">{opp.marketSize}</p>
-                        </div>
-                        <div>
-                          <span className="font-semibold text-gray-700">Kế hoạch:</span>
-                          <p className="text-gray-600">{opp.actionPlan}</p>
-                        </div>
-                        <div>
-                          <span className="font-semibold text-gray-700">Thời gian:</span>
-                          <p className="text-gray-600">{opp.timeline}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {(!marketTrends.aiAnalysis?.opportunities || marketTrends.aiAnalysis.opportunities.length === 0) && (
-                    <p className="text-gray-500 text-sm">Không có dữ liệu</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Forecast */}
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Dự báo 3 tháng tới</h3>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white p-4 rounded">
-                      <h4 className="font-semibold text-gray-700">Sản lượng bán</h4>
-                      <p className="text-gray-600 mt-1">
-                        {marketTrends.aiAnalysis?.forecastNext3Months?.salesVolume || 'N/A'}
-                      </p>
-                    </div>
-                    <div className="bg-white p-4 rounded">
-                      <h4 className="font-semibold text-gray-700">Doanh thu</h4>
-                      <p className="text-gray-600 mt-1">
-                        {marketTrends.aiAnalysis?.forecastNext3Months?.revenue || 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="bg-white p-4 rounded">
-                    <h4 className="font-semibold text-gray-700 mb-2">Sản phẩm nổi bật</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {(marketTrends.aiAnalysis?.forecastNext3Months?.topProducts || []).map((product, idx) => (
-                        <span
-                          key={idx}
-                          className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
-                        >
-                          {product}
-                        </span>
-                      ))}
-                      {(!marketTrends.aiAnalysis?.forecastNext3Months?.topProducts || marketTrends.aiAnalysis.forecastNext3Months.topProducts.length === 0) && (
-                        <span className="text-gray-500 text-sm">Không có dữ liệu</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="bg-white p-4 rounded">
-                    <h4 className="font-semibold text-gray-700">Độ tin cậy</h4>
-                    <p className="text-gray-600 mt-1">
-                      {marketTrends.aiAnalysis?.forecastNext3Months?.confidence || 'N/A'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Top Vehicles Data */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Top 5 xe bán chạy (6 tháng qua)</h3>
-                <div className="space-y-3">
-                  {(marketTrends.marketData?.topVehicles || []).map((vehicle, idx) => (
-                    <div key={idx} className="flex items-center justify-between border-b pb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl font-bold text-gray-400">#{idx + 1}</span>
-                        <div>
-                          <h4 className="font-semibold text-gray-800">{vehicle.vehicleName}</h4>
-                          <p className="text-sm text-gray-500">
-                            {vehicle.price?.toLocaleString('vi-VN') || 0} VNĐ
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-blue-600">{vehicle.sales} xe</p>
-                        <p className="text-sm text-gray-500">đã bán</p>
-                      </div>
-                    </div>
-                  ))}
-                  {(!marketTrends.marketData?.topVehicles || marketTrends.marketData.topVehicles.length === 0) && (
-                    <p className="text-gray-500 text-sm text-center py-4">Không có dữ liệu xe bán chạy</p>
-                  )}
-                </div>
-              </div>
-            </div>
+            </>
           )}
         </div>
       )}
