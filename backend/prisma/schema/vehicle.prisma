@@ -63,6 +63,7 @@ model Vehicle {
 model VehicleImage {
   id        String  @id @default(cuid())
   vehicleId String  @map("vehicle_id")
+  publicId  String? @map("public_id")  
   url       String
   alt       String?
   blurhash  String?

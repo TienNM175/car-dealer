@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting ENHANCED 2025 database seeding (VND)...\n');
+  console.log('🌱 Starting ENHANCED 2025 database seeding (VND + publicId)...\n');
 
   // Helper functions
   const randomDateBetween = (start: Date, end: Date) => {
@@ -240,7 +240,7 @@ async function main() {
       name: 'Tesla',
       code: 'TESLA',
       country: 'USA',
-      logo: 'https://example.com/tesla-logo.png',
+      logo: 'https://res.cloudinary.com/demo/image/upload/v1/manufacturers/tesla-logo.png',
       isActive: true,
     },
   });
@@ -251,7 +251,7 @@ async function main() {
       name: 'VinFast',
       code: 'VINFAST',
       country: 'Vietnam',
-      logo: 'https://example.com/vinfast-logo.png',
+      logo: 'https://res.cloudinary.com/demo/image/upload/v1/manufacturers/vinfast-logo.png',
       isActive: true,
     },
   });
@@ -262,7 +262,7 @@ async function main() {
       name: 'BYD',
       code: 'BYD',
       country: 'China',
-      logo: 'https://example.com/byd-logo.png',
+      logo: 'https://res.cloudinary.com/demo/image/upload/v1/manufacturers/byd-logo.png',
       isActive: true,
     },
   });
@@ -273,7 +273,7 @@ async function main() {
       name: 'Hyundai',
       code: 'HYUNDAI',
       country: 'South Korea',
-      logo: 'https://example.com/hyundai-logo.png',
+      logo: 'https://res.cloudinary.com/demo/image/upload/v1/manufacturers/hyundai-logo.png',
       isActive: true,
     },
   });
@@ -284,7 +284,7 @@ async function main() {
       name: 'KIA',
       code: 'KIA',
       country: 'South Korea',
-      logo: 'https://example.com/kia-logo.png',
+      logo: 'https://res.cloudinary.com/demo/image/upload/v1/manufacturers/kia-logo.png',
       isActive: true,
     },
   });
@@ -295,7 +295,7 @@ async function main() {
       name: 'Mercedes-Benz',
       code: 'MERCEDES',
       country: 'Germany',
-      logo: 'https://example.com/mercedes-logo.png',
+      logo: 'https://res.cloudinary.com/demo/image/upload/v1/manufacturers/mercedes-logo.png',
       isActive: true,
     },
   });
@@ -673,16 +673,21 @@ async function main() {
 
   console.log(`✅ Created ${vehicles.length} vehicles\n`);
 
-  // 7. VEHICLE IMAGES
-  console.log('🖼️ Creating vehicle images...');
-  const imageData = vehicles.map((v) => ({
-    vehicleId: v.id,
-    url: `https://example.com/${v.model.toLowerCase().replace(/\s/g, '-')}-2025-1.jpg`,
-    isMain: true,
-    order: 1,
-  }));
+  // 7. VEHICLE IMAGES ✅ WITH PUBLICID
+  console.log('🖼️ Creating vehicle images with publicId...');
+  const imageData = vehicles.map((v) => {
+    const modelSlug = v.model.toLowerCase().replace(/\s+/g, '-');
+    return {
+      vehicleId: v.id,
+      url: `https://res.cloudinary.com/demo/image/upload/v1/vehicles/${modelSlug}-2025-main.jpg`,
+      publicId: `vehicles/${modelSlug}-2025-main`, // ✅ ADDED PUBLICID
+      alt: `${v.model} ${v.variant} 2025 - Main Image`,
+      isMain: true,
+      order: 0,
+    };
+  });
   await prisma.vehicleImage.createMany({ data: imageData });
-  console.log('✅ Created vehicle images\n');
+  console.log('✅ Created vehicle images with publicId\n');
 
   // 8. EVM INVENTORY
   console.log('📦 Creating EVM inventory...');
@@ -1239,17 +1244,17 @@ async function main() {
   console.log('✅ Created 6 dealer debts\n');
 
   // 22. FINAL SUMMARY
-  console.log('\n🎉 ENHANCED 2025 Database seeding completed! (VND + DealerId)\n');
-  console.log('═══════════════════════════════════════════════════════════');
+  console.log('\n🎉 ENHANCED 2025 Database seeding completed! (VND + DealerId + publicId)\n');
+  console.log('╔═══════════════════════════════════════════════════════════╗');
   console.log('📊 ENHANCED SEEDING SUMMARY (2025)');
-  console.log('═══════════════════════════════════════════════════════════');
+  console.log('╚═══════════════════════════════════════════════════════════╝');
   console.log('✓ Regions: 3 (North, Central, South)');
   console.log('✓ Dealers: 3 (Hà Nội, HCM, Đà Nẵng)');
   console.log('✓ Dealer Contracts: 3');
   console.log('✓ Users: 6 (kept original accounts)');
   console.log('✓ Manufacturers: 6 (Tesla, VinFast, BYD, Hyundai, KIA, Mercedes)');
   console.log('✓ Vehicles: 15 models');
-  console.log('✓ Vehicle Images: 15');
+  console.log('✓ Vehicle Images: 15 ✅ WITH PUBLICID');
   console.log('✓ EVM Inventory: 15 records');
   console.log(`✓ Dealer Inventory: ${dealerInventoryData.length} records`);
   console.log('✓ Customers: 50 ✅ WITH DEALERID (20 HN, 20 HCM, 10 DN)');
@@ -1266,7 +1271,7 @@ async function main() {
   console.log('✓ Dealer Debts: 6 records');
   console.log('═══════════════════════════════════════════════════════════\n');
 
-  console.log('🔐 Customer Distribution by Dealer:');
+  console.log('📍 Customer Distribution by Dealer:');
   const customersByDealer = await prisma.customer.groupBy({
     by: ['dealerId'],
     _count: true,
@@ -1280,7 +1285,7 @@ async function main() {
     console.log(`  • ${dealer?.name} (${dealer?.code}): ${group._count} customers`);
   }
   
-  console.log('\n💥 TEST ACCOUNTS:');
+  console.log('\n👥 TEST ACCOUNTS:');
   console.log('🔑 Admin: admin@evdealer.com / Admin@123456');
   console.log('🏭 EVM Staff: evm@evdealer.com / Admin@123456');
   console.log('👔 Dealer Manager (Hà Nội): manager.hn@evdealer.com / Admin@123456');
@@ -1292,7 +1297,8 @@ async function main() {
   console.log('  1. Login with dealer account');
   console.log('  2. Verify customers are filtered by dealer');
   console.log('  3. Test create new customer (auto-assigned to dealer)');
-  console.log('  4. Test access control (cannot view other dealer customers)\n');
+  console.log('  4. Test access control (cannot view other dealer customers)');
+  console.log('  5. ✅ Upload images via Cloudinary (publicId ready)\n');
 }
 
 main()

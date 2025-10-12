@@ -28,36 +28,57 @@ export default function VehiclesPage() {
   const fetchVehicles = async () => {
     try {
       setLoading(true);
+      console.log('Fetching vehicles - Page:', page, 'Limit:', limit);
+      
       const res = await vehicleApi.getAllVehicles(
         { search: searchTerm, status: filterStatus },
         { page, limit }
       );
 
-      const data = res.data.data || res.data;
-      const totalCount = res.data.total ?? data.length ?? 0;
+      console.log('API Response:', res);
 
-      setVehicles(data);
-      setTotal(totalCount);
+      // Xử lý cấu trúc response từ backend
+      // Backend trả về: { success: true, data: { data: [...], meta: {...} } }
+      const responseData = res.data.data || res.data;
+      const vehicles = responseData.data || responseData;
+      const meta = responseData.meta || res.data.meta;
+
+      console.log('Processed vehicles:', vehicles);
+      console.log('Meta:', meta);
+
+      setVehicles(Array.isArray(vehicles) ? vehicles : []);
+      setTotal(meta?.total || vehicles?.length || 0);
     } catch (err) {
       console.error("Error fetching vehicles:", err);
+      setVehicles([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    console.log('useEffect triggered - page:', page, 'searchTerm:', searchTerm, 'filterStatus:', filterStatus);
     fetchVehicles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, searchTerm, filterStatus]);
 
   const handleSave = async (data: CreateVehicleInput | UpdateVehicleInput) => {
-    if (editingVehicle) {
-      await vehicleApi.updateVehicle(editingVehicle.id, data);
-    } else {
-      await vehicleApi.createVehicle(data as CreateVehicleInput);
+    try {
+      if (editingVehicle) {
+        await vehicleApi.updateVehicle(editingVehicle.id, data);
+      } else {
+        await vehicleApi.createVehicle(data as CreateVehicleInput);
+      }
+      setShowForm(false);
+      setEditingVehicle(null);
+      // Reset về trang 1 sau khi thêm/sửa
+      setPage(1);
+      fetchVehicles();
+    } catch (err) {
+      console.error("Error saving vehicle:", err);
+      throw err;
     }
-    setShowForm(false);
-    setEditingVehicle(null);
-    fetchVehicles();
   };
 
   const handleView = (vehicle: Vehicle) => {
@@ -77,7 +98,12 @@ export default function VehiclesPage() {
 
     try {
       await vehicleApi.deleteVehicle(vehicle.id);
-      fetchVehicles();
+      // Nếu trang hiện tại trống sau khi xóa, quay về trang trước
+      if (vehicles.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchVehicles();
+      }
     } catch (err) {
       console.error("Error deleting vehicle:", err);
       alert("Có lỗi xảy ra khi xóa xe");
@@ -118,6 +144,13 @@ export default function VehiclesPage() {
     saveAs(data, `vehicles_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
+  const handlePageChange = (newPage: number) => {
+    console.log('Page change requested:', newPage);
+    setPage(newPage);
+    // Scroll to top khi chuyển trang
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="p-6">
       <VehicleList
@@ -125,8 +158,14 @@ export default function VehiclesPage() {
         loading={loading}
         searchTerm={searchTerm}
         filterStatus={filterStatus}
-        onSearchChange={setSearchTerm}
-        onFilterChange={setFilterStatus}
+        onSearchChange={(value) => {
+          setSearchTerm(value);
+          setPage(1); // Reset về trang 1 khi search
+        }}
+        onFilterChange={(value) => {
+          setFilterStatus(value);
+          setPage(1); // Reset về trang 1 khi filter
+        }}
         onCreateClick={handleCreate}
         onViewClick={handleView}
         onEditClick={handleEdit}
@@ -138,13 +177,16 @@ export default function VehiclesPage() {
           total,
           totalPages: Math.ceil(total / limit),
         }}
-        onPageChange={setPage}
+        onPageChange={handlePageChange}
       />
 
       {showForm && (
         <VehicleForm
           vehicle={editingVehicle}
-          onClose={() => setShowForm(false)}
+          onClose={() => {
+            setShowForm(false);
+            setEditingVehicle(null);
+          }}
           onSave={handleSave}
         />
       )}
