@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { VehicleController } from './vehicle.controller';
 import { AuthMiddleware } from '../../middlewares/auth.middleware';
 import { RoleMiddleware } from '../../middlewares/role.middleware';
+import { uploadMiddleware } from '../../middlewares/upload.middleware';
 
 const router = Router();
 const vehicleController = new VehicleController();
@@ -82,4 +83,33 @@ router.delete(
   vehicleController.deleteVehicle
 );
 
+// IMAGE UPLOAD ROUTES
+router.post(
+  '/:id/images',
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireEVMStaff,
+  uploadMiddleware.array('images', 10),
+  vehicleController.uploadImages
+);
+
+router.delete(
+  '/:vehicleId/images/:imageId',
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireEVMStaff,
+  vehicleController.deleteImage
+);
+
+router.patch(
+  '/:vehicleId/images/:imageId/main',
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireEVMStaff,
+  vehicleController.setMainImage
+);
+
+router.put(
+  '/:vehicleId/images/reorder',
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireEVMStaff,
+  vehicleController.reorderImages
+);
 export default router;

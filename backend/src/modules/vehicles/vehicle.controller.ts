@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { VehicleService } from './vehicle.service';
 import { ResponseUtil } from '../../utils/response.util';
+import { CloudinaryService } from './cloudinary.service';
 
 const vehicleService = new VehicleService();
+const cloudinaryService = new CloudinaryService();
 
 export class VehicleController {
   async getAllVehicles(req: Request, res: Response, next: NextFunction) {
@@ -106,6 +108,86 @@ export class VehicleController {
       const { status } = req.body;
       const vehicle = await vehicleService.updateVehicleStatus(id, status);
       return ResponseUtil.success(res, vehicle, 'Vehicle status updated');
+    } catch (error: any) {
+      return next(error);
+    }
+  }
+
+  async uploadImages(req: Request, res: Response, _next: NextFunction) {
+    try {
+      const { id: vehicleId } = req.params;
+      const files = req.files as Express.Multer.File[];
+
+      if (!files || files.length === 0) {
+        return ResponseUtil.badRequest(res, 'No images uploaded');
+      }
+
+      // Upload to Cloudinary
+      const uploadedImages = await cloudinaryService.uploadMultiple(
+        files,
+        `vehicles/${vehicleId}`
+      );
+
+      // Prepare data for database
+      const imageData = uploadedImages.map((img, index) => ({
+        url: img.url,
+        publicId: img.publicId,
+        alt: `Vehicle image ${index + 1}`,
+        isMain: index === 0,
+        order: index,
+      }));
+
+      // Save to database
+      const vehicle = await vehicleService.addVehicleImages(vehicleId, imageData);
+
+      return ResponseUtil.success(
+        res,
+        vehicle,
+        `${files.length} image(s) uploaded successfully`,
+        201
+      );
+    } catch (error: any) {
+      if (error.message === 'Vehicle not found') {
+        return ResponseUtil.notFound(res, error.message);
+      }
+      return ResponseUtil.error(res, error.message || 'Upload failed', 500);
+    }
+  }
+
+  async deleteImage(req: Request, res: Response, _next: NextFunction) {
+    try {
+      const { vehicleId, imageId } = req.params;
+      const result = await vehicleService.deleteVehicleImage(vehicleId, imageId);
+      return ResponseUtil.success(res, result, 'Image deleted successfully');
+    } catch (error: any) {
+      if (error.message === 'Image not found') {
+        return ResponseUtil.notFound(res, error.message);
+      }
+      return ResponseUtil.error(res, error.message, 500);
+    }
+  }
+
+  async setMainImage(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { vehicleId, imageId } = req.params;
+      const image = await vehicleService.setMainImage(vehicleId, imageId);
+      return ResponseUtil.success(res, image, 'Main image updated');
+    } catch (error: any) {
+      return next(error);
+    }
+  }
+
+  async reorderImages(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { vehicleId } = req.params;
+      const { imageOrders } = req.body;
+      
+      if (!Array.isArray(imageOrders)) {
+        return ResponseUtil.badRequest(res, 'imageOrders must be an array');
+      }
+
+      const result = await vehicleService.reorderImages(vehicleId, imageOrders);
+      return ResponseUtil.success(res, result, 'Images reordered');
     } catch (error: any) {
       return next(error);
     }

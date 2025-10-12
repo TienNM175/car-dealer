@@ -1,5 +1,6 @@
 import prisma from '../../config/database';
 import { Prisma, VehicleStatus } from '@prisma/client';
+import { CloudinaryService } from './cloudinary.service';
 
 interface VehicleFilters {
   search?: string;
@@ -18,6 +19,8 @@ interface PaginationParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
+
+const cloudinaryService = new CloudinaryService();
 
 export class VehicleService {
   async getAllVehicles(filters: VehicleFilters, pagination: PaginationParams) {
@@ -221,5 +224,103 @@ export class VehicleService {
     });
 
     return vehicle;
+  }
+
+  async addVehicleImages(
+    vehicleId: string, 
+    images: Array<{
+      url: string;
+      publicId: string;
+      alt?: string;
+      isMain?: boolean;
+      order: number;
+    }>
+  ) {
+    // Check vehicle exists
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+    });
+
+    if (!vehicle) {
+      throw new Error('Vehicle not found');
+    }
+
+    // If setting new main image, unset previous main
+    const hasNewMain = images.some(img => img.isMain);
+    if (hasNewMain) {
+      await prisma.vehicleImage.updateMany({
+        where: { vehicleId, isMain: true },
+        data: { isMain: false },
+      });
+    }
+
+    // Create images
+    await prisma.vehicleImage.createMany({
+      data: images.map(img => ({
+        vehicleId,
+        url: img.url,
+        publicId: img.publicId,
+        alt: img.alt,
+        isMain: img.isMain || false,
+        order: img.order,
+      })),
+    });
+
+    // Return vehicle with images
+    return this.getVehicleById(vehicleId);
+  }
+
+  async deleteVehicleImage(vehicleId: string, imageId: string) {
+    const image = await prisma.vehicleImage.findFirst({
+      where: { id: imageId, vehicleId },
+    });
+
+    if (!image) {
+      throw new Error('Image not found');
+    }
+
+    // Delete from Cloudinary
+    if (image.publicId) {
+      try {
+        await cloudinaryService.deleteImage(image.publicId);
+      } catch (error) {
+        console.error('Failed to delete from Cloudinary:', error);
+      }
+    }
+
+    // Delete from database
+    await prisma.vehicleImage.delete({
+      where: { id: imageId },
+    });
+
+    return { message: 'Image deleted successfully' };
+  }
+
+  async setMainImage(vehicleId: string, imageId: string) {
+    // Unset current main
+    await prisma.vehicleImage.updateMany({
+      where: { vehicleId, isMain: true },
+      data: { isMain: false },
+    });
+
+    // Set new main
+    const image = await prisma.vehicleImage.update({
+      where: { id: imageId },
+      data: { isMain: true },
+    });
+
+    return image;
+  }
+
+  async reorderImages(_vehicleId: string, imageOrders: { imageId: string; order: number }[]) {
+    const updatePromises = imageOrders.map(({ imageId, order }) =>
+      prisma.vehicleImage.update({
+        where: { id: imageId },
+        data: { order },
+      })
+    );
+
+    await Promise.all(updatePromises);
+    return { message: 'Images reordered successfully' };
   }
 }
