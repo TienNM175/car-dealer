@@ -188,9 +188,6 @@ export default function CustomerList({
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Địa chỉ
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Hoạt động
-                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
                     Trạng thái
                   </th>
@@ -246,28 +243,7 @@ export default function CustomerList({
                         </div>
                       )}
                     </td>
-
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        {customer._count && (
-                          <>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                              <FileText className="w-3 h-3" />
-                              {customer._count.contracts}
-                            </span>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
-                              <DollarSign className="w-3 h-3" />
-                              {customer._count.quotations}
-                            </span>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">
-                              <TestTube className="w-3 h-3" />
-                              {customer._count.testDrives}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </td>
-
+                    
                     <td className="px-6 py-5 w-34">
                       <span
                         className={`px-3 py-1 text-xs font-medium rounded-full ${statusConfig[customer.status].color}`}
