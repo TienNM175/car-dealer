@@ -55,7 +55,7 @@ export default function PromotionsPage() {
     description: string;
     discountType: "PERCENTAGE" | "FIXED";
     discountValue: number;
-    minPurchase: number;
+    minPurchase: string; // Thay đổi thành string để handle format VND
     startDate: string;
     endDate: string;
     isActive: boolean;
@@ -65,13 +65,25 @@ export default function PromotionsPage() {
     description: "",
     discountType: "PERCENTAGE",
     discountValue: 0,
-    minPurchase: 0,
+    minPurchase: "", // Bỏ giá trị 0 mặc định
     startDate: new Date().toISOString().split("T")[0],
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0],
     isActive: true,
   });
+
+  // Hàm format số thành VND (1.000.000) cho input
+  const formatVNDInput = (value: string): string => {
+    const numbers = value.replace(/\D/g, "");
+    if (!numbers) return "";
+    return Number(numbers).toLocaleString("vi-VN");
+  };
+
+  // Hàm unformat để lấy number từ string VND
+  const unformatVND = (value: string): number => {
+    return Number(value.replace(/\./g, "")) || 0;
+  };
 
   const fetchPromotions = async () => {
     try {
@@ -139,7 +151,11 @@ export default function PromotionsPage() {
     e.preventDefault();
     try {
       setError(null);
-      await promotionApi.create(formData);
+      const submitData = {
+        ...formData,
+        minPurchase: unformatVND(formData.minPurchase),
+      };
+      await promotionApi.create(submitData);
       setSuccess("Promotion created successfully!");
       setShowModal(false);
       resetForm();
@@ -156,7 +172,10 @@ export default function PromotionsPage() {
 
     try {
       setError(null);
-      const updateData: UpdatePromotionDTO = { ...formData };
+      const updateData: UpdatePromotionDTO = {
+        ...formData,
+        minPurchase: unformatVND(formData.minPurchase),
+      };
       await promotionApi.update(editingPromotion.id, updateData);
       setSuccess("Promotion updated successfully!");
       setShowModal(false);
@@ -233,7 +252,7 @@ export default function PromotionsPage() {
       description: promotion.description || "",
       discountType: promotion.discountType,
       discountValue: Number(promotion.discountValue),
-      minPurchase: Number(promotion.minPurchase) || 0,
+      minPurchase: promotion.minPurchase ? Number(promotion.minPurchase).toLocaleString("vi-VN") : "", // Format VND khi edit
       startDate: startDateStr,
       endDate: endDateStr,
       isActive: promotion.isActive,
@@ -248,7 +267,7 @@ export default function PromotionsPage() {
       description: "",
       discountType: "PERCENTAGE",
       discountValue: 0,
-      minPurchase: 0,
+      minPurchase: "", // Reset rỗng thay vì 0
       startDate: new Date().toISOString().split("T")[0],
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
         .toISOString()
@@ -350,7 +369,7 @@ export default function PromotionsPage() {
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
-              📊 Thống kê
+              Thống kê
             </button>
           </div>
         </div>
@@ -423,7 +442,7 @@ export default function PromotionsPage() {
                   onChange={(e) => setFilterDealerId(e.target.value)}
                   className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none font-medium text-gray-900 bg-white"
                 >
-                  <option value="">🏢 Tất cả đại lý</option>
+                  <option value="">Tất cả đại lý</option>
                   {dealers.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
@@ -452,9 +471,9 @@ export default function PromotionsPage() {
                   }
                   className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none font-medium text-gray-900 bg-white"
                 >
-                  <option value="all">📋 Tất cả</option>
-                  <option value="true">✅ Đang hoạt động</option>
-                  <option value="false">⏸️ Đã tạm dừng</option>
+                  <option value="all">Tất cả</option>
+                  <option value="true">Đang hoạt động</option>
+                  <option value="false">Đã tạm dừng</option>
                 </select>
               </div>
 
@@ -494,7 +513,7 @@ export default function PromotionsPage() {
               {/* Sort Controls */}
               <div className="flex-1">
                 <label htmlFor="sort-by" className="block text-sm font-semibold text-gray-700 mb-2">
-                  🔄 Sắp xếp theo
+                  Sắp xếp theo
                 </label>
                 <div className="flex gap-2">
                   <select
@@ -504,10 +523,10 @@ export default function PromotionsPage() {
                     className="flex-1 border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none font-medium text-gray-900 bg-white"
                   >
                     <option value="">Mặc định</option>
-                    <option value="name">📝 Tên</option>
-                    <option value="startDate">📅 Ngày bắt đầu</option>
-                    <option value="endDate">📅 Ngày kết thúc</option>
-                    <option value="discountValue">💰 Giá trị giảm</option>
+                    <option value="name">Tên</option>
+                    <option value="startDate">Ngày bắt đầu</option>
+                    <option value="endDate">Ngày kết thúc</option>
+                    <option value="discountValue">Giá trị giảm</option>
                   </select>
                   <button
                     type="button"
@@ -611,7 +630,7 @@ export default function PromotionsPage() {
                 {/* Discount Type Breakdown */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    📊 Phân loại giảm giá
+                    Phân loại giảm giá
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4">
@@ -623,7 +642,7 @@ export default function PromotionsPage() {
                           </p>
                         </div>
                         <div className="w-16 h-16 bg-purple-200 rounded-full flex items-center justify-center">
-                          <span className="text-2xl">📊</span>
+                          <span className="text-2xl"></span>
                         </div>
                       </div>
                     </div>
@@ -637,7 +656,7 @@ export default function PromotionsPage() {
                           </p>
                         </div>
                         <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center">
-                          <span className="text-2xl">💰</span>
+                          <span className="text-2xl"></span>
                         </div>
                       </div>
                     </div>
@@ -648,7 +667,7 @@ export default function PromotionsPage() {
                 {statistics.topDealers && statistics.topDealers.length > 0 && (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      🏆 Top đại lý có nhiều khuyến mãi
+                      Top đại lý có nhiều khuyến mãi
                     </h3>
                     <div className="space-y-3">
                       {statistics.topDealers.slice(0, 5).map((dealer: any, index: number) => (
@@ -923,7 +942,7 @@ export default function PromotionsPage() {
                       htmlFor="promo-discount-type"
                       className="block text-sm font-medium text-gray-700 subpixel-antialiased mb-2"
                     >
-                      Loại giảm giá <span className="text-red-500">*</span>
+                      Loại giảm giá <span className="text-red-500othesis">*</span>
                     </label>
                     <select
                       id="promo-discount-type"
@@ -937,8 +956,8 @@ export default function PromotionsPage() {
                       }
                       className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none font-medium text-gray-900 bg-white"
                     >
-                      <option value="PERCENTAGE">📊 Phần trăm (%)</option>
-                      <option value="FIXED">💰 Số tiền cố định (VND)</option>
+                      <option value="PERCENTAGE">Phần trăm (%)</option>
+                      <option value="FIXED">Số tiền cố định (VND)</option>
                     </select>
                   </div>
 
@@ -981,21 +1000,17 @@ export default function PromotionsPage() {
                     </label>
                     <input
                       id="promo-min-purchase"
-                      type="number"
-                      min={0}
-                      step={1000}
+                      type="text" // Sử dụng text để format
                       value={formData.minPurchase}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          minPurchase: Number(e.target.value),
-                        })
-                      }
-                      placeholder="VD: 100000000 (Để trống nếu không yêu cầu)"
+                      onChange={(e) => {
+                        const formatted = formatVNDInput(e.target.value);
+                        setFormData({ ...formData, minPurchase: formatted });
+                      }}
+                      placeholder="VD: 100.000.000 "
                       className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none font-semibold text-gray-900"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Giá trị đơn hàng tối thiểu để áp dụng khuyến mãi này
+                      Giá trị đơn hàng tối thiểu để áp dụng khuyến mãi (định dạng VND, ví dụ: nhập 1000000 → 1.000.000)
                     </p>
                   </div>
                 </div>
@@ -1124,7 +1139,7 @@ export default function PromotionsPage() {
                   type="submit"
                   className="px-8 py-3 bg-gradient-to-r from-blue-600 via-blue-700 to-purple-600 hover:from-blue-700 hover:via-blue-800 hover:to-purple-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
                 >
-                  {editingPromotion ? "💾 Cập nhật" : "✨ Tạo mới"}
+                  {editingPromotion ? "Cập nhật" : "Tạo mới"}
                 </button>
               </div>
             </form>
@@ -1181,7 +1196,7 @@ export default function PromotionsPage() {
                   onClick={handleDelete}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
                 >
-                  🗑️ Xóa ngay
+                  Xóa ngay
                 </button>
               </div>
             </div>
