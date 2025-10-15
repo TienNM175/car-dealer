@@ -14,6 +14,25 @@ import { promotionApi } from "@/lib/api/promotionApi";
 import { Promotion, PromotionStatistics } from "@/lib/types/promotion.types";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Temporary interface for raw API response to avoid TS errors
+interface RawPromotionStatistics {
+  total: number;
+  active: number;
+  inactive: number;
+  byType?: {
+    PERCENTAGE?: {
+      count: number;
+      avgValue: string;
+    };
+    FIXED?: {
+      count: number;
+      avgValue: string;
+    };
+  };
+  avgDiscount?: string;
+  expiringSoon?: any[];
+}
+
 export default function PromotionsPage() {
   const { user } = useAuth(); // Lấy user từ context (dealerId, role)
   const dealerId = user?.dealerId;
@@ -77,8 +96,26 @@ export default function PromotionsPage() {
 
     try {
       setLoadingStats(true);
-      const data = await promotionApi.getStatistics(dealerId);
-      setStatistics(data);
+      // Cast safely to unknown first, then to RawPromotionStatistics
+      const apiData = (await promotionApi.getStatistics(dealerId)) as unknown as RawPromotionStatistics;
+      
+      // Map API response to match PromotionStatistics type
+      const mappedStats: PromotionStatistics = {
+        totalPromotions: apiData.total || 0,
+        activePromotions: apiData.active || 0,
+        inactivePromotions: apiData.inactive || 0,
+        expiredPromotions: 0, // API không có, set mặc định 0 (có thể tính từ total - active - inactive nếu cần)
+        promotionsByType: {
+          PERCENTAGE: apiData.byType?.PERCENTAGE?.count || 0,
+          FIXED: apiData.byType?.FIXED?.count || 0,
+        },
+        // Có thể thêm totalDiscountValue và averageDiscountValue nếu cần
+        // totalDiscountValue: parseFloat(apiData.avgDiscount) * apiData.total || 0,
+        // averageDiscountValue: parseFloat(apiData.avgDiscount) || 0,
+      };
+      
+      console.log("Mapped stats:", mappedStats); // Debug log
+      setStatistics(mappedStats);
     } catch (err: any) {
       console.error("Error fetching statistics:", err);
       setError("Không thể tải thống kê");
@@ -215,8 +252,8 @@ export default function PromotionsPage() {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Tên hoặc mô tả..."
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                    placeholder="Nhập tên hoặc mô tả khuyến mãi..."
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-base text-gray-900 placeholder-gray-500"
                   />
                 </div>
 
@@ -232,9 +269,9 @@ export default function PromotionsPage() {
                         e.target.value === "all" ? undefined : e.target.value === "true"
                       )
                     }
-                    className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none bg-white"
+                    className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none bg-white text-base text-gray-900"
                   >
-                    <option value="all">Tất cả</option>
+                    <option value="all">Tất cả trạng thái</option>
                     <option value="true">Đang hoạt động</option>
                     <option value="false">Đã tạm dừng</option>
                   </select>
@@ -244,24 +281,24 @@ export default function PromotionsPage() {
                 <div className="flex gap-2">
                   <div className="flex-1">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Từ
+                      Từ ngày
                     </label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                      className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-base text-gray-900"
                     />
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Đến
+                      Đến ngày
                     </label>
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                      className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-base text-gray-900"
                     />
                   </div>
                 </div>
@@ -309,8 +346,10 @@ export default function PromotionsPage() {
                     <p className="text-3xl font-bold">{statistics.expiredPromotions}</p>
                   </div>
                   <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
-                    <h3 className="text-sm font-medium opacity-90">Phần trăm</h3>
-                    <p className="text-3xl font-bold">{statistics.promotionsByType.PERCENTAGE}</p>
+                    <h3 className="text-sm font-medium opacity-90">Giảm theo %</h3>
+                    <p className="text-3xl font-bold">
+                      {statistics.promotionsByType?.PERCENTAGE ?? 0}
+                    </p>
                   </div>
                 </div>
               </>
@@ -318,6 +357,7 @@ export default function PromotionsPage() {
               <div className="bg-white rounded-xl shadow-sm p-12 text-center">
                 <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">Không có dữ liệu thống kê</p>
+                <p className="text-sm text-gray-500 mt-2">Hãy kiểm tra xem đại lý có khuyến mãi nào chưa, hoặc liên hệ admin.</p>
               </div>
             )}
           </div>
