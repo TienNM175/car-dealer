@@ -5,11 +5,6 @@ import { RoleMiddleware } from '../../middlewares/role.middleware';
 import { ValidationMiddleware } from '../../middlewares/validation.middleware';
 import {
   updateEVMInventoryValidation,
-  updateDealerInventoryValidation,
-  transferInventoryValidation,
-  reserveInventoryValidation,
-  completeSaleValidation,
-  cancelReservationValidation,
 } from './inventory.validation';
 
 const router = Router();
@@ -96,83 +91,6 @@ router.get(
   inventoryController.getDealerInventoryItem
 );
 
-/**
- * @route   PUT /api/v1/inventory/dealers/:dealerId/:vehicleId
- * @desc    Update dealer inventory
- * @access  Private - Dealer Manager, EVM Staff, Admin
- */
-router.put(
-  '/dealers/:dealerId/:vehicleId',
-  AuthMiddleware.authenticate,
-  RoleMiddleware.requireRole('ADMIN', 'EVM_STAFF', 'DEALER_MANAGER'),
-  RoleMiddleware.requireSameDealer,
-  updateDealerInventoryValidation,
-  ValidationMiddleware.validate,
-  inventoryController.updateDealerInventory
-);
-
-// ============================================
-// INVENTORY OPERATIONS
-// ============================================
-
-/**
- * @route   POST /api/v1/inventory/transfer
- * @desc    Transfer inventory between dealers
- * @access  Private - Admin, EVM Staff
- */
-router.post(
-  '/transfer',
-  AuthMiddleware.authenticate,
-  RoleMiddleware.requireEVMStaff,
-  transferInventoryValidation,
-  ValidationMiddleware.validate,
-  inventoryController.transferInventory
-);
-
-/**
- * @route   POST /api/v1/inventory/dealers/:dealerId/:vehicleId/reserve
- * @desc    Reserve inventory (when customer orders)
- * @access  Private - Dealer Staff
- */
-router.post(
-  '/dealers/:dealerId/:vehicleId/reserve',
-  AuthMiddleware.authenticate,
-  RoleMiddleware.requireDealerStaff,
-  RoleMiddleware.requireSameDealer,
-  reserveInventoryValidation,
-  ValidationMiddleware.validate,
-  inventoryController.reserveInventory
-);
-
-/**
- * @route   POST /api/v1/inventory/dealers/:dealerId/:vehicleId/complete-sale
- * @desc    Complete sale (move from reserved to sold)
- * @access  Private - Dealer Staff
- */
-router.post(
-  '/dealers/:dealerId/:vehicleId/complete-sale',
-  AuthMiddleware.authenticate,
-  RoleMiddleware.requireDealerStaff,
-  RoleMiddleware.requireSameDealer,
-  completeSaleValidation,
-  ValidationMiddleware.validate,
-  inventoryController.completeSale
-);
-
-/**
- * @route   POST /api/v1/inventory/dealers/:dealerId/:vehicleId/cancel-reservation
- * @desc    Cancel reservation
- * @access  Private - Dealer Staff
- */
-router.post(
-  '/dealers/:dealerId/:vehicleId/cancel-reservation',
-  AuthMiddleware.authenticate,
-  RoleMiddleware.requireDealerStaff,
-  RoleMiddleware.requireSameDealer,
-  cancelReservationValidation,
-  ValidationMiddleware.validate,
-  inventoryController.cancelReservation
-);
 
 // ============================================
 // REPORTS & ALERTS
