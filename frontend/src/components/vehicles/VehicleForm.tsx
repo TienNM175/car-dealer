@@ -1,11 +1,12 @@
 // frontend/src/components/vehicles/VehicleForm.tsx
 "use client";
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Upload, Image, Trash2, Star } from "lucide-react";
 import {
   Vehicle,
   CreateVehicleInput,
   UpdateVehicleInput,
+  vehicleApi,
 } from "@/lib/api/vehicleApi";
 
 interface VehicleFormProps {
@@ -54,6 +55,13 @@ export default function VehicleForm({
 }: VehicleFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string>("");
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(
+    vehicle || null
+  );
   const [formData, setFormData] = useState<CreateVehicleInput>({
     manufacturerId: "",
     model: "",
@@ -79,6 +87,7 @@ export default function VehicleForm({
 
   useEffect(() => {
     if (vehicle) {
+      setCurrentVehicle(vehicle);
       setFormData({
         manufacturerId: vehicle.manufacturerId,
         model: vehicle.model,
@@ -111,11 +120,181 @@ export default function VehicleForm({
 
     try {
       await onSave(formData);
-      onClose();
+      onClose(); // Close modal, parent will refresh list
     } catch (err: any) {
       setError(err.response?.data?.message || "Có lỗi xảy ra");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+
+    // Validate file types and sizes
+    const validFiles = files.filter((file) => {
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+      ];
+      const allowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+      const maxSize = 10 * 1024 * 1024; // 10MB
+
+      // Check file extension
+      const fileExtension = file.name
+        .toLowerCase()
+        .substring(file.name.lastIndexOf("."));
+
+      if (!allowedExtensions.includes(fileExtension)) {
+        alert(
+          `File ${file.name} có extension không được hỗ trợ. Chỉ cho phép: .jpg, .jpeg, .png, .gif, .webp`
+        );
+        return false;
+      }
+
+      if (!allowedTypes.includes(file.type)) {
+        alert(
+          `File ${file.name} có MIME type không được hỗ trợ (${file.type}). Chỉ cho phép: JPG, PNG, GIF, WebP`
+        );
+        return false;
+      }
+
+      if (file.size > maxSize) {
+        alert(`File ${file.name} quá lớn. Giới hạn 10MB`);
+        return false;
+      }
+      return true;
+    });
+
+    setSelectedFiles((prev) => [...prev, ...validFiles]);
+  };
+
+  const handleUploadImages = async () => {
+    if (!currentVehicle || selectedFiles.length === 0) return;
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      selectedFiles.forEach((file) => {
+        formData.append("images", file);
+      });
+
+      const response = await vehicleApi.uploadImages(
+        currentVehicle.id,
+        formData
+      );
+      console.log("Upload response:", response);
+
+      setSelectedFiles([]);
+      setError(null);
+
+      // Show success message
+      const successMsg = `Upload thành công ${selectedFiles.length} ảnh!`;
+      console.log("Setting success message:", successMsg);
+      setSuccessMessage(successMsg);
+      setShowSuccessPopup(true);
+
+      setTimeout(() => {
+        console.log("Clearing success message");
+        setSuccessMessage("");
+        setShowSuccessPopup(false);
+      }, 3000); // Show popup for 3 seconds
+
+      // Refresh vehicle data to show new images in the form
+      try {
+        const response = await vehicleApi.getVehicleById(currentVehicle.id);
+        console.log("API response:", response);
+
+        // Handle axios response structure
+        const updatedVehicle = response.data?.data || response.data;
+        console.log("Updated vehicle with new images:", updatedVehicle);
+        console.log("Current vehicle before update:", currentVehicle);
+
+        // Only update if we got valid data with images
+        if (updatedVehicle && updatedVehicle.images) {
+          console.log("Updating currentVehicle with new data");
+          setCurrentVehicle(updatedVehicle);
+        } else {
+          console.warn("Updated vehicle missing images, keeping current state");
+          console.log("Updated vehicle structure:", updatedVehicle);
+        }
+      } catch (err) {
+        console.error("Failed to fetch updated vehicle:", err);
+      }
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.message || error.message || "Upload failed";
+      setError(errorMessage);
+      alert(`Upload thất bại: ${errorMessage}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteImage = async (imageId: string) => {
+    if (!currentVehicle) return;
+
+    try {
+      await vehicleApi.deleteImage(currentVehicle.id, imageId);
+
+      const successMsg = "Xóa ảnh thành công!";
+      setSuccessMessage(successMsg);
+      setShowSuccessPopup(true);
+
+      setTimeout(() => {
+        setSuccessMessage("");
+        setShowSuccessPopup(false);
+      }, 3000);
+
+      // Refresh vehicle data to show updated images immediately
+      try {
+        const response = await vehicleApi.getVehicleById(currentVehicle.id);
+        const updatedVehicle = response.data?.data || response.data;
+
+        if (updatedVehicle && updatedVehicle.images) {
+          setCurrentVehicle(updatedVehicle);
+        }
+      } catch (err) {
+        console.error("Failed to fetch updated vehicle after delete:", err);
+      }
+    } catch (error: any) {
+      setError(error.message || "Delete failed");
+    }
+  };
+
+  const handleSetMainImage = async (imageId: string) => {
+    if (!currentVehicle) return;
+
+    try {
+      await vehicleApi.setMainImage(currentVehicle.id, imageId);
+
+      const successMsg = "Đặt ảnh chính thành công!";
+      setSuccessMessage(successMsg);
+      setShowSuccessPopup(true);
+
+      setTimeout(() => {
+        setSuccessMessage("");
+        setShowSuccessPopup(false);
+      }, 3000);
+
+      // Refresh vehicle data to show updated main image immediately
+      try {
+        const response = await vehicleApi.getVehicleById(currentVehicle.id);
+        const updatedVehicle = response.data?.data || response.data;
+
+        if (updatedVehicle && updatedVehicle.images) {
+          setCurrentVehicle(updatedVehicle);
+        }
+      } catch (err) {
+        console.error("Failed to fetch updated vehicle after set main:", err);
+      }
+    } catch (error: any) {
+      setError(error.message || "Set main image failed");
     }
   };
 
@@ -135,8 +314,10 @@ export default function VehicleForm({
           </button>
         </div>
 
+        {/* Error Message */}
         {error && (
-          <div className="mx-6 mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600 font-medium">Lỗi:</p>
             <p className="text-red-600 text-sm">{error}</p>
           </div>
         )}
@@ -154,7 +335,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="text"
-                  value={formData.model}
+                  value={formData.model || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, model: e.target.value })
                   }
@@ -169,7 +350,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="text"
-                  value={formData.variant}
+                  value={formData.variant || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, variant: e.target.value })
                   }
@@ -183,7 +364,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="number"
-                  value={formData.year}
+                  value={formData.year || new Date().getFullYear()}
                   onChange={(e) =>
                     setFormData({ ...formData, year: parseInt(e.target.value) })
                   }
@@ -199,7 +380,7 @@ export default function VehicleForm({
                   Kiểu dáng <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.bodyType}
+                  value={formData.bodyType || "SUV"}
                   onChange={(e) =>
                     setFormData({ ...formData, bodyType: e.target.value })
                   }
@@ -219,7 +400,7 @@ export default function VehicleForm({
                   Màu sắc <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.color}
+                  value={formData.color || "WHITE"}
                   onChange={(e) =>
                     setFormData({ ...formData, color: e.target.value })
                   }
@@ -239,7 +420,7 @@ export default function VehicleForm({
                   Trạng thái <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.status}
+                  value={formData.status || "ACTIVE"}
                   onChange={(e) =>
                     setFormData({ ...formData, status: e.target.value })
                   }
@@ -268,7 +449,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="number"
-                  value={formData.batteryCapacity}
+                  value={formData.batteryCapacity || 0}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -287,7 +468,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="number"
-                  value={formData.range}
+                  value={formData.range || 0}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -306,7 +487,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="number"
-                  value={formData.chargingTime}
+                  value={formData.chargingTime || 0}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -324,7 +505,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="number"
-                  value={formData.motorPower}
+                  value={formData.motorPower || 0}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -342,7 +523,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="number"
-                  value={formData.topSpeed}
+                  value={formData.topSpeed || 0}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -361,7 +542,7 @@ export default function VehicleForm({
                 <input
                   type="number"
                   step="0.1"
-                  value={formData.acceleration}
+                  value={formData.acceleration || 0}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -379,7 +560,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="number"
-                  value={formData.seats}
+                  value={formData.seats || 5}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -399,7 +580,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="number"
-                  value={formData.doors}
+                  value={formData.doors || 4}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -427,7 +608,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="number"
-                  value={formData.wholesalePrice}
+                  value={formData.wholesalePrice || 0}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -446,7 +627,7 @@ export default function VehicleForm({
                 </label>
                 <input
                   type="number"
-                  value={formData.retailPrice}
+                  value={formData.retailPrice || 0}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -469,7 +650,7 @@ export default function VehicleForm({
                 Mô tả chi tiết
               </label>
               <textarea
-                value={formData.description}
+                value={formData.description || ""}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
@@ -479,18 +660,150 @@ export default function VehicleForm({
             </div>
           </div>
 
-          <div className="flex gap-3 mt-6">
+          {/* Image Management Section - Only for Admin/EVM */}
+          {currentVehicle && (
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold text-gray-800 mb-4">
+                Quản lý hình ảnh
+              </h4>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-3">
+                  Hiện tại xe có {currentVehicle?.images?.length || 0} hình ảnh
+                </p>
+
+                {/* Upload Section */}
+                <div className="mb-4 p-4 border-2 border-dashed border-gray-300 rounded-lg">
+                  <div className="text-center">
+                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 mb-3">
+                      Chọn ảnh để upload (JPG, PNG, GIF, WebP - tối đa 10MB/ảnh)
+                    </p>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="image-upload"
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors"
+                    >
+                      <Image className="w-4 h-4 mr-2" />
+                      Chọn ảnh
+                    </label>
+                  </div>
+
+                  {/* Selected Files */}
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-gray-700 mb-2">
+                        Đã chọn {selectedFiles.length} ảnh:
+                      </p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {selectedFiles.map((file, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center bg-white px-3 py-1 rounded border"
+                          >
+                            <span className="text-sm text-gray-700 mr-2">
+                              {file.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedFiles((prev) =>
+                                  prev.filter((_, i) => i !== index)
+                                )
+                              }
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleUploadImages}
+                        disabled={uploading}
+                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors"
+                      >
+                        {uploading ? "Đang upload..." : "Upload ảnh"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Existing Images */}
+                {currentVehicle?.images && currentVehicle.images.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {currentVehicle.images.map((image, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={image.url}
+                          alt={`${currentVehicle.model} ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg border"
+                        />
+
+                        {/* Main Image Badge */}
+                        {image.isMain && (
+                          <div className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded flex items-center">
+                            <Star className="w-3 h-3 mr-1" />
+                            Chính
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          {!image.isMain && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetMainImage(image.id)}
+                              className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+                              title="Đặt làm ảnh chính"
+                            >
+                              <Star className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteImage(image.id)}
+                            className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                            title="Xóa ảnh"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Image className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>Chưa có hình ảnh nào</p>
+                    <p className="text-sm mt-1">
+                      Chọn và upload ảnh để hiển thị
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-4 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border rounded-sm hover:bg-red-400 bg-red-500 text-black"
+              className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200 font-medium"
               disabled={loading}
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 transition-all duration-200 font-medium shadow-lg"
               disabled={loading}
             >
               {loading ? "Đang xử lý..." : vehicle ? "Cập nhật" : "Thêm mới"}
@@ -498,6 +811,34 @@ export default function VehicleForm({
           </div>
         </form>
       </div>
+
+      {/* Success Toast Notification */}
+      {showSuccessPopup && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in">
+          <div className="bg-white rounded-lg shadow-lg border border-green-200 p-4 flex items-center gap-3 max-w-sm">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <svg
+                className="w-5 h-5 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">
+                {successMessage}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

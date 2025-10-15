@@ -1,163 +1,173 @@
-'use client'
-import React from 'react';
-import { Plus, FileText, CheckCircle, Clock, XCircle, Download } from 'lucide-react';
+"use client";
+import React, { useEffect, useState } from "react";
+import ContractList from "@/components/contracts/ContractList";
+import {
+  Contract,
+  contractApi,
+  CreateContractInput,
+  UpdateContractInput,
+} from "@/lib/api/contractApi";
+import { useAuth } from "@/contexts/AuthContext";
+
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function ContractsPage() {
-  const mockContracts = [
-    { id: 'CT001', customer: 'Nguyễn Văn A', vehicle: 'VF e34', price: 690000000, discount: 10000000, finalPrice: 680000000, status: 'SIGNED', paymentType: 'FULL', signedAt: '2024-10-01' },
-    { id: 'CT002', customer: 'Trần Thị B', vehicle: 'VF 8', price: 1050000000, discount: 20000000, finalPrice: 1030000000, status: 'PENDING', paymentType: 'INSTALLMENT', installmentMonths: 60 },
-    { id: 'CT003', customer: 'Lê Văn C', vehicle: 'VF 9', price: 1500000000, discount: 50000000, finalPrice: 1450000000, status: 'DRAFT', paymentType: 'INSTALLMENT', installmentMonths: 120 },
-  ];
+  const { user } = useAuth();
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [statistics, setStatistics] = useState<any>(null);
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      SIGNED: 'bg-green-100 text-green-700',
-      PENDING: 'bg-yellow-100 text-yellow-700',
-      DRAFT: 'bg-gray-100 text-gray-700',
-      CANCELLED: 'bg-red-100 text-red-700',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+  const fetchContracts = async () => {
+    try {
+      setLoading(true);
+      const res = await contractApi.getAllContracts(
+        {
+          search: searchTerm,
+          status: filterStatus as any,
+          dealerId: (user as any)?.dealerId, // Dealer chỉ xem contracts của mình
+        },
+        { page, limit }
+      );
+
+      const responseData = res.data.data || res.data;
+      const contracts = responseData.data || responseData;
+      const meta = responseData.meta || res.data.meta;
+
+      setContracts(Array.isArray(contracts) ? contracts : []);
+      setTotal(meta?.total || contracts?.length || 0);
+    } catch (err) {
+      console.error("Error fetching contracts:", err);
+      setContracts([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getStatusIcon = (status: string) => {
-    if (status === 'SIGNED') return <CheckCircle className="w-4 h-4" aria-hidden="true" />;
-    if (status === 'PENDING') return <Clock className="w-4 h-4" aria-hidden="true" />;
-    if (status === 'CANCELLED') return <XCircle className="w-4 h-4" aria-hidden="true" />;
-    return null;
+  const fetchStatistics = async () => {
+    try {
+      const res = await contractApi.getContractsByStatus();
+      setStatistics(res.data.data);
+    } catch (err) {
+      console.error("Error fetching statistics:", err);
+    }
   };
 
-  const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      SIGNED: 'Đã ký',
-      PENDING: 'Chờ duyệt',
-      DRAFT: 'Nháp',
-      CANCELLED: 'Đã hủy',
-    };
-    return labels[status] || status;
+  useEffect(() => {
+    fetchContracts();
+    fetchStatistics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, searchTerm, filterStatus]);
+
+  const handleView = (contract: Contract) => {
+    console.log("View contract:", contract);
+    // TODO: Navigate to contract detail page or show modal
   };
+
+  const handleEdit = (contract: Contract) => {
+    console.log("Edit contract:", contract);
+    // TODO: Show edit form
+  };
+
+  const handleDelete = async (contract: Contract) => {
+    if (!confirm(`Bạn có chắc muốn xóa hợp đồng ${contract.contractNumber}?`)) {
+      return;
+    }
+
+    try {
+      await contractApi.deleteContract(contract.id);
+      if (contracts.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchContracts();
+      }
+    } catch (err) {
+      console.error("Error deleting contract:", err);
+      alert("Có lỗi xảy ra khi xóa hợp đồng");
+    }
+  };
+
+  const handleCreate = () => {
+    console.log("Create new contract");
+    // TODO: Show create form
+  };
+
+  const handleExport = () => {
+    const worksheet = XLSX.utils.json_to_sheet(
+      contracts.map((c) => ({
+        "Số HĐ": c.contractNumber,
+        "Khách hàng": `${c.customer?.firstName} ${c.customer?.lastName}`,
+        Xe: `${c.vehicle?.manufacturer?.name} ${c.vehicle?.model}`,
+        "Tổng tiền": c.totalAmount,
+        "Chiết khấu": c.discount || 0,
+        "Thành tiền": c.finalAmount,
+        "Thanh toán":
+          c.paymentType === "FULL"
+            ? "Trả thẳng"
+            : `Trả góp ${c.installmentMonths} tháng`,
+        "Trạng thái": c.status,
+        "Ngày ký": c.signedAt ? new Date(c.signedAt).toLocaleDateString() : "",
+        "Ngày tạo": new Date(c.createdAt).toLocaleDateString(),
+      }))
+    );
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Hợp đồng");
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    const data = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(data, `contracts_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Determine user role for permissions
+  const userRole = user?.role?.toUpperCase() as
+    | "DEALER_STAFF"
+    | "DEALER_MANAGER"
+    | undefined;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">Quản lý hợp đồng</h2>
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          aria-label="Tạo hợp đồng mới"
-        >
-          <Plus className="w-4 h-4" aria-hidden="true" />
-          Tạo hợp đồng mới
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600 mb-1">Tổng hợp đồng</p>
-          <p className="text-2xl font-bold text-gray-900">128</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600 mb-1">Đã ký</p>
-          <p className="text-2xl font-bold text-green-600">85</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600 mb-1">Chờ duyệt</p>
-          <p className="text-2xl font-bold text-yellow-600">28</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600 mb-1">Nháp</p>
-          <p className="text-2xl font-bold text-gray-600">15</p>
-        </div>
-      </div>
-
-      {/* Contracts List */}
-      <div className="bg-white rounded-xl shadow-md p-6">
-        <div className="space-y-4 text-black">
-          {mockContracts.map((contract) => (
-            <div
-              key={contract.id}
-              className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-white" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg">Hợp đồng #{contract.id}</h3>
-                    <p className="text-sm text-gray-600">Khách hàng: {contract.customer}</p>
-                  </div>
-                </div>
-                <div
-                  className={`flex items-center gap-2 px-3 py-1 rounded-full ${getStatusColor(
-                    contract.status
-                  )}`}
-                >
-                  {getStatusIcon(contract.status)}
-                  <span className="text-sm font-medium">{getStatusLabel(contract.status)}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Xe</p>
-                  <p className="font-semibold">{contract.vehicle}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Giá gốc</p>
-                  <p className="font-semibold">{(contract.price / 1000000).toFixed(0)}M VNĐ</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Chiết khấu</p>
-                  <p className="font-semibold text-red-600">
-                    -{(contract.discount / 1000000).toFixed(0)}M VNĐ
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Tổng thanh toán</p>
-                  <p className="font-bold text-blue-600">
-                    {(contract.finalPrice / 1000000).toFixed(0)}M VNĐ
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t">
-                <div className="flex items-center gap-4 text-sm">
-                  <span
-                    className={`px-3 py-1 rounded-full ${
-                      contract.paymentType === 'FULL'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}
-                  >
-                    {contract.paymentType === 'FULL'
-                      ? 'Trả thẳng'
-                      : `Trả góp ${contract.installmentMonths} tháng`}
-                  </span>
-                  {contract.signedAt && (
-                    <span className="text-gray-600">Ký ngày: {contract.signedAt}</span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50"
-                    aria-label={`Xem chi tiết hợp đồng ${contract.id}`}
-                  >
-                    Xem chi tiết
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                    aria-label={`Tải hợp đồng ${contract.id}`}
-                  >
-                    <Download className="w-4 h-4" aria-hidden="true" />
-                    Tải xuống
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="p-6">
+      <ContractList
+        contracts={contracts}
+        loading={loading}
+        searchTerm={searchTerm}
+        filterStatus={filterStatus}
+        onSearchChange={(value) => {
+          setSearchTerm(value);
+          setPage(1);
+        }}
+        onFilterChange={(value) => {
+          setFilterStatus(value);
+          setPage(1);
+        }}
+        onCreateClick={handleCreate}
+        onViewClick={handleView}
+        onEditClick={handleEdit}
+        onDeleteClick={handleDelete}
+        onExportClick={handleExport}
+        userRole={userRole || "DEALER_STAFF"}
+        pagination={{
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        }}
+        onPageChange={handlePageChange}
+        statistics={statistics}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
-import prisma from '../../config/database';
-import { Prisma, VehicleStatus } from '@prisma/client';
-import { CloudinaryService } from './cloudinary.service';
+import prisma from "../../config/database";
+import { Prisma, VehicleStatus } from "@prisma/client";
+import { CloudinaryService } from "./cloudinary.service";
 
 interface VehicleFilters {
   search?: string;
@@ -17,7 +17,7 @@ interface PaginationParams {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 const cloudinaryService = new CloudinaryService();
@@ -27,16 +27,20 @@ export class VehicleService {
     const page = pagination.page || 1;
     const limit = pagination.limit || 10;
     const skip = (page - 1) * limit;
-    const sortBy = pagination.sortBy || 'createdAt';
-    const sortOrder = pagination.sortOrder || 'desc';
+    const sortBy = pagination.sortBy || "createdAt";
+    const sortOrder = pagination.sortOrder || "desc";
 
     // Build where clause
     const where: Prisma.VehicleWhereInput = {
       ...(filters.search && {
         OR: [
-          { model: { contains: filters.search, mode: 'insensitive' } },
-          { variant: { contains: filters.search, mode: 'insensitive' } },
-          { manufacturer: { name: { contains: filters.search, mode: 'insensitive' } } },
+          { model: { contains: filters.search, mode: "insensitive" } },
+          { variant: { contains: filters.search, mode: "insensitive" } },
+          {
+            manufacturer: {
+              name: { contains: filters.search, mode: "insensitive" },
+            },
+          },
         ],
       }),
       ...(filters.manufacturerId && { manufacturerId: filters.manufacturerId }),
@@ -68,13 +72,23 @@ export class VehicleService {
           },
         },
         images: {
-          orderBy: { order: 'asc' },
+          orderBy: { order: "asc" },
         },
         evmInventories: {
           select: {
             quantity: true,
             reserved: true,
             available: true,
+          },
+        },
+        _count: {
+          select: {
+            evmInventories: true,
+            dealerInventories: true,
+            dealerOrders: true,
+            quotations: true,
+            contracts: true,
+            testDrives: true,
           },
         },
       },
@@ -97,7 +111,7 @@ export class VehicleService {
       include: {
         manufacturer: true,
         images: {
-          orderBy: { order: 'asc' },
+          orderBy: { order: "asc" },
         },
         evmInventories: true,
         dealerInventories: {
@@ -116,7 +130,7 @@ export class VehicleService {
     });
 
     if (!vehicle) {
-      throw new Error('Vehicle not found');
+      throw new Error("Vehicle not found");
     }
 
     return vehicle;
@@ -152,24 +166,24 @@ export class VehicleService {
     const activeContracts = await prisma.contract.count({
       where: {
         vehicleId: id,
-        status: { in: ['PENDING', 'SIGNED', 'DELIVERING'] },
+        status: { in: ["PENDING", "SIGNED", "DELIVERING"] },
       },
     });
 
     if (activeContracts > 0) {
-      throw new Error('Cannot delete vehicle with active contracts');
+      throw new Error("Cannot delete vehicle with active contracts");
     }
 
     await prisma.vehicle.delete({
       where: { id },
     });
 
-    return { message: 'Vehicle deleted successfully' };
+    return { message: "Vehicle deleted successfully" };
   }
 
   async compareVehicles(vehicleIds: string[]) {
     if (vehicleIds.length < 2 || vehicleIds.length > 4) {
-      throw new Error('Please select 2-4 vehicles to compare');
+      throw new Error("Please select 2-4 vehicles to compare");
     }
 
     const vehicles = await prisma.vehicle.findMany({
@@ -191,7 +205,7 @@ export class VehicleService {
     });
 
     if (vehicles.length !== vehicleIds.length) {
-      throw new Error('Some vehicles not found');
+      throw new Error("Some vehicles not found");
     }
 
     return vehicles;
@@ -201,7 +215,7 @@ export class VehicleService {
     const vehicles = await prisma.vehicle.findMany({
       where: {
         manufacturerId,
-        status: 'ACTIVE',
+        status: "ACTIVE",
       },
       include: {
         images: {
@@ -210,7 +224,7 @@ export class VehicleService {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 
@@ -227,7 +241,7 @@ export class VehicleService {
   }
 
   async addVehicleImages(
-    vehicleId: string, 
+    vehicleId: string,
     images: Array<{
       url: string;
       publicId: string;
@@ -242,11 +256,11 @@ export class VehicleService {
     });
 
     if (!vehicle) {
-      throw new Error('Vehicle not found');
+      throw new Error("Vehicle not found");
     }
 
     // If setting new main image, unset previous main
-    const hasNewMain = images.some(img => img.isMain);
+    const hasNewMain = images.some((img) => img.isMain);
     if (hasNewMain) {
       await prisma.vehicleImage.updateMany({
         where: { vehicleId, isMain: true },
@@ -256,7 +270,7 @@ export class VehicleService {
 
     // Create images
     await prisma.vehicleImage.createMany({
-      data: images.map(img => ({
+      data: images.map((img) => ({
         vehicleId,
         url: img.url,
         publicId: img.publicId,
@@ -276,7 +290,7 @@ export class VehicleService {
     });
 
     if (!image) {
-      throw new Error('Image not found');
+      throw new Error("Image not found");
     }
 
     // Delete from Cloudinary
@@ -284,7 +298,7 @@ export class VehicleService {
       try {
         await cloudinaryService.deleteImage(image.publicId);
       } catch (error) {
-        console.error('Failed to delete from Cloudinary:', error);
+        console.error("Failed to delete from Cloudinary:", error);
       }
     }
 
@@ -293,7 +307,7 @@ export class VehicleService {
       where: { id: imageId },
     });
 
-    return { message: 'Image deleted successfully' };
+    return { message: "Image deleted successfully" };
   }
 
   async setMainImage(vehicleId: string, imageId: string) {
@@ -312,7 +326,10 @@ export class VehicleService {
     return image;
   }
 
-  async reorderImages(_vehicleId: string, imageOrders: { imageId: string; order: number }[]) {
+  async reorderImages(
+    _vehicleId: string,
+    imageOrders: { imageId: string; order: number }[]
+  ) {
     const updatePromises = imageOrders.map(({ imageId, order }) =>
       prisma.vehicleImage.update({
         where: { id: imageId },
@@ -321,6 +338,6 @@ export class VehicleService {
     );
 
     await Promise.all(updatePromises);
-    return { message: 'Images reordered successfully' };
+    return { message: "Images reordered successfully" };
   }
 }
