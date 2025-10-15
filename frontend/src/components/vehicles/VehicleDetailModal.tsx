@@ -33,7 +33,7 @@ export default function VehicleDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl border-2 border-gray-700 max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl border-2 border-gray-700 max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-5 border-b flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
           <div className="flex items-center gap-4">

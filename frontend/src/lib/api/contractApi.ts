@@ -8,19 +8,20 @@ export interface Contract {
   staffId: string;
   quotationId?: string;
   promotionId?: string;
-  contractCode: string; // Backend uses contractCode, not contractNumber
-  basePrice: number; // Backend uses basePrice, not totalAmount
+  contractCode: string; // Backend uses contractCode
+  contractNumber: string; // Alias for contractCode (display purpose)
+  basePrice: number;
   discount: number;
-  finalPrice: number; // Backend uses finalPrice, not finalAmount
+  finalPrice: number;
   paymentType: "FULL" | "INSTALLMENT";
   installmentMonths?: number;
-  monthlyPayment?: number; // Calculated by backend
-  interestRate?: number; // Required for installment calculation
+  monthlyPayment?: number;
+  interestRate?: number;
   status:
     | "DRAFT"
     | "PENDING"
     | "SIGNED"
-    | "DELIVERING" // Missing from frontend
+    | "DELIVERING"
     | "COMPLETED"
     | "CANCELLED";
   deliveryDate?: string;
@@ -38,18 +39,43 @@ export interface Contract {
     lastName: string;
     email: string;
     phone?: string;
+    address?: string;
   };
   vehicle?: {
     id: string;
     model: string;
+    variant?: string;
+    year?: number;
+    color?: string;
+    batteryCapacity?: number;
+    range?: number;
+    motorPower?: number;
     manufacturer: {
       name: string;
     };
+  };
+  dealer?: {
+    id: string;
+    name: string;
+    address?: string;
+    phone?: string;
   };
   staff?: {
     id: string;
     firstName: string;
     lastName: string;
+    dealerId?: string;
+    dealer?: {
+      id: string;
+      name: string;
+    };
+  };
+  promotion?: {
+    id: string;
+    title: string;
+    code: string;
+    discountType: string;
+    discountValue: number;
   };
 }
 

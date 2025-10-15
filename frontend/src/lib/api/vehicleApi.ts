@@ -120,6 +120,31 @@ export const vehicleApi = {
     return axiosClient.get(`/vehicles?${params.toString()}`);
   },
 
+  // Get dealer vehicles (vehicles available in dealer inventory)
+  getDealerVehicles: async (
+    dealerId: string,
+    filters?: VehicleFilters,
+    pagination?: PaginationParams
+  ) => {
+    const params = new URLSearchParams();
+
+    if (pagination?.page) params.append("page", pagination.page.toString());
+    if (pagination?.limit) params.append("limit", pagination.limit.toString());
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.manufacturerId)
+      params.append("manufacturerId", filters.manufacturerId);
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.minPrice)
+      params.append("minPrice", filters.minPrice.toString());
+    if (filters?.maxPrice)
+      params.append("maxPrice", filters.maxPrice.toString());
+    if (filters?.year) params.append("year", filters.year.toString());
+    if (filters?.bodyType) params.append("bodyType", filters.bodyType);
+    if (filters?.color) params.append("color", filters.color);
+
+    return axiosClient.get(`/vehicles/dealer/${dealerId}?${params.toString()}`);
+  },
+
   // Get vehicle by ID
   getVehicleById: async (id: string) => {
     return axiosClient.get(`/vehicles/${id}`);
@@ -148,31 +173,6 @@ export const vehicleApi = {
   // Get vehicles by manufacturer
   getVehiclesByManufacturer: async (manufacturerId: string) => {
     return axiosClient.get(`/vehicles/manufacturer/${manufacturerId}`);
-  },
-
-  // Get dealer vehicles (only vehicles in dealer inventory)
-  getDealerVehicles: async (
-    dealerId: string,
-    filters?: VehicleFilters,
-    pagination?: PaginationParams
-  ) => {
-    const params = new URLSearchParams();
-
-    if (pagination?.page) params.append("page", pagination.page.toString());
-    if (pagination?.limit) params.append("limit", pagination.limit.toString());
-    if (filters?.search) params.append("search", filters.search);
-    if (filters?.manufacturerId)
-      params.append("manufacturerId", filters.manufacturerId);
-    if (filters?.status) params.append("status", filters.status);
-    if (filters?.minPrice)
-      params.append("minPrice", filters.minPrice.toString());
-    if (filters?.maxPrice)
-      params.append("maxPrice", filters.maxPrice.toString());
-    if (filters?.year) params.append("year", filters.year.toString());
-    if (filters?.bodyType) params.append("bodyType", filters.bodyType);
-    if (filters?.color) params.append("color", filters.color);
-
-    return axiosClient.get(`/vehicles/dealer/${dealerId}?${params.toString()}`);
   },
 
   // Compare vehicles

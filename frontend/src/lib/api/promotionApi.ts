@@ -72,6 +72,9 @@ export const promotionApi = {
     const response = await apiClient.get(
       `/promotions/dealer/${dealerId}/active`
     );
+    console.log("🎁 API Response:", response);
+    console.log("🎁 API Response data:", response.data);
+    // Backend returns {success: true, data: Array} format
     return response.data.data;
   },
 

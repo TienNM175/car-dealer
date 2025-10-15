@@ -6,8 +6,11 @@ export const formatMoney = (
 ): string => {
   if (!amount || amount === 0) return "0 VNĐ";
 
+  // Round to integer to avoid decimal issues
+  const roundedAmount = Math.round(amount);
+
   // Simple format với dấu chấm ngăn cách hàng nghìn
-  const numStr = amount.toString();
+  const numStr = roundedAmount.toString();
   const parts = [];
 
   for (let i = numStr.length; i > 0; i -= 3) {

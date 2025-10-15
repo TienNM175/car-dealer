@@ -3,7 +3,12 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/api/authApi";
 
-type UserRole = "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN" | null;
+type UserRole =
+  | "DEALER_STAFF"
+  | "DEALER_MANAGER"
+  | "EVM_STAFF"
+  | "ADMIN"
+  | null;
 
 interface User {
   id: string;
@@ -11,13 +16,12 @@ interface User {
   lastName: string;
   email: string;
   role: UserRole;
-  dealerId?: string;  // Thêm: optional vì ADMIN/EVM không có
-  dealer?: {         // Nếu backend include nested dealer
+  dealerId?: string;
+  dealer?: {
     id: string;
     name: string;
     code: string;
   };
-  // Thêm nếu cần: phone, avatar, etc. từ Prisma
 }
 
 interface AuthContextType {
