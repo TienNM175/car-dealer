@@ -15,7 +15,8 @@ import {
   Menu,
   X,
   LogOut,
-  Percent
+  Percent,
+  Package
 } from 'lucide-react';
 
 export default function DealerLayout({
@@ -39,6 +40,7 @@ export default function DealerLayout({
     { id: 'customers', icon: Users, label: 'Khách hàng', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
     { id: 'appointments', icon: Calendar, label: 'Lịch hẹn', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
     { id: 'promotions', icon: Percent, label: 'Mã khuyến mãi', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
+    { id: "inventory", icon: Package, label: "Quản lý tồn kho", role: ["DEALER_MANAGER"] },
     { id: 'reports', icon: BarChart3, label: 'Báo cáo', role: ['DEALER_MANAGER'] },
   ];
 
