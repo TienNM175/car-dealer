@@ -4,11 +4,19 @@ import React, { useEffect, useState } from "react";
 import VehicleList from "@/components/vehicles/VehicleList";
 import { Vehicle, vehicleApi } from "@/lib/api/vehicleApi";
 import ContractForm from "@/components/contracts/ContractForm";
+import { useAuth } from "@/contexts/AuthContext";
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 export default function VehiclesPage() {
+  const { user } = useAuth();
+
+  // Debug user info
+  console.log("👤 User in dealer/vehicles:", user);
+  console.log("🏢 User dealerId:", (user as any)?.dealerId);
+  console.log("🏢 User dealer:", (user as any)?.dealer);
+
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -160,6 +168,18 @@ export default function VehiclesPage() {
           }}
           onSuccess={handleContractSuccess}
           selectedVehicle={preselectedVehicle || undefined}
+          dealerId={(user as any)?.dealerId}
+          userId={(user as any)?.userId}
+          dealerInfo={{
+            name: (user as any)?.dealer?.name || "N/A",
+            address: (user as any)?.dealer?.address,
+            phone: (user as any)?.dealer?.phone,
+            email: (user as any)?.dealer?.email,
+          }}
+          staffInfo={{
+            firstName: (user as any)?.firstName || "",
+            lastName: (user as any)?.lastName || "",
+          }}
         />
       )}
     </div>

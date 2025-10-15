@@ -418,8 +418,8 @@ export default function VehicleForm({
 
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl border-2 border-gray-700 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-scrollbar">
-        <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700">
+      <div className="bg-white rounded-2xl border-2 border-gray-700 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
           <h3 className="text-xl font-bold text-white">
             {vehicle ? "Chỉnh sửa xe" : "Thêm xe mới"}
           </h3>
@@ -440,7 +440,10 @@ export default function VehicleForm({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6">
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto p-6 modal-scrollbar"
+        >
           {/* Basic Info */}
           <div className="mb-6">
             <h4 className="text-lg font-semibold text-gray-800 mb-4">

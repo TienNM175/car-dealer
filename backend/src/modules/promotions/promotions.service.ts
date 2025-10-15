@@ -1,5 +1,5 @@
-import prisma from '../../config/database';
-import { Prisma, DiscountType } from '@prisma/client';
+import prisma from "../../config/database";
+import { Prisma, DiscountType } from "@prisma/client";
 
 interface PromotionFilters {
   search?: string;
@@ -16,48 +16,58 @@ interface PaginationParams {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 export class PromotionsService {
   /**
    * Get all promotions with filters and pagination
    */
-  async getAll(filters: PromotionFilters, pagination: PaginationParams, userRole?: string, dealerId?: string) {
+  async getAll(
+    filters: PromotionFilters,
+    pagination: PaginationParams,
+    userRole?: string,
+    dealerId?: string
+  ) {
     const page = pagination.page || 1;
     const limit = Math.min(pagination.limit || 10, 100);
     const skip = (page - 1) * limit;
-    const sortBy = pagination.sortBy || 'createdAt';
-    const sortOrder = pagination.sortOrder || 'desc';
+    const sortBy = pagination.sortBy || "createdAt";
+    const sortOrder = pagination.sortOrder || "desc";
 
     const where: Prisma.DealerDiscountWhereInput = {
       ...(filters.search && {
         OR: [
-          { name: { contains: filters.search, mode: 'insensitive' } },
-          { description: { contains: filters.search, mode: 'insensitive' } },
+          { name: { contains: filters.search, mode: "insensitive" } },
+          { description: { contains: filters.search, mode: "insensitive" } },
         ],
       }),
       ...(filters.dealerId && { dealerId: filters.dealerId }),
       ...(filters.discountType && { discountType: filters.discountType }),
       ...(filters.isActive !== undefined && { isActive: filters.isActive }),
-      ...(filters.minDiscount && { discountValue: { gte: filters.minDiscount } }),
-      ...(filters.maxDiscount && { discountValue: { lte: filters.maxDiscount } }),
-      ...(filters.startDate && filters.endDate && {
-        AND: [
-          { startDate: { lte: new Date(filters.endDate) } },
-          {
-            OR: [
-              { endDate: { gte: new Date(filters.startDate) } },
-              { endDate: null },
-            ],
-          },
-        ],
+      ...(filters.minDiscount && {
+        discountValue: { gte: filters.minDiscount },
       }),
+      ...(filters.maxDiscount && {
+        discountValue: { lte: filters.maxDiscount },
+      }),
+      ...(filters.startDate &&
+        filters.endDate && {
+          AND: [
+            { startDate: { lte: new Date(filters.endDate) } },
+            {
+              OR: [
+                { endDate: { gte: new Date(filters.startDate) } },
+                { endDate: null },
+              ],
+            },
+          ],
+        }),
     };
 
     // Dealer staff can only see their dealer's promotions
-    if (userRole === 'DEALER_STAFF' || userRole === 'DEALER_MANAGER') {
-      where.dealerId = dealerId || '';
+    if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
+      where.dealerId = dealerId || "";
     }
 
     const total = await prisma.dealerDiscount.count({ where });
@@ -102,13 +112,13 @@ export class PromotionsService {
     });
 
     if (!promotion) {
-      throw new Error('Promotion not found');
+      throw new Error("Promotion not found");
     }
 
     // Check authorization
-    if (userRole === 'DEALER_STAFF' || userRole === 'DEALER_MANAGER') {
+    if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
       if (promotion.dealerId !== dealerId) {
-        throw new Error('Access denied');
+        throw new Error("Access denied");
       }
     }
 
@@ -126,7 +136,7 @@ export class PromotionsService {
 
     const promotions = await prisma.dealerDiscount.findMany({
       where,
-      orderBy: { startDate: 'desc' },
+      orderBy: { startDate: "desc" },
       include: {
         dealer: {
           select: {
@@ -152,27 +162,64 @@ export class PromotionsService {
         dealerId,
         isActive: true,
         startDate: { lte: now },
-        OR: [
-          { endDate: { gte: now } },
-          { endDate: null },
-        ],
+        OR: [{ endDate: { gte: now } }, { endDate: null }],
       },
-      orderBy: { discountValue: 'desc' },
+      orderBy: [
+        { source: "desc" }, // MANUFACTURER first
+        { discountValue: "desc" }, // Then by discount value
+      ],
     });
 
     return promotions;
   }
 
   /**
+   * Get all available promotions for a dealer (from dealer + manufacturer)
+   */
+  async getAvailablePromotionsForDealer(dealerId: string) {
+    const now = new Date();
+
+    // Get all active promotions for this dealer (both DEALER and MANUFACTURER source)
+    const allPromotions = await prisma.dealerDiscount.findMany({
+      where: {
+        dealerId,
+        isActive: true,
+        startDate: { lte: now },
+        OR: [{ endDate: { gte: now } }, { endDate: null }],
+      },
+      orderBy: [
+        { source: "desc" }, // MANUFACTURER first
+        { discountValue: "desc" }, // Then by discount value
+      ],
+    });
+
+    // Separate by source for easier filtering in frontend
+    const dealerPromotions = allPromotions.filter((p) => p.source === "DEALER");
+    const manufacturerPromotions = allPromotions.filter(
+      (p) => p.source === "MANUFACTURER"
+    );
+
+    return {
+      dealerPromotions,
+      manufacturerPromotions,
+      allPromotions,
+    };
+  }
+
+  /**
    * Create new promotion
    */
-  async create(data: Prisma.DealerDiscountCreateInput, _userRole: string, _userId?: string) {
+  async create(
+    data: Prisma.DealerDiscountCreateInput,
+    _userRole: string,
+    _userId?: string
+  ) {
     // Validate dealer exists
     const dealer = await prisma.dealer.findUnique({
       where: { id: data.dealer.connect?.id },
     });
     if (!dealer) {
-      throw new Error('Dealer not found');
+      throw new Error("Dealer not found");
     }
 
     // Validate dates
@@ -180,23 +227,23 @@ export class PromotionsService {
     const endDate = data.endDate ? new Date(data.endDate) : null;
 
     if (endDate && endDate <= startDate) {
-      throw new Error('End date must be after start date');
+      throw new Error("End date must be after start date");
     }
 
     // Validate discount value
-    if (data.discountType === 'PERCENTAGE') {
+    if (data.discountType === "PERCENTAGE") {
       if (Number(data.discountValue) < 0 || Number(data.discountValue) > 100) {
-        throw new Error('Percentage discount must be between 0 and 100');
+        throw new Error("Percentage discount must be between 0 and 100");
       }
     } else {
       if (Number(data.discountValue) < 0) {
-        throw new Error('Discount value cannot be negative');
+        throw new Error("Discount value cannot be negative");
       }
     }
 
     // Validate min purchase
     if (data.minPurchase && Number(data.minPurchase) < 0) {
-      throw new Error('Minimum purchase cannot be negative');
+      throw new Error("Minimum purchase cannot be negative");
     }
 
     // Check for overlapping promotions
@@ -205,16 +252,15 @@ export class PromotionsService {
         dealerId: dealer.id,
         isActive: true,
         name: data.name,
-        startDate: { lte: endDate || new Date('2099-12-31') },
-        OR: [
-          { endDate: { gte: startDate } },
-          { endDate: null },
-        ],
+        startDate: { lte: endDate || new Date("2099-12-31") },
+        OR: [{ endDate: { gte: startDate } }, { endDate: null }],
       },
     });
 
     if (overlapping) {
-      throw new Error('A promotion with this name already exists in the same period');
+      throw new Error(
+        "A promotion with this name already exists in the same period"
+      );
     }
 
     const promotion = await prisma.dealerDiscount.create({
@@ -233,51 +279,61 @@ export class PromotionsService {
   /**
    * Update promotion
    */
-  async update(id: string, data: Prisma.DealerDiscountUpdateInput, userRole: string, dealerId?: string) {
+  async update(
+    id: string,
+    data: Prisma.DealerDiscountUpdateInput,
+    userRole: string,
+    dealerId?: string
+  ) {
     const existing = await prisma.dealerDiscount.findUnique({
       where: { id },
     });
 
     if (!existing) {
-      throw new Error('Promotion not found');
+      throw new Error("Promotion not found");
     }
 
     // Check authorization
-    if (userRole === 'DEALER_STAFF' || userRole === 'DEALER_MANAGER') {
+    if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
       if (existing.dealerId !== dealerId) {
-        throw new Error('Access denied');
+        throw new Error("Access denied");
       }
     }
 
     // Validate dates if provided
     if (data.startDate || data.endDate) {
-      const startDate = data.startDate ? new Date(data.startDate as Date) : existing.startDate;
-      const endDate = data.endDate ? new Date(data.endDate as Date) : existing.endDate;
+      const startDate = data.startDate
+        ? new Date(data.startDate as Date)
+        : existing.startDate;
+      const endDate = data.endDate
+        ? new Date(data.endDate as Date)
+        : existing.endDate;
 
       if (endDate && endDate <= startDate) {
-        throw new Error('End date must be after start date');
+        throw new Error("End date must be after start date");
       }
     }
 
     // Validate discount value if provided
     if (data.discountValue || data.discountType) {
-      const discountType = (data.discountType as DiscountType) || existing.discountType;
+      const discountType =
+        (data.discountType as DiscountType) || existing.discountType;
       const discountValue = data.discountValue || existing.discountValue;
 
-      if (discountType === 'PERCENTAGE') {
+      if (discountType === "PERCENTAGE") {
         if (Number(discountValue) < 0 || Number(discountValue) > 100) {
-          throw new Error('Percentage discount must be between 0 and 100');
+          throw new Error("Percentage discount must be between 0 and 100");
         }
       } else {
         if (Number(discountValue) < 0) {
-          throw new Error('Discount value cannot be negative');
+          throw new Error("Discount value cannot be negative");
         }
       }
     }
 
     // Validate min purchase if provided
     if (data.minPurchase && Number(data.minPurchase) < 0) {
-      throw new Error('Minimum purchase cannot be negative');
+      throw new Error("Minimum purchase cannot be negative");
     }
 
     const promotion = await prisma.dealerDiscount.update({
@@ -300,13 +356,13 @@ export class PromotionsService {
     });
 
     if (!existing) {
-      throw new Error('Promotion not found');
+      throw new Error("Promotion not found");
     }
 
     // Check authorization
-    if (userRole === 'DEALER_STAFF' || userRole === 'DEALER_MANAGER') {
+    if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
       if (existing.dealerId !== dealerId) {
-        throw new Error('Access denied');
+        throw new Error("Access denied");
       }
     }
 
@@ -330,34 +386,40 @@ export class PromotionsService {
     });
 
     if (!promotion) {
-      throw new Error('Promotion not found');
+      throw new Error("Promotion not found");
     }
 
     // Check authorization
-    if (userRole !== 'ADMIN') {
-      if (userRole === 'DEALER_STAFF' || userRole === 'DEALER_MANAGER') {
+    if (userRole !== "ADMIN") {
+      if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
         if (promotion.dealerId !== dealerId) {
-          throw new Error('Access denied');
+          throw new Error("Access denied");
         }
       }
     }
 
     // Can only delete inactive promotions or future promotions
     if (promotion.isActive && new Date(promotion.startDate) <= new Date()) {
-      throw new Error('Cannot delete active promotion that has already started');
+      throw new Error(
+        "Cannot delete active promotion that has already started"
+      );
     }
 
     await prisma.dealerDiscount.delete({
       where: { id },
     });
 
-    return { message: 'Promotion deleted successfully' };
+    return { message: "Promotion deleted successfully" };
   }
 
   /**
    * Calculate discount amount for a purchase
    */
-  async calculateDiscount(dealerId: string, purchaseAmount: number, promotionId?: string) {
+  async calculateDiscount(
+    dealerId: string,
+    purchaseAmount: number,
+    promotionId?: string
+  ) {
     let promotion;
 
     if (promotionId) {
@@ -366,35 +428,36 @@ export class PromotionsService {
         where: { id: promotionId },
       });
 
-      if (!promotion || !promotion.isActive || promotion.dealerId !== dealerId) {
-        throw new Error('Invalid promotion');
+      if (
+        !promotion ||
+        !promotion.isActive ||
+        promotion.dealerId !== dealerId
+      ) {
+        throw new Error("Invalid promotion");
       }
     } else {
       // Find best applicable promotion
       const now = new Date();
       const applicablePromotions = await prisma.dealerDiscount.findMany({
         where: {
-            dealerId,
-            isActive: true,
-            startDate: { lte: now },
-            AND: [
+          dealerId,
+          isActive: true,
+          startDate: { lte: now },
+          AND: [
             {
-                OR: [
-                { endDate: { gte: now } },
-                { endDate: null },
-                ],
+              OR: [{ endDate: { gte: now } }, { endDate: null }],
             },
             {
-                OR: [
+              OR: [
                 { minPurchase: { lte: purchaseAmount } },
                 { minPurchase: null },
-                ],
+              ],
             },
-            ],
+          ],
         },
-        orderBy: { discountValue: 'desc' },
-        });
-        
+        orderBy: { discountValue: "desc" },
+      });
+
       if (applicablePromotions.length === 0) {
         return {
           originalAmount: purchaseAmount,
@@ -408,7 +471,7 @@ export class PromotionsService {
       let maxDiscount = 0;
       for (const promo of applicablePromotions) {
         let discount = 0;
-        if (promo.discountType === 'PERCENTAGE') {
+        if (promo.discountType === "PERCENTAGE") {
           discount = purchaseAmount * (Number(promo.discountValue) / 100);
         } else {
           discount = Number(promo.discountValue);
@@ -425,12 +488,16 @@ export class PromotionsService {
     let discountAmount = 0;
     if (promotion) {
       // Check min purchase requirement
-      if (promotion.minPurchase && purchaseAmount < Number(promotion.minPurchase)) {
+      if (
+        promotion.minPurchase &&
+        purchaseAmount < Number(promotion.minPurchase)
+      ) {
         throw new Error(`Minimum purchase amount is ${promotion.minPurchase}`);
       }
 
-      if (promotion.discountType === 'PERCENTAGE') {
-        discountAmount = purchaseAmount * (Number(promotion.discountValue) / 100);
+      if (promotion.discountType === "PERCENTAGE") {
+        discountAmount =
+          purchaseAmount * (Number(promotion.discountValue) / 100);
       } else {
         discountAmount = Number(promotion.discountValue);
       }
@@ -442,12 +509,14 @@ export class PromotionsService {
       originalAmount: purchaseAmount,
       discountAmount,
       finalAmount,
-      promotion: promotion ? {
-        id: promotion.id,
-        name: promotion.name,
-        discountType: promotion.discountType,
-        discountValue: promotion.discountValue,
-      } : null,
+      promotion: promotion
+        ? {
+            id: promotion.id,
+            name: promotion.name,
+            discountType: promotion.discountType,
+            discountValue: promotion.discountValue,
+          }
+        : null,
     };
   }
 
@@ -455,16 +524,14 @@ export class PromotionsService {
    * Get promotion statistics
    */
   async getStatistics(dealerId?: string) {
-    const where: Prisma.DealerDiscountWhereInput = dealerId
-      ? { dealerId }
-      : {};
+    const where: Prisma.DealerDiscountWhereInput = dealerId ? { dealerId } : {};
 
     const [total, active, inactive, byType, avgDiscount] = await Promise.all([
       prisma.dealerDiscount.count({ where }),
       prisma.dealerDiscount.count({ where: { ...where, isActive: true } }),
       prisma.dealerDiscount.count({ where: { ...where, isActive: false } }),
       prisma.dealerDiscount.groupBy({
-        by: ['discountType'],
+        by: ["discountType"],
         where,
         _count: true,
         _avg: { discountValue: true },
@@ -498,13 +565,16 @@ export class PromotionsService {
       total,
       active,
       inactive,
-      byType: byType.reduce((acc, item) => {
-        acc[item.discountType] = {
-          count: item._count,
-          avgValue: item._avg.discountValue,
-        };
-        return acc;
-      }, {} as Record<string, any>),
+      byType: byType.reduce(
+        (acc, item) => {
+          acc[item.discountType] = {
+            count: item._count,
+            avgValue: item._avg.discountValue,
+          };
+          return acc;
+        },
+        {} as Record<string, any>
+      ),
       avgDiscount: avgDiscount._avg.discountValue,
       expiringSoon,
     };

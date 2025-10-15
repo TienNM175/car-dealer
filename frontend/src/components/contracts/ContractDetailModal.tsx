@@ -31,7 +31,7 @@ interface ContractDetailModalProps {
   contract: Contract | null;
   onStatusChange?: (contractId: string, newStatus: Contract["status"]) => void;
   onEditClick?: (contract: Contract) => void;
-  userRole?: "DEALER_STAFF" | "DEALER_MANAGER";
+  userRole?: "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN";
 }
 
 const statusConfig = {
@@ -123,208 +123,297 @@ export default function ContractDetailModal({
   const canChangeStatus = availableTransitions.length > 0 && !loading;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl border-2 border-gray-700 shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto modal-scrollbar">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-600 to-blue-700">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <FileText className="w-7 h-7 text-white" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50">
+      <div className="bg-white shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col border border-gray-300">
+        {/* Contract Header - Giống letterhead */}
+        <div className="bg-white border-b-2 border-gray-800 p-4 relative">
+          {/* Close button - góc phải */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            title="Đóng"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
+
+          <div className="text-center pr-10">
+            <h1 className="text-2xl font-bold text-gray-800 mb-3">
+              HỢP ĐỒNG MUA BÁN XE ĐIỆN
+            </h1>
+            <div className="flex justify-center items-center gap-8 text-sm text-gray-600">
+              <div>
+                <p className="font-medium">Số hợp đồng:</p>
+                <p className="text-blue-600 font-bold">
+                  {contract.contractNumber}
+                </p>
+              </div>
+              <div>
+                <p className="font-medium">Ngày tạo:</p>
+                <p className="text-black">
+                  {new Date(contract.createdAt).toLocaleDateString("vi-VN")}
+                </p>
+              </div>
+              <div>
+                <p className="font-medium">Trạng thái:</p>
+                <div
+                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${currentStatusConfig?.color}`}
+                >
+                  {React.createElement(currentStatusConfig?.icon || Clock, {
+                    className: "w-3 h-3",
+                  })}
+                  {currentStatusConfig?.label}
+                </div>
+              </div>
             </div>
-            <div className="text-white">
-              <h2 className="text-xl font-bold">Chi tiết hợp đồng</h2>
-              <p className="text-blue-100">#{contract.contractCode}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* Status Badge */}
-            <div
-              className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 border-white/30 ${currentStatusConfig?.color
-                .replace("text-", "text-white bg-white/20")
-                .replace("bg-", "")}`}
-            >
-              {React.createElement(currentStatusConfig?.icon || Clock, {
-                className: "w-5 h-5 text-white",
-              })}
-              <span className="text-white font-medium">
-                {currentStatusConfig?.label}
-              </span>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 text-white hover:bg-white/20 rounded-full transition-all duration-200"
-            >
-              <X className="w-6 h-6" />
-            </button>
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Status Description */}
-          <div
-            className={`${currentStatusConfig?.color} p-4 rounded-lg border`}
-          >
-            <div className="flex items-center gap-3">
-              {React.createElement(currentStatusConfig?.icon || Clock, {
-                className: "w-5 h-5",
-              })}
-              <div>
-                <p className="font-medium">{currentStatusConfig?.label}</p>
-                <p className="text-sm opacity-80">
-                  {currentStatusConfig?.description}
-                </p>
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 modal-scrollbar">
+          {/* Section 1: Thông tin các bên */}
+          <div className="bg-gray-50 p-6 rounded-lg">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <User className="w-5 h-5" />
+              THÔNG TIN CÁC BÊN
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Bên mua (Khách hàng) */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-800 border-b border-gray-300 pb-2">
+                  Bên mua (Khách hàng)
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-600">Họ và tên:</p>
+                    <p className="font-medium text-black">
+                      {contract.customer?.firstName}{" "}
+                      {contract.customer?.lastName}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Email:</p>
+                    <p className="font-medium text-black">
+                      {contract.customer?.email}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Số điện thoại:</p>
+                    <p className="font-medium text-black">
+                      {contract.customer?.phone}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Địa chỉ:</p>
+                    <p className="font-medium text-black">
+                      {contract.customer?.address}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bên bán (Đại lý) */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-800 border-b border-gray-300 pb-2">
+                  Bên bán (Đại lý)
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-600">Tên đại lý:</p>
+                    <p className="font-medium text-black">
+                      {contract.dealer?.name || "Đại lý EVM"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Địa chỉ:</p>
+                    <p className="font-medium text-black">
+                      {contract.dealer?.address || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Số điện thoại:</p>
+                    <p className="font-medium text-black">
+                      {contract.dealer?.phone || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">
+                      Nhân viên phụ trách:
+                    </p>
+                    <p className="font-medium text-black">
+                      {contract.staff?.firstName} {contract.staff?.lastName}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Main Info Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Customer Info */}
-            <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <User className="w-5 h-5 text-blue-600" />
-                Thông tin khách hàng
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-600">Họ tên</p>
-                  <p className="font-medium text-gray-900">
-                    {contract.customer?.firstName} {contract.customer?.lastName}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Email</p>
-                  <p className="font-medium text-gray-900 flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-gray-500" />
-                    {contract.customer?.email}
-                  </p>
-                </div>
-                {contract.customer?.phone && (
+          {/* Section 2: Đối tượng hợp đồng */}
+          <div className="bg-gray-50 p-6 rounded-lg">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Car className="w-5 h-5" />
+              ĐỐI TƯỢNG HỢP ĐỒNG
+            </h2>
+
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
                   <div>
-                    <p className="text-sm text-gray-600">Điện thoại</p>
-                    <p className="font-medium text-gray-900 flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-gray-500" />
-                      {contract.customer.phone}
+                    <p className="text-sm text-gray-600">Hãng xe:</p>
+                    <p className="font-medium text-black">
+                      {contract.vehicle?.manufacturer?.name}
                     </p>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Vehicle Info */}
-            <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <Car className="w-5 h-5 text-green-600" />
-                Thông tin xe
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-600">Xe</p>
-                  <p className="font-medium text-gray-900">
-                    {contract.vehicle?.manufacturer?.name}{" "}
-                    {contract.vehicle?.model}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-600">Năm</p>
-                    <p className="font-medium">N/A</p>
+                    <p className="text-sm text-gray-600">Model:</p>
+                    <p className="font-medium text-black">
+                      {contract.vehicle?.model}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Màu sắc</p>
-                    <p className="font-medium">N/A</p>
+                    <p className="text-sm text-gray-600">Phiên bản:</p>
+                    <p className="font-medium text-black">
+                      {contract.vehicle?.variant || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Năm sản xuất:</p>
+                    <p className="font-medium text-black">
+                      {contract.vehicle?.year}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-600">Màu sắc:</p>
+                    <p className="font-medium text-black">
+                      {contract.vehicle?.color}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Dung lượng pin:</p>
+                    <p className="font-medium text-black">
+                      {contract.vehicle?.batteryCapacity} kWh
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Tầm hoạt động:</p>
+                    <p className="font-medium text-black">
+                      {contract.vehicle?.range} km
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Công suất:</p>
+                    <p className="font-medium text-black">
+                      {contract.vehicle?.motorPower || "N/A"} kW
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Payment Info */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-green-600" />
-              Chi tiết thanh toán
-            </h3>
+          {/* Section 3: Giá cả và thanh toán */}
+          <div className="bg-gray-50 p-6 rounded-lg">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              GIÁ CẢ VÀ THANH TOÁN
+            </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-600">Giá gốc</p>
-                  <p className="text-xl font-semibold text-gray-900">
-                    {formatMoney(contract.basePrice)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Chiết khấu</p>
-                  <p className="text-lg font-semibold text-red-600">
-                    -{formatMoney(contract.discount || 0)}
-                  </p>
-                </div>
-                <div className="border-t pt-4">
-                  <p className="text-sm text-gray-600">Thành tiền</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {formatMoney(contract.finalPrice)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-600">Hình thức</p>
-                  <span
-                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
-                      paymentTypeConfig[contract.paymentType]?.color
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    {contract.paymentType === "INSTALLMENT" &&
-                    contract.installmentMonths
-                      ? `Trả góp ${contract.installmentMonths} tháng`
-                      : paymentTypeConfig[contract.paymentType]?.label}
-                  </span>
-                </div>
-
-                {contract.paymentType === "INSTALLMENT" && (
-                  <>
-                    <div>
-                      <p className="text-sm text-gray-600">Trả trước</p>
-                      <p className="font-semibold">{formatMoney(0)}</p>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Giá cả */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-800 border-b border-gray-300 pb-2">
+                    Chi tiết giá cả
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Giá niêm yết:</span>
+                      <span className="font-medium text-black">
+                        {formatMoney(contract.basePrice)}
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Hàng tháng</p>
-                      <p className="text-lg font-bold text-blue-600">
-                        {formatMoney(contract.monthlyPayment || 0)}
-                      </p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">
+                        Chiết khấu/Khuyến mãi:
+                      </span>
+                      <span className="font-medium text-red-600">
+                        -{formatMoney(contract.discount || 0)}
+                      </span>
                     </div>
-                  </>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-600">Ngày tạo</p>
-                  <p className="font-medium">
-                    {new Date(contract.createdAt).toLocaleDateString("vi-VN")}
-                  </p>
+                    <div className="flex justify-between items-center border-t border-gray-200 pt-3">
+                      <span className="font-semibold text-gray-800">
+                        TỔNG CỘNG PHẢI TRẢ:
+                      </span>
+                      <span className="font-bold text-lg text-green-600">
+                        {formatMoney(contract.finalPrice)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                {contract.signedAt && (
-                  <div>
-                    <p className="text-sm text-gray-600">Ngày ký</p>
-                    <p className="font-medium text-green-600">
-                      {new Date(contract.signedAt).toLocaleDateString("vi-VN")}
-                    </p>
+
+                {/* Hình thức thanh toán */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-800 border-b border-gray-300 pb-2">
+                    Hình thức thanh toán
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-gray-600">Phương thức:</span>
+                      <span
+                        className={`ml-2 inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium ${
+                          paymentTypeConfig[contract.paymentType]?.color
+                        }`}
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        {contract.paymentType === "INSTALLMENT" &&
+                        contract.installmentMonths
+                          ? `Trả góp ${contract.installmentMonths} tháng`
+                          : paymentTypeConfig[contract.paymentType]?.label}
+                      </span>
+                    </div>
+
+                    {contract.paymentType === "INSTALLMENT" && (
+                      <>
+                        <div>
+                          <span className="text-gray-600">Lãi suất:</span>
+                          <span className="ml-2 font-medium text-black">
+                            {contract.interestRate}% / năm
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Trả hàng tháng:</span>
+                          <span className="ml-2 font-bold text-blue-600">
+                            {formatMoney(contract.monthlyPayment || 0)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <span className="text-gray-600">
+                        Ngày giao xe dự kiến:
+                      </span>
+                      <span className="ml-2 font-medium text-black">
+                        {contract.deliveryDate
+                          ? new Date(contract.deliveryDate).toLocaleDateString(
+                              "vi-VN"
+                            )
+                          : "Chưa xác định"}
+                      </span>
+                    </div>
+
+                    {contract.promotion && (
+                      <div>
+                        <span className="text-gray-600">Mã khuyến mãi:</span>
+                        <span className="ml-2 font-medium text-green-600">
+                          {contract.promotion.title}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-                {contract.completedAt && (
-                  <div>
-                    <p className="text-sm text-gray-600">Ngày hoàn tất</p>
-                    <p className="font-medium text-green-600">
-                      {new Date(contract.completedAt).toLocaleDateString(
-                        "vi-VN"
-                      )}
-                    </p>
-                  </div>
-                )}
+                </div>
               </div>
             </div>
           </div>

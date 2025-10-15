@@ -1,14 +1,14 @@
-import { Router } from 'express';
-import { ContractController } from './contract.controller';
-import { AuthMiddleware } from '../../middlewares/auth.middleware';
-import { RoleMiddleware } from '../../middlewares/role.middleware';
-import { ValidationMiddleware } from '../../middlewares/validation.middleware';
+import { Router } from "express";
+import { ContractController } from "./contract.controller";
+import { AuthMiddleware } from "../../middlewares/auth.middleware";
+import { RoleMiddleware } from "../../middlewares/role.middleware";
+import { ValidationMiddleware } from "../../middlewares/validation.middleware";
 import {
   createContractValidation,
   updateContractValidation,
   updateContractStatusValidation,
   contractIdValidation,
-} from './contract.validation';
+} from "./contract.validation";
 
 const router = Router();
 const contractController = new ContractController();
@@ -23,7 +23,7 @@ const contractController = new ContractController();
  * @access  Private - Dealer Staff and above
  */
 router.get(
-  '/',
+  "/",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   contractController.getAllContracts
@@ -35,7 +35,7 @@ router.get(
  * @access  Private - Dealer Manager and above
  */
 router.get(
-  '/by-status',
+  "/by-status",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   contractController.getContractsByStatus
@@ -47,7 +47,7 @@ router.get(
  * @access  Private - Dealer Manager and above
  */
 router.get(
-  '/statistics',
+  "/statistics",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   contractController.getStatistics
@@ -59,7 +59,7 @@ router.get(
  * @access  Private - Dealer Staff and above
  */
 router.get(
-  '/:id',
+  "/:id",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   contractIdValidation,
@@ -73,7 +73,7 @@ router.get(
  * @access  Private - Dealer Staff and above
  */
 router.post(
-  '/',
+  "/",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   createContractValidation,
@@ -87,7 +87,7 @@ router.post(
  * @access  Private - Dealer Staff and above
  */
 router.put(
-  '/:id',
+  "/:id",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   updateContractValidation,
@@ -101,7 +101,7 @@ router.put(
  * @access  Private - Dealer Staff and above
  */
 router.patch(
-  '/:id/status',
+  "/:id/status",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   updateContractStatusValidation,
@@ -115,7 +115,7 @@ router.patch(
  * @access  Private - Dealer Manager and above
  */
 router.delete(
-  '/:id',
+  "/:id",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   contractIdValidation,

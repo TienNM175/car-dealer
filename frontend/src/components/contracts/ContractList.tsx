@@ -30,7 +30,7 @@ interface ContractListProps {
   onEditClick: (contract: Contract) => void;
   onDeleteClick: (contract: Contract) => void;
   onExportClick: () => void;
-  userRole?: "DEALER_STAFF" | "DEALER_MANAGER";
+  userRole?: "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN";
   pagination: {
     page: number;
     limit: number;
@@ -120,41 +120,44 @@ export default function ContractList({
             <Download className="w-4 h-4" />
             Xuất dữ liệu
           </button>
-          <button
-            onClick={onCreateClick}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Tạo hợp đồng mới
-          </button>
+          {/* Only show Create button for Dealer Staff/Manager and Admin (NOT EVM_STAFF) */}
+          {userRole !== "EVM_STAFF" && (
+            <button
+              onClick={onCreateClick}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Tạo hợp đồng mới
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Stats Cards */}
-      {statistics && (
+      {/* Stats Cards - Only for DEALER_MANAGER, EVM_STAFF, ADMIN */}
+      {statistics && userRole !== "DEALER_STAFF" && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-sm text-gray-600 mb-1">Tổng hợp đồng</p>
             <p className="text-2xl font-bold text-gray-900">
-              {statistics.total}
+              {statistics.total || 0}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-sm text-gray-600 mb-1">Đã ký</p>
             <p className="text-2xl font-bold text-green-600">
-              {statistics.byStatus.SIGNED}
+              {statistics.byStatus?.SIGNED || 0}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-sm text-gray-600 mb-1">Chờ duyệt</p>
             <p className="text-2xl font-bold text-yellow-600">
-              {statistics.byStatus.PENDING}
+              {statistics.byStatus?.PENDING || 0}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-sm text-gray-600 mb-1">Nháp</p>
             <p className="text-2xl font-bold text-gray-600">
-              {statistics.byStatus.DRAFT}
+              {statistics.byStatus?.DRAFT || 0}
             </p>
           </div>
         </div>
@@ -206,7 +209,7 @@ export default function ContractList({
             {contracts.map((contract) => (
               <div
                 key={contract.id}
-                className="bg-white border-2 border-gray-700 rounded-xl p-6 hover:shadow-lg transition-all duration-200"
+                className="bg-white rounded-xl p-6 hover:shadow-lg transition-all duration-200 shadow-md"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
@@ -301,28 +304,34 @@ export default function ContractList({
                     >
                       Xem chi tiết
                     </button>
-                    {/* Chỉ được edit DRAFT và PENDING */}
+                    {/* Edit permissions: DEALER_STAFF and above (DRAFT/PENDING only) */}
                     {(contract.status === "DRAFT" ||
-                      contract.status === "PENDING") && (
-                      <button
-                        onClick={() => onEditClick(contract)}
-                        className="px-4 py-2 text-green-600 border border-green-600 rounded-lg hover:bg-green-50"
-                        title="Chỉnh sửa"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                    )}
-                    {/* Chỉ DEALER_MANAGER được xóa DRAFT */}
-                    {userRole === "DEALER_MANAGER" &&
-                      contract.status === "DRAFT" && (
+                      contract.status === "PENDING") &&
+                      (userRole === "DEALER_STAFF" ||
+                        userRole === "DEALER_MANAGER" ||
+                        userRole === "EVM_STAFF" ||
+                        userRole === "ADMIN") && (
                         <button
-                          onClick={() => onDeleteClick(contract)}
-                          className="px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50"
-                          title="Xóa"
+                          onClick={() => onEditClick(contract)}
+                          className="px-4 py-2 text-green-600 border border-green-600 rounded-lg hover:bg-green-50"
+                          title="Chỉnh sửa"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Edit className="w-4 h-4" />
                         </button>
                       )}
+                    {/* Delete permissions: DEALER_MANAGER (DRAFT only), EVM_STAFF/ADMIN (all) */}
+                    {((userRole === "DEALER_MANAGER" &&
+                      contract.status === "DRAFT") ||
+                      userRole === "EVM_STAFF" ||
+                      userRole === "ADMIN") && (
+                      <button
+                        onClick={() => onDeleteClick(contract)}
+                        className="px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50"
+                        title="Xóa"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
                       title="Tải xuống"

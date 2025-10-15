@@ -1,13 +1,13 @@
-import { Router } from 'express';
-import { PromotionsController } from './promotions.controller';
-import { AuthMiddleware } from '../../middlewares/auth.middleware';
-import { RoleMiddleware } from '../../middlewares/role.middleware';
-import { ValidationMiddleware } from '../../middlewares/validation.middleware';
-import { 
-  createPromotionValidation, 
+import { Router } from "express";
+import { PromotionsController } from "./promotions.controller";
+import { AuthMiddleware } from "../../middlewares/auth.middleware";
+import { RoleMiddleware } from "../../middlewares/role.middleware";
+import { ValidationMiddleware } from "../../middlewares/validation.middleware";
+import {
+  createPromotionValidation,
   updatePromotionValidation,
-  calculateDiscountValidation 
-} from './promotions.validation';
+  calculateDiscountValidation,
+} from "./promotions.validation";
 
 const router = Router();
 const promotionsController = new PromotionsController();
@@ -19,7 +19,7 @@ const promotionsController = new PromotionsController();
  * @query   search, dealerId, discountType, isActive, startDate, endDate, minDiscount, maxDiscount, page, limit, sortBy, sortOrder
  */
 router.get(
-  '/',
+  "/",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   promotionsController.getAll
@@ -31,7 +31,7 @@ router.get(
  * @access  Private - Dealer Manager and above
  */
 router.get(
-  '/statistics',
+  "/statistics",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   promotionsController.getStatistics
@@ -43,7 +43,7 @@ router.get(
  * @access  Private - Admin/EVM Staff
  */
 router.post(
-  '/auto-expire',
+  "/auto-expire",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   promotionsController.autoExpire
@@ -55,7 +55,7 @@ router.post(
  * @access  Private - Dealer Staff and above
  */
 router.post(
-  '/calculate',
+  "/calculate",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   calculateDiscountValidation,
@@ -70,7 +70,7 @@ router.post(
  * @query   includeInactive (boolean)
  */
 router.get(
-  '/dealer/:dealerId',
+  "/dealer/:dealerId",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   promotionsController.getByDealerId
@@ -82,10 +82,22 @@ router.get(
  * @access  Private - Dealer Staff and above
  */
 router.get(
-  '/dealer/:dealerId/active',
+  "/dealer/:dealerId/active",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   promotionsController.getActivePromotions
+);
+
+/**
+ * @route   GET /api/v1/promotions/dealer/:dealerId/available
+ * @desc    Get all available promotions for a dealer (dealer + manufacturer)
+ * @access  Private - Dealer Staff and above
+ */
+router.get(
+  "/dealer/:dealerId/available",
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireDealerStaff,
+  promotionsController.getAvailablePromotions
 );
 
 /**
@@ -94,7 +106,7 @@ router.get(
  * @access  Private - Dealer Staff and above
  */
 router.get(
-  '/:id',
+  "/:id",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   promotionsController.getById
@@ -106,7 +118,7 @@ router.get(
  * @access  Private - Dealer Manager and above
  */
 router.post(
-  '/',
+  "/",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   createPromotionValidation,
@@ -120,7 +132,7 @@ router.post(
  * @access  Private - Dealer Manager and above
  */
 router.put(
-  '/:id',
+  "/:id",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   updatePromotionValidation,
@@ -134,7 +146,7 @@ router.put(
  * @access  Private - Dealer Manager and above
  */
 router.patch(
-  '/:id/toggle',
+  "/:id/toggle",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   promotionsController.toggleStatus
@@ -146,7 +158,7 @@ router.patch(
  * @access  Private - Dealer Manager and above
  */
 router.delete(
-  '/:id',
+  "/:id",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   promotionsController.delete

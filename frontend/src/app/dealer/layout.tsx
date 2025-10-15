@@ -1,22 +1,22 @@
-'use client'
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import RouteGuard from '@/components/auth/RouteGuard';
-import { 
-  Car, 
-  Users, 
-  ShoppingCart, 
-  FileText, 
-  Calendar, 
-  BarChart3, 
+"use client";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import RouteGuard from "@/components/auth/RouteGuard";
+import {
+  Car,
+  Users,
+  ShoppingCart,
+  FileText,
+  Calendar,
+  BarChart3,
   TrendingUp,
   Menu,
   X,
   LogOut,
-  Percent
-} from 'lucide-react';
+  Percent,
+} from "lucide-react";
 
 export default function DealerLayout({
   children,
@@ -24,36 +24,82 @@ export default function DealerLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeMenu, setActiveMenu] = useState('dashboard');
+  const [activeMenu, setActiveMenu] = useState("dashboard");
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  
+
   // role normalize về UPPERCASE
-  const userRole = user?.role?.toUpperCase() || 'DEALER_STAFF';
+  const userRole = user?.role?.toUpperCase() || "DEALER_STAFF";
 
   const dealerMenuItems = [
-    { id: 'dashboard', icon: TrendingUp, label: 'Tổng quan', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
-    { id: 'vehicles', icon: Car, label: 'Danh mục xe', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
-    { id: 'orders', icon: ShoppingCart, label: 'Đơn hàng', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
-    { id: 'contracts', icon: FileText, label: 'Hợp đồng', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
-    { id: 'customers', icon: Users, label: 'Khách hàng', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
-    { id: 'appointments', icon: Calendar, label: 'Lịch hẹn', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
-    { id: 'promotions', icon: Percent, label: 'Mã khuyến mãi', role: ['DEALER_STAFF', 'DEALER_MANAGER'] },
-    { id: 'reports', icon: BarChart3, label: 'Báo cáo', role: ['DEALER_MANAGER'] },
+    {
+      id: "dashboard",
+      icon: TrendingUp,
+      label: "Tổng quan",
+      role: ["DEALER_STAFF", "DEALER_MANAGER"],
+    },
+    {
+      id: "vehicles",
+      icon: Car,
+      label: "Danh mục xe",
+      role: ["DEALER_STAFF", "DEALER_MANAGER"],
+    },
+    {
+      id: "orders",
+      icon: ShoppingCart,
+      label: "Đơn hàng",
+      role: ["DEALER_STAFF", "DEALER_MANAGER"],
+    },
+    {
+      id: "contracts",
+      icon: FileText,
+      label: "Hợp đồng",
+      role: ["DEALER_STAFF", "DEALER_MANAGER"],
+    },
+    {
+      id: "customers",
+      icon: Users,
+      label: "Khách hàng",
+      role: ["DEALER_STAFF", "DEALER_MANAGER"],
+    },
+    {
+      id: "appointments",
+      icon: Calendar,
+      label: "Lịch hẹn",
+      role: ["DEALER_STAFF", "DEALER_MANAGER"],
+    },
+    {
+      id: "promotions",
+      icon: Percent,
+      label: "Mã khuyến mãi",
+      role: ["DEALER_STAFF", "DEALER_MANAGER"],
+    },
+    {
+      id: "reports",
+      icon: BarChart3,
+      label: "Báo cáo",
+      role: ["DEALER_MANAGER"],
+    },
   ];
 
-  const filteredMenuItems = dealerMenuItems.filter(item => item.role.includes(userRole));
+  const filteredMenuItems = dealerMenuItems.filter((item) =>
+    item.role.includes(userRole)
+  );
 
   useEffect(() => {
-    const currentPath = pathname.split('/').pop() || 'dashboard';
+    const currentPath = pathname.split("/").pop() || "dashboard";
     setActiveMenu(currentPath);
   }, [pathname]);
 
   return (
-    <RouteGuard allowedRoles={['DEALER_STAFF', 'DEALER_MANAGER']}>
+    <RouteGuard allowedRoles={["DEALER_STAFF", "DEALER_MANAGER", "ADMIN"]}>
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar */}
-        <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white shadow-lg transition-all duration-300 flex flex-col`}>
+        <div
+          className={`${
+            sidebarOpen ? "w-64" : "w-20"
+          } bg-white shadow-lg transition-all duration-300 flex flex-col`}
+        >
           <div className="p-6 border-b flex items-center justify-between">
             {sidebarOpen && (
               <div className="flex items-center space-x-3">
@@ -67,7 +113,11 @@ export default function DealerLayout({
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 hover:bg-gray-100 rounded-lg"
             >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {sidebarOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
             </button>
           </div>
 
@@ -79,12 +129,14 @@ export default function DealerLayout({
                 onClick={() => setActiveMenu(item.id)}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition duration-200 ${
                   activeMenu === item.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 <item.icon className="w-5 h-5" />
-                {sidebarOpen && <span className="font-medium">{item.label}</span>}
+                {sidebarOpen && (
+                  <span className="font-medium">{item.label}</span>
+                )}
               </Link>
             ))}
           </nav>
@@ -110,9 +162,7 @@ export default function DealerLayout({
 
         {/* Main Content */}
         <div className="flex-1 overflow-auto">
-          <div className="p-8">
-            {children}
-          </div>
+          <div className="p-8">{children}</div>
         </div>
       </div>
     </RouteGuard>
