@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import ContractList from "@/components/contracts/ContractList";
+import ContractForm from "@/components/contracts/ContractForm";
+import ContractDetailModal from "@/components/contracts/ContractDetailModal";
 import {
   Contract,
   contractApi,
@@ -22,6 +24,12 @@ export default function ContractsPage() {
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
   const [statistics, setStatistics] = useState<any>(null);
+
+  // Modal states
+  const [showForm, setShowForm] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [viewingContract, setViewingContract] = useState<Contract | null>(null);
 
   const fetchContracts = async () => {
     try {
@@ -66,17 +74,17 @@ export default function ContractsPage() {
   }, [page, searchTerm, filterStatus]);
 
   const handleView = (contract: Contract) => {
-    console.log("View contract:", contract);
-    // TODO: Navigate to contract detail page or show modal
+    setViewingContract(contract);
+    setShowDetailModal(true);
   };
 
   const handleEdit = (contract: Contract) => {
-    console.log("Edit contract:", contract);
-    // TODO: Show edit form
+    setEditingContract(contract);
+    setShowForm(true);
   };
 
   const handleDelete = async (contract: Contract) => {
-    if (!confirm(`Bạn có chắc muốn xóa hợp đồng ${contract.contractNumber}?`)) {
+    if (!confirm(`Bạn có chắc muốn xóa hợp đồng ${contract.contractCode}?`)) {
       return;
     }
 
@@ -94,23 +102,54 @@ export default function ContractsPage() {
   };
 
   const handleCreate = () => {
-    console.log("Create new contract");
-    // TODO: Show create form
+    setEditingContract(null);
+    setShowForm(true);
+  };
+
+  const handleSave = async (
+    data: CreateContractInput | UpdateContractInput
+  ) => {
+    try {
+      if (editingContract) {
+        await contractApi.updateContract(editingContract.id, data);
+      } else {
+        await contractApi.createContract(data as CreateContractInput);
+      }
+      setShowForm(false);
+      setEditingContract(null);
+      fetchContracts();
+      fetchStatistics();
+    } catch (err) {
+      console.error("Error saving contract:", err);
+    }
+  };
+
+  const handleStatusChange = async (
+    contractId: string,
+    newStatus: Contract["status"]
+  ) => {
+    try {
+      await contractApi.updateContractStatus(contractId, { status: newStatus });
+      fetchContracts();
+      fetchStatistics();
+    } catch (err) {
+      console.error("Error updating contract status:", err);
+    }
   };
 
   const handleExport = () => {
     const worksheet = XLSX.utils.json_to_sheet(
       contracts.map((c) => ({
-        "Số HĐ": c.contractNumber,
+        "Số HĐ": c.contractCode, // Updated field name
         "Khách hàng": `${c.customer?.firstName} ${c.customer?.lastName}`,
         Xe: `${c.vehicle?.manufacturer?.name} ${c.vehicle?.model}`,
-        "Tổng tiền": c.totalAmount,
+        "Giá gốc": c.basePrice, // Updated field name
         "Chiết khấu": c.discount || 0,
-        "Thành tiền": c.finalAmount,
+        "Thành tiền": c.finalPrice, // Updated field name
         "Thanh toán":
           c.paymentType === "FULL"
             ? "Trả thẳng"
-            : `Trả góp ${c.installmentMonths} tháng`,
+            : `Trả góp ${c.installmentMonths} tháng (${c.interestRate}%/năm)`,
         "Trạng thái": c.status,
         "Ngày ký": c.signedAt ? new Date(c.signedAt).toLocaleDateString() : "",
         "Ngày tạo": new Date(c.createdAt).toLocaleDateString(),
@@ -168,6 +207,36 @@ export default function ContractsPage() {
         onPageChange={handlePageChange}
         statistics={statistics}
       />
+
+      {/* Contract Form Modal */}
+      {showForm && (
+        <ContractForm
+          isOpen={showForm}
+          onClose={() => {
+            setShowForm(false);
+            setEditingContract(null);
+          }}
+          onSuccess={handleSave}
+          contract={editingContract}
+          dealerId={(user as any)?.dealerId}
+          userId={(user as any)?.userId} // Pass userId as staffId
+        />
+      )}
+
+      {/* Contract Detail Modal */}
+      {showDetailModal && (
+        <ContractDetailModal
+          isOpen={showDetailModal}
+          onClose={() => {
+            setShowDetailModal(false);
+            setViewingContract(null);
+          }}
+          contract={viewingContract}
+          onStatusChange={handleStatusChange}
+          onEditClick={handleEdit}
+          userRole={userRole || "DEALER_STAFF"}
+        />
+      )}
     </div>
   );
 }

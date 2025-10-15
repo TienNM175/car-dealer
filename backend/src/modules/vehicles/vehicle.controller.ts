@@ -40,6 +40,44 @@ export class VehicleController {
     }
   }
 
+  async getDealerVehicles(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { dealerId } = req.params;
+      const filters = {
+        search: req.query.search as string,
+        manufacturerId: req.query.manufacturerId as string,
+        status: req.query.status as any,
+        minPrice: req.query.minPrice ? Number(req.query.minPrice) : undefined,
+        maxPrice: req.query.maxPrice ? Number(req.query.maxPrice) : undefined,
+        year: req.query.year ? Number(req.query.year) : undefined,
+        bodyType: req.query.bodyType as string,
+        color: req.query.color as string,
+      };
+
+      const pagination = {
+        page: req.query.page ? Number(req.query.page) : 1,
+        limit: req.query.limit ? Number(req.query.limit) : 10,
+        sortBy: req.query.sortBy as string,
+        sortOrder: req.query.sortOrder as "asc" | "desc",
+      };
+
+      const result = await vehicleService.getDealerVehicles(
+        dealerId,
+        filters,
+        pagination
+      );
+      return ResponseUtil.success(
+        res,
+        result.data,
+        "Dealer vehicles retrieved successfully",
+        200,
+        result.meta
+      );
+    } catch (error: any) {
+      return next(error);
+    }
+  }
+
   async getVehicleById(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
@@ -122,6 +160,19 @@ export class VehicleController {
       const vehicles =
         await vehicleService.getVehiclesByManufacturer(manufacturerId);
       return ResponseUtil.success(res, vehicles);
+    } catch (error: any) {
+      return next(error);
+    }
+  }
+
+  async getAllManufacturers(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const manufacturers = await vehicleService.getAllManufacturers();
+      return ResponseUtil.success(
+        res,
+        manufacturers,
+        "Manufacturers retrieved successfully"
+      );
     } catch (error: any) {
       return next(error);
     }

@@ -178,4 +178,23 @@ export class ContractController {
       return next(error);
     }
   }
+
+  /**
+   * Get contract statistics
+   */
+  async getStatistics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const filters = {
+        dealerId: req.query.dealerId as string,
+        staffId: req.query.staffId as string,
+        fromDate: req.query.fromDate ? new Date(req.query.fromDate as string) : undefined,
+        toDate: req.query.toDate ? new Date(req.query.toDate as string) : undefined,
+      };
+
+      const statistics = await contractService.getContractStatistics(filters);
+      return ResponseUtil.success(res, statistics, 'Contract statistics retrieved successfully');
+    } catch (error: any) {
+      return next(error);
+    }
+  }
 }

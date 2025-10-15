@@ -1,5 +1,5 @@
-import prisma from '../../config/database';
-import { Prisma, ContractStatus, PaymentType } from '@prisma/client';
+import prisma from "../../config/database";
+import { Prisma, ContractStatus, PaymentType } from "@prisma/client";
 
 interface ContractFilters {
   search?: string;
@@ -16,13 +16,15 @@ interface PaginationParams {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 interface CreateContractInput {
   customerId: string;
   staffId: string;
   vehicleId: string;
+  quotationId?: string;
+  promotionId?: string;
   basePrice: number;
   discount?: number;
   paymentType: PaymentType;
@@ -33,6 +35,8 @@ interface CreateContractInput {
 }
 
 interface UpdateContractInput {
+  quotationId?: string;
+  promotionId?: string;
   basePrice?: number;
   discount?: number;
   paymentType?: PaymentType;
@@ -54,23 +58,25 @@ export class ContractService {
     interestRate?: number
   ) {
     const finalPrice = basePrice - discount;
-    
+
     let monthlyPayment = null;
-    
-    if (paymentType === 'INSTALLMENT' && installmentMonths && interestRate) {
+
+    if (paymentType === "INSTALLMENT" && installmentMonths && interestRate) {
       // Calculate monthly payment with interest
       const principal = finalPrice;
       const monthlyRate = interestRate / 100 / 12;
       const numberOfPayments = installmentMonths;
-      
+
       // Formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
-      monthlyPayment = 
-        (principal * monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) /
+      monthlyPayment =
+        (principal *
+          monthlyRate *
+          Math.pow(1 + monthlyRate, numberOfPayments)) /
         (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-      
+
       monthlyPayment = Math.round(monthlyPayment * 100) / 100;
     }
-    
+
     return {
       finalPrice,
       monthlyPayment,
@@ -82,8 +88,8 @@ export class ContractService {
    */
   private async generateContractCode(): Promise<string> {
     const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, '0');
-    
+    const month = String(new Date().getMonth() + 1).padStart(2, "0");
+
     // Get last contract number for this month
     const lastContract = await prisma.contract.findFirst({
       where: {
@@ -92,37 +98,57 @@ export class ContractService {
         },
       },
       orderBy: {
-        contractCode: 'desc',
+        contractCode: "desc",
       },
     });
 
     let nextNumber = 1;
     if (lastContract) {
-      const lastNumber = parseInt(lastContract.contractCode.split('-').pop() || '0');
+      const lastNumber = parseInt(
+        lastContract.contractCode.split("-").pop() || "0"
+      );
       nextNumber = lastNumber + 1;
     }
 
-    return `CT-${year}${month}-${String(nextNumber).padStart(4, '0')}`;
+    return `CT-${year}${month}-${String(nextNumber).padStart(4, "0")}`;
   }
 
   /**
    * Get all contracts with filters
    */
-  async getAllContracts(filters: ContractFilters, pagination: PaginationParams, _userId?: string, userRole?: string, dealerId?: string) {
+  async getAllContracts(
+    filters: ContractFilters,
+    pagination: PaginationParams,
+    _userId?: string,
+    userRole?: string,
+    dealerId?: string
+  ) {
     const page = pagination.page || 1;
     const limit = pagination.limit || 10;
     const skip = (page - 1) * limit;
-    const sortBy = pagination.sortBy || 'createdAt';
-    const sortOrder = pagination.sortOrder || 'desc';
+    const sortBy = pagination.sortBy || "createdAt";
+    const sortOrder = pagination.sortOrder || "desc";
 
     // Build where clause
     const where: Prisma.ContractWhereInput = {
       ...(filters.search && {
         OR: [
-          { contractCode: { contains: filters.search, mode: 'insensitive' } },
-          { customer: { firstName: { contains: filters.search, mode: 'insensitive' } } },
-          { customer: { lastName: { contains: filters.search, mode: 'insensitive' } } },
-          { customer: { email: { contains: filters.search, mode: 'insensitive' } } },
+          { contractCode: { contains: filters.search, mode: "insensitive" } },
+          {
+            customer: {
+              firstName: { contains: filters.search, mode: "insensitive" },
+            },
+          },
+          {
+            customer: {
+              lastName: { contains: filters.search, mode: "insensitive" },
+            },
+          },
+          {
+            customer: {
+              email: { contains: filters.search, mode: "insensitive" },
+            },
+          },
         ],
       }),
       ...(filters.status && { status: filters.status }),
@@ -132,11 +158,11 @@ export class ContractService {
       ...(filters.fromDate && { createdAt: { gte: filters.fromDate } }),
       ...(filters.toDate && { createdAt: { lte: filters.toDate } }),
       // Dealer staff can only see their dealer's contracts
-      ...(userRole === 'DEALER_STAFF' || userRole === 'DEALER_MANAGER' 
-        ? { staff: { dealerId } } 
-        : filters.dealerId 
-        ? { staff: { dealerId: filters.dealerId } } 
-        : {}),
+      ...(userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER"
+        ? { staff: { dealerId } }
+        : filters.dealerId
+          ? { staff: { dealerId: filters.dealerId } }
+          : {}),
     };
 
     const total = await prisma.contract.count({ where });
@@ -249,19 +275,19 @@ export class ContractService {
           },
         },
         feedbacks: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
         complaints: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
         customerDebts: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
 
     if (!contract) {
-      throw new Error('Contract not found');
+      throw new Error("Contract not found");
     }
 
     return contract;
@@ -277,7 +303,7 @@ export class ContractService {
     });
 
     if (!customer) {
-      throw new Error('Customer not found');
+      throw new Error("Customer not found");
     }
 
     // Verify vehicle exists and is available
@@ -299,26 +325,54 @@ export class ContractService {
     });
 
     if (!vehicle) {
-      throw new Error('Vehicle not found');
+      throw new Error("Vehicle not found");
     }
 
-    if (vehicle.status !== 'ACTIVE') {
-      throw new Error('Vehicle is not available for sale');
+    if (vehicle.status !== "ACTIVE") {
+      throw new Error("Vehicle is not available for sale");
     }
 
     // Check inventory availability
     const dealerInventory = vehicle.dealerInventories[0];
     if (!dealerInventory || dealerInventory.available < 1) {
-      throw new Error('Vehicle not available in inventory');
+      throw new Error("Vehicle not available in inventory");
     }
 
     // Validate installment data
-    if (data.paymentType === 'INSTALLMENT') {
+    if (data.paymentType === "INSTALLMENT") {
       if (!data.installmentMonths || data.installmentMonths < 1) {
-        throw new Error('Installment months is required for installment payment');
+        throw new Error(
+          "Installment months is required for installment payment"
+        );
       }
       if (!data.interestRate || data.interestRate < 0) {
-        throw new Error('Interest rate is required for installment payment');
+        throw new Error("Interest rate is required for installment payment");
+      }
+    }
+
+    // Validate quotation if provided
+    if (data.quotationId) {
+      const quotation = await prisma.quotation.findUnique({
+        where: { id: data.quotationId },
+      });
+      if (!quotation) {
+        throw new Error("Quotation not found");
+      }
+      if (quotation.status !== "SENT") {
+        throw new Error("Quotation must be in SENT status to create contract");
+      }
+    }
+
+    // Validate promotion if provided
+    if (data.promotionId) {
+      const promotion = await prisma.dealerDiscount.findUnique({
+        where: { id: data.promotionId },
+      });
+      if (!promotion) {
+        throw new Error("Promotion not found");
+      }
+      if (!promotion.isActive) {
+        throw new Error("Promotion is not active");
       }
     }
 
@@ -343,6 +397,8 @@ export class ContractService {
           customerId: data.customerId,
           staffId: data.staffId,
           vehicleId: data.vehicleId,
+          ...(data.quotationId && { quotationId: data.quotationId }),
+          ...(data.promotionId && { promotionId: data.promotionId }),
           basePrice: data.basePrice,
           discount: data.discount || 0,
           finalPrice,
@@ -350,7 +406,7 @@ export class ContractService {
           installmentMonths: data.installmentMonths,
           monthlyPayment,
           interestRate: data.interestRate,
-          status: 'DRAFT',
+          status: "DRAFT",
           deliveryDate: data.deliveryDate,
           notes: data.notes,
         },
@@ -366,6 +422,8 @@ export class ContractService {
               dealer: true,
             },
           },
+          quotation: true,
+          promotion: true,
         },
       });
 
@@ -384,17 +442,17 @@ export class ContractService {
       });
 
       // Update customer status to PURCHASED if not already
-      if (customer.status !== 'PURCHASED') {
+      if (customer.status !== "PURCHASED") {
         await tx.customer.update({
           where: { id: data.customerId },
-          data: { status: 'PURCHASED' },
+          data: { status: "PURCHASED" },
         });
 
         // Add lifecycle event
         await tx.customerLifecycle.create({
           data: {
             customerId: data.customerId,
-            status: 'PURCHASED',
+            status: "PURCHASED",
             notes: `Contract ${contractCode} created`,
             changedBy: userId,
           },
@@ -417,19 +475,23 @@ export class ContractService {
     });
 
     if (!existingContract) {
-      throw new Error('Contract not found');
+      throw new Error("Contract not found");
     }
 
     // Can only update DRAFT or PENDING contracts
-    if (existingContract.status !== 'DRAFT' && existingContract.status !== 'PENDING') {
-      throw new Error('Can only update draft or pending contracts');
+    if (
+      existingContract.status !== "DRAFT" &&
+      existingContract.status !== "PENDING"
+    ) {
+      throw new Error("Can only update draft or pending contracts");
     }
 
     // Calculate new financials if price/discount changed
     const basePrice = data.basePrice ?? existingContract.basePrice;
     const discount = data.discount ?? existingContract.discount;
     const paymentType = data.paymentType ?? existingContract.paymentType;
-    const installmentMonths = data.installmentMonths ?? existingContract.installmentMonths;
+    const installmentMonths =
+      data.installmentMonths ?? existingContract.installmentMonths;
     const interestRate = data.interestRate ?? existingContract.interestRate;
 
     const { finalPrice, monthlyPayment } = this.calculateFinancials(
@@ -447,9 +509,13 @@ export class ContractService {
         ...(data.discount !== undefined && { discount: data.discount }),
         finalPrice,
         ...(data.paymentType && { paymentType: data.paymentType }),
-        ...(data.installmentMonths !== undefined && { installmentMonths: data.installmentMonths }),
+        ...(data.installmentMonths !== undefined && {
+          installmentMonths: data.installmentMonths,
+        }),
         monthlyPayment,
-        ...(data.interestRate !== undefined && { interestRate: data.interestRate }),
+        ...(data.interestRate !== undefined && {
+          interestRate: data.interestRate,
+        }),
         ...(data.deliveryDate && { deliveryDate: data.deliveryDate }),
         ...(data.notes !== undefined && { notes: data.notes }),
       },
@@ -474,7 +540,11 @@ export class ContractService {
   /**
    * Update contract status
    */
-  async updateContractStatus(id: string, status: ContractStatus, _userId: string) {
+  async updateContractStatus(
+    id: string,
+    status: ContractStatus,
+    _userId: string
+  ) {
     const contract = await prisma.contract.findUnique({
       where: { id },
       include: {
@@ -488,15 +558,15 @@ export class ContractService {
     });
 
     if (!contract) {
-      throw new Error('Contract not found');
+      throw new Error("Contract not found");
     }
 
     // Validate status transitions
     const validTransitions: Record<ContractStatus, ContractStatus[]> = {
-      DRAFT: ['PENDING', 'CANCELLED'],
-      PENDING: ['SIGNED', 'CANCELLED'],
-      SIGNED: ['DELIVERING', 'CANCELLED'],
-      DELIVERING: ['COMPLETED', 'CANCELLED'],
+      DRAFT: ["PENDING", "CANCELLED"],
+      PENDING: ["SIGNED", "CANCELLED"],
+      SIGNED: ["DELIVERING", "CANCELLED"],
+      DELIVERING: ["COMPLETED", "CANCELLED"],
       COMPLETED: [],
       CANCELLED: [],
     };
@@ -510,8 +580,8 @@ export class ContractService {
         where: { id },
         data: {
           status,
-          ...(status === 'SIGNED' && { signedAt: new Date() }),
-          ...(status === 'COMPLETED' && { deliveredAt: new Date() }),
+          ...(status === "SIGNED" && { signedAt: new Date() }),
+          ...(status === "COMPLETED" && { deliveredAt: new Date() }),
         },
         include: {
           customer: true,
@@ -529,7 +599,7 @@ export class ContractService {
       });
 
       // If completed, move from reserved to sold in inventory
-      if (status === 'COMPLETED') {
+      if (status === "COMPLETED") {
         await tx.inventory.update({
           where: {
             dealerId_vehicleId: {
@@ -546,7 +616,7 @@ export class ContractService {
       }
 
       // If cancelled, release reserved inventory
-      if (status === 'CANCELLED' && contract.status !== 'COMPLETED') {
+      if (status === "CANCELLED" && contract.status !== "COMPLETED") {
         await tx.inventory.update({
           where: {
             dealerId_vehicleId: {
@@ -583,11 +653,11 @@ export class ContractService {
     });
 
     if (!contract) {
-      throw new Error('Contract not found');
+      throw new Error("Contract not found");
     }
 
-    if (contract.status !== 'DRAFT') {
-      throw new Error('Can only delete draft contracts');
+    if (contract.status !== "DRAFT") {
+      throw new Error("Can only delete draft contracts");
     }
 
     await prisma.$transaction(async (tx) => {
@@ -611,13 +681,18 @@ export class ContractService {
       });
     });
 
-    return { message: 'Contract deleted successfully' };
+    return { message: "Contract deleted successfully" };
   }
 
   /**
    * Get contract statistics
    */
-  async getContractStatistics(filters?: { dealerId?: string; staffId?: string; fromDate?: Date; toDate?: Date }) {
+  async getContractStatistics(filters?: {
+    dealerId?: string;
+    staffId?: string;
+    fromDate?: Date;
+    toDate?: Date;
+  }) {
     const where: Prisma.ContractWhereInput = {
       ...(filters?.dealerId && { staff: { dealerId: filters.dealerId } }),
       ...(filters?.staffId && { staffId: filters.staffId }),
@@ -642,7 +717,7 @@ export class ContractService {
 
     // By status
     const byStatus = await prisma.contract.groupBy({
-      by: ['status'],
+      by: ["status"],
       where,
       _count: true,
       _sum: {
@@ -652,7 +727,7 @@ export class ContractService {
 
     // By payment type
     const byPaymentType = await prisma.contract.groupBy({
-      by: ['paymentType'],
+      by: ["paymentType"],
       where,
       _count: true,
       _sum: {
@@ -667,12 +742,12 @@ export class ContractService {
         totalDiscount: totalStats._sum.discount || 0,
         averageOrderValue: totalStats._avg.finalPrice || 0,
       },
-      byStatus: byStatus.map(item => ({
+      byStatus: byStatus.map((item) => ({
         status: item.status,
         count: item._count,
         revenue: item._sum.finalPrice || 0,
       })),
-      byPaymentType: byPaymentType.map(item => ({
+      byPaymentType: byPaymentType.map((item) => ({
         type: item.paymentType,
         count: item._count,
         revenue: item._sum.finalPrice || 0,
@@ -689,12 +764,12 @@ export class ContractService {
     };
 
     const byStatus = await prisma.contract.groupBy({
-      by: ['status'],
+      by: ["status"],
       where,
       _count: true,
     });
 
-    return byStatus.map(item => ({
+    return byStatus.map((item) => ({
       status: item.status,
       count: item._count,
     }));

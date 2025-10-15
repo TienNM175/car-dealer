@@ -17,13 +17,17 @@ export class CloudinaryService {
     fileName?: string
   ): Promise<UploadResult> {
     return new Promise((resolve, reject) => {
+      // Set timeout for upload
+      const timeout = setTimeout(() => {
+        reject(new Error("Upload timeout after 30 seconds"));
+      }, 30000);
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: folder,
           public_id: fileName,
           transformation: [
-            { width: 1200, height: 800, crop: "limit" },
-            { quality: "auto:low" },
+            { width: 800, height: 600, crop: "limit" },
+            { quality: "auto:eco" },
             { fetch_format: "auto" },
           ],
           resource_type: "image",
@@ -33,6 +37,8 @@ export class CloudinaryService {
           error: UploadApiErrorResponse | undefined,
           result: UploadApiResponse | undefined
         ) => {
+          clearTimeout(timeout);
+
           if (error) {
             return reject(new Error(`Upload failed: ${error.message}`));
           }
@@ -59,12 +65,25 @@ export class CloudinaryService {
     files: Express.Multer.File[],
     folder: string
   ): Promise<UploadResult[]> {
-    const uploadPromises = files.map((file, index) => {
-      const fileName = `${Date.now()}_${index}`;
-      return this.uploadImage(file.buffer, folder, fileName);
-    });
+    const results: UploadResult[] = [];
 
-    return Promise.all(uploadPromises);
+    // Upload sequentially to avoid overwhelming Cloudinary
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const fileName = `${Date.now()}_${i}`;
+      console.log(`Uploading image ${i + 1}/${files.length}...`);
+
+      try {
+        const result = await this.uploadImage(file.buffer, folder, fileName);
+        results.push(result);
+        console.log(`✅ Image ${i + 1} uploaded successfully`);
+      } catch (error) {
+        console.error(`❌ Failed to upload image ${i + 1}:`, error);
+        throw error;
+      }
+    }
+
+    return results;
   }
 
   async deleteImage(publicId: string): Promise<void> {
