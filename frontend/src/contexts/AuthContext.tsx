@@ -11,6 +11,13 @@ interface User {
   lastName: string;
   email: string;
   role: UserRole;
+  dealerId?: string;  // Thêm: optional vì ADMIN/EVM không có
+  dealer?: {         // Nếu backend include nested dealer
+    id: string;
+    name: string;
+    code: string;
+  };
+  // Thêm nếu cần: phone, avatar, etc. từ Prisma
 }
 
 interface AuthContextType {
