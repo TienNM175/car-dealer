@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
-import { VehicleService } from './vehicle.service';
-import { ResponseUtil } from '../../utils/response.util';
-import { CloudinaryService } from './cloudinary.service';
+import { Request, Response, NextFunction } from "express";
+import { VehicleService } from "./vehicle.service";
+import { ResponseUtil } from "../../utils/response.util";
+import { CloudinaryService } from "./cloudinary.service";
 
 const vehicleService = new VehicleService();
 const cloudinaryService = new CloudinaryService();
@@ -24,11 +24,17 @@ export class VehicleController {
         page: req.query.page ? Number(req.query.page) : 1,
         limit: req.query.limit ? Number(req.query.limit) : 10,
         sortBy: req.query.sortBy as string,
-        sortOrder: req.query.sortOrder as 'asc' | 'desc',
+        sortOrder: req.query.sortOrder as "asc" | "desc",
       };
 
       const result = await vehicleService.getAllVehicles(filters, pagination);
-      return ResponseUtil.success(res, result.data, 'Vehicles retrieved successfully', 200, result.meta);
+      return ResponseUtil.success(
+        res,
+        result.data,
+        "Vehicles retrieved successfully",
+        200,
+        result.meta
+      );
     } catch (error: any) {
       return next(error);
     }
@@ -38,9 +44,13 @@ export class VehicleController {
     try {
       const { id } = req.params;
       const vehicle = await vehicleService.getVehicleById(id);
-      return ResponseUtil.success(res, vehicle, 'Vehicle retrieved successfully');
+      return ResponseUtil.success(
+        res,
+        vehicle,
+        "Vehicle retrieved successfully"
+      );
     } catch (error: any) {
-      if (error.message === 'Vehicle not found') {
+      if (error.message === "Vehicle not found") {
         return ResponseUtil.notFound(res, error.message);
       }
       return next(error);
@@ -50,7 +60,7 @@ export class VehicleController {
   async createVehicle(req: Request, res: Response, next: NextFunction) {
     try {
       const vehicle = await vehicleService.createVehicle(req.body);
-      return ResponseUtil.created(res, vehicle, 'Vehicle created successfully');
+      return ResponseUtil.created(res, vehicle, "Vehicle created successfully");
     } catch (error: any) {
       return next(error);
     }
@@ -59,9 +69,15 @@ export class VehicleController {
   async updateVehicle(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
+      console.log("🚗 Update Vehicle Request:", {
+        id,
+        body: req.body,
+        headers: req.headers.authorization ? "Token present" : "No token",
+      });
       const vehicle = await vehicleService.updateVehicle(id, req.body);
-      return ResponseUtil.success(res, vehicle, 'Vehicle updated successfully');
+      return ResponseUtil.success(res, vehicle, "Vehicle updated successfully");
     } catch (error: any) {
+      console.error("❌ Update Vehicle Error:", error);
       return next(error);
     }
   }
@@ -72,7 +88,7 @@ export class VehicleController {
       const result = await vehicleService.deleteVehicle(id);
       return ResponseUtil.success(res, result);
     } catch (error: any) {
-      if (error.message.includes('Cannot delete')) {
+      if (error.message.includes("Cannot delete")) {
         return ResponseUtil.badRequest(res, error.message);
       }
       return next(error);
@@ -83,19 +99,28 @@ export class VehicleController {
     try {
       const { vehicleIds } = req.body;
       const vehicles = await vehicleService.compareVehicles(vehicleIds);
-      return ResponseUtil.success(res, vehicles, 'Vehicles comparison retrieved');
+      return ResponseUtil.success(
+        res,
+        vehicles,
+        "Vehicles comparison retrieved"
+      );
     } catch (error: any) {
-      if (error.message.includes('select')) {
+      if (error.message.includes("select")) {
         return ResponseUtil.badRequest(res, error.message);
       }
       return next(error);
     }
   }
 
-  async getVehiclesByManufacturer(req: Request, res: Response, next: NextFunction) {
+  async getVehiclesByManufacturer(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
     try {
       const { manufacturerId } = req.params;
-      const vehicles = await vehicleService.getVehiclesByManufacturer(manufacturerId);
+      const vehicles =
+        await vehicleService.getVehiclesByManufacturer(manufacturerId);
       return ResponseUtil.success(res, vehicles);
     } catch (error: any) {
       return next(error);
@@ -107,7 +132,7 @@ export class VehicleController {
       const { id } = req.params;
       const { status } = req.body;
       const vehicle = await vehicleService.updateVehicleStatus(id, status);
-      return ResponseUtil.success(res, vehicle, 'Vehicle status updated');
+      return ResponseUtil.success(res, vehicle, "Vehicle status updated");
     } catch (error: any) {
       return next(error);
     }
@@ -119,7 +144,7 @@ export class VehicleController {
       const files = req.files as Express.Multer.File[];
 
       if (!files || files.length === 0) {
-        return ResponseUtil.badRequest(res, 'No images uploaded');
+        return ResponseUtil.badRequest(res, "No images uploaded");
       }
 
       // Upload to Cloudinary
@@ -138,29 +163,39 @@ export class VehicleController {
       }));
 
       // Save to database
-      const vehicle = await vehicleService.addVehicleImages(vehicleId, imageData);
+      const vehicle = await vehicleService.addVehicleImages(
+        vehicleId,
+        imageData
+      );
 
       return ResponseUtil.success(
         res,
-        vehicle,
+        {
+          vehicle,
+          images: vehicle.images,
+          message: `${files.length} image(s) uploaded successfully`,
+        },
         `${files.length} image(s) uploaded successfully`,
         201
       );
     } catch (error: any) {
-      if (error.message === 'Vehicle not found') {
+      if (error.message === "Vehicle not found") {
         return ResponseUtil.notFound(res, error.message);
       }
-      return ResponseUtil.error(res, error.message || 'Upload failed', 500);
+      return ResponseUtil.error(res, error.message || "Upload failed", 500);
     }
   }
 
   async deleteImage(req: Request, res: Response, _next: NextFunction) {
     try {
       const { vehicleId, imageId } = req.params;
-      const result = await vehicleService.deleteVehicleImage(vehicleId, imageId);
-      return ResponseUtil.success(res, result, 'Image deleted successfully');
+      const result = await vehicleService.deleteVehicleImage(
+        vehicleId,
+        imageId
+      );
+      return ResponseUtil.success(res, result, "Image deleted successfully");
     } catch (error: any) {
-      if (error.message === 'Image not found') {
+      if (error.message === "Image not found") {
         return ResponseUtil.notFound(res, error.message);
       }
       return ResponseUtil.error(res, error.message, 500);
@@ -171,7 +206,7 @@ export class VehicleController {
     try {
       const { vehicleId, imageId } = req.params;
       const image = await vehicleService.setMainImage(vehicleId, imageId);
-      return ResponseUtil.success(res, image, 'Main image updated');
+      return ResponseUtil.success(res, image, "Main image updated");
     } catch (error: any) {
       return next(error);
     }
@@ -181,13 +216,13 @@ export class VehicleController {
     try {
       const { vehicleId } = req.params;
       const { imageOrders } = req.body;
-      
+
       if (!Array.isArray(imageOrders)) {
-        return ResponseUtil.badRequest(res, 'imageOrders must be an array');
+        return ResponseUtil.badRequest(res, "imageOrders must be an array");
       }
 
       const result = await vehicleService.reorderImages(vehicleId, imageOrders);
-      return ResponseUtil.success(res, result, 'Images reordered');
+      return ResponseUtil.success(res, result, "Images reordered");
     } catch (error: any) {
       return next(error);
     }

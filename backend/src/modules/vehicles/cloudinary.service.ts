@@ -1,6 +1,6 @@
-import cloudinary from '../../config/cloudinary.config';
-import { UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
-import streamifier from 'streamifier';
+import cloudinary from "../../config/cloudinary.config";
+import { UploadApiResponse, UploadApiErrorResponse } from "cloudinary";
+import streamifier from "streamifier";
 
 interface UploadResult {
   url: string;
@@ -22,19 +22,23 @@ export class CloudinaryService {
           folder: folder,
           public_id: fileName,
           transformation: [
-            { width: 1920, height: 1080, crop: 'limit' },
-            { quality: 'auto:good' },
-            { fetch_format: 'auto' },
+            { width: 1200, height: 800, crop: "limit" },
+            { quality: "auto:low" },
+            { fetch_format: "auto" },
           ],
-          resource_type: 'image',
+          resource_type: "image",
+          eager: false, // Don't generate transformations eagerly
         },
-        (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
+        (
+          error: UploadApiErrorResponse | undefined,
+          result: UploadApiResponse | undefined
+        ) => {
           if (error) {
             return reject(new Error(`Upload failed: ${error.message}`));
           }
-          
+
           if (!result) {
-            return reject(new Error('Upload failed: No result'));
+            return reject(new Error("Upload failed: No result"));
           }
 
           resolve({
@@ -51,7 +55,10 @@ export class CloudinaryService {
     });
   }
 
-  async uploadMultiple(files: Express.Multer.File[], folder: string): Promise<UploadResult[]> {
+  async uploadMultiple(
+    files: Express.Multer.File[],
+    folder: string
+  ): Promise<UploadResult[]> {
     const uploadPromises = files.map((file, index) => {
       const fileName = `${Date.now()}_${index}`;
       return this.uploadImage(file.buffer, folder, fileName);
@@ -61,14 +68,23 @@ export class CloudinaryService {
   }
 
   async deleteImage(publicId: string): Promise<void> {
+    // Temporary mock implementation for development
+    if (
+      process.env.NODE_ENV === "development" &&
+      !process.env.CLOUDINARY_API_KEY
+    ) {
+      console.log("🔧 Mock deleting image:", publicId);
+      return Promise.resolve();
+    }
+
     const result = await cloudinary.uploader.destroy(publicId);
-    if (result.result !== 'ok') {
+    if (result.result !== "ok") {
       throw new Error(`Failed to delete image: ${result.result}`);
     }
   }
 
   async deleteMultiple(publicIds: string[]): Promise<void> {
-    const deletePromises = publicIds.map(id => this.deleteImage(id));
+    const deletePromises = publicIds.map((id) => this.deleteImage(id));
     await Promise.all(deletePromises);
   }
 }

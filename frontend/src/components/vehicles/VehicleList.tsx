@@ -1,6 +1,6 @@
 // frontend/src/components/vehicles/VehicleList.tsx
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import {
   Search,
   Filter,
@@ -16,21 +16,34 @@ import {
   Users,
   DollarSign,
   Package,
+  ChevronDown,
+  Grid3X3,
+  List,
 } from "lucide-react";
 import { Vehicle } from "@/lib/api/vehicleApi";
+import { formatMoney, formatMoneyShort } from "@/lib/utils/formatMoney";
+import VehicleCompareModal from "./VehicleCompareModal";
+import VehicleDetailModal from "./VehicleDetailModal";
 
 interface VehicleListProps {
   vehicles: Vehicle[];
   loading: boolean;
   searchTerm: string;
-  filterStatus: string;
+  filters: {
+    status: string;
+    manufacturer: string;
+    bodyType: string;
+    priceMin: string;
+    priceMax: string;
+  };
   onSearchChange: (value: string) => void;
-  onFilterChange: (value: string) => void;
-  onCreateClick: () => void;
-  onViewClick: (vehicle: Vehicle) => void;
-  onEditClick: (vehicle: Vehicle) => void;
-  onDeleteClick: (vehicle: Vehicle) => void;
+  onFilterChange: (key: string, value: string) => void;
+  onCreateClick?: () => void; // Optional - chỉ EVM/ADMIN
+  onViewClick?: (vehicle: Vehicle) => void;
+  onEditClick?: (vehicle: Vehicle) => void; // Optional - chỉ EVM/ADMIN
+  onDeleteClick?: (vehicle: Vehicle) => void; // Optional - chỉ ADMIN
   onExportClick: () => void;
+  userRole?: "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN"; // Role để control UI
   pagination: {
     page: number;
     limit: number;
@@ -38,6 +51,7 @@ interface VehicleListProps {
     totalPages: number;
   };
   onPageChange: (page: number) => void;
+  manufacturers?: { id: string; name: string }[];
 }
 
 const statusConfig = {
@@ -61,7 +75,7 @@ export default function VehicleList({
   vehicles,
   loading,
   searchTerm,
-  filterStatus,
+  filters,
   onSearchChange,
   onFilterChange,
   onCreateClick,
@@ -69,9 +83,20 @@ export default function VehicleList({
   onEditClick,
   onDeleteClick,
   onExportClick,
+  userRole = "DEALER_STAFF", // Default to most restrictive
   pagination,
   onPageChange,
+  manufacturers = [],
 }: VehicleListProps) {
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [selectedVehicleForCompare, setSelectedVehicleForCompare] =
+    useState<Vehicle | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedVehicleForDetail, setSelectedVehicleForDetail] =
+    useState<Vehicle | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
   const statusCounts = React.useMemo(() => {
     const counts: Record<string, number> = {
       total: vehicles.length,
@@ -99,7 +124,43 @@ export default function VehicleList({
             Quản lý danh mục xe điện và thông số kỹ thuật
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
+          {/* View Mode Toggle */}
+          <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-3 py-2 ${
+                viewMode === "list"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`px-3 py-2 ${
+                viewMode === "grid"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Nút so sánh xe */}
+          <button
+            onClick={() => {
+              setSelectedVehicleForCompare(null); // Không có xe nào được chọn sẵn
+              setShowCompareModal(true);
+            }}
+            className="px-4 py-2 text-green-600 border border-green-600 rounded-lg hover:bg-green-50 flex items-center gap-2"
+          >
+            <Car className="w-4 h-4" />
+            So sánh xe
+          </button>
+
           <button
             onClick={onExportClick}
             className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-2"
@@ -107,13 +168,17 @@ export default function VehicleList({
             <Download className="w-4 h-4" />
             Xuất dữ liệu
           </button>
-          <button
-            onClick={onCreateClick}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Thêm xe mới
-          </button>
+          {/* Chỉ EVM_STAFF và ADMIN mới được thêm xe */}
+          {(userRole === "EVM_STAFF" || userRole === "ADMIN") &&
+            onCreateClick && (
+              <button
+                onClick={onCreateClick}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Thêm xe mới
+              </button>
+            )}
         </div>
       </div>
 
@@ -143,9 +208,10 @@ export default function VehicleList({
         </div>
       </div>
 
-      {/* Search + Filter */}
+      {/* Search + Advanced Filters */}
       <div className="bg-white rounded-xl shadow-md p-6">
-        <div className="flex gap-4 mb-6">
+        {/* Basic Search */}
+        <div className="flex gap-4 mb-4">
           <div className="flex-1 relative">
             <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
             <input
@@ -156,26 +222,136 @@ export default function VehicleList({
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
             />
           </div>
-          <select
-            value={filterStatus}
-            onChange={(e) => onFilterChange(e.target.value)}
-            aria-label="Lọc theo trạng thái xe"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
+          <button
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className={`px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center gap-2 ${
+              showAdvancedFilters
+                ? "bg-blue-50 text-blue-600 border-blue-300"
+                : "text-gray-600 border-gray-300"
+            }`}
           >
-            <option value="">Tất cả trạng thái</option>
-            {Object.entries(statusConfig).map(([key, value]) => (
-              <option key={key} value={key}>
-                {value.label}
-              </option>
-            ))}
-          </select>
-          <button className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
             <Filter className="w-4 h-4" />
-            Lọc
+            Bộ lọc
+            <ChevronDown
+              className={`w-4 h-4 transform transition-transform ${
+                showAdvancedFilters ? "rotate-180" : ""
+              }`}
+            />
           </button>
         </div>
 
-        {/* Table */}
+        {/* Advanced Filters */}
+        {showAdvancedFilters && (
+          <div className="border-t pt-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Status Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Trạng thái
+                </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => onFilterChange("status", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black text-sm"
+                >
+                  <option value="">Tất cả trạng thái</option>
+                  {Object.entries(statusConfig).map(([key, value]) => (
+                    <option key={key} value={key}>
+                      {value.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Manufacturer Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hãng xe
+                </label>
+                <select
+                  value={filters.manufacturer}
+                  onChange={(e) =>
+                    onFilterChange("manufacturer", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black text-sm"
+                >
+                  <option value="">Tất cả hãng</option>
+                  {manufacturers.map((manufacturer) => (
+                    <option key={manufacturer.id} value={manufacturer.id}>
+                      {manufacturer.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Body Type Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Kiểu dáng
+                </label>
+                <select
+                  value={filters.bodyType}
+                  onChange={(e) => onFilterChange("bodyType", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black text-sm"
+                >
+                  <option value="">Tất cả kiểu dáng</option>
+                  {Object.entries(bodyTypeConfig).map(([key, value]) => (
+                    <option key={key} value={key}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Price Min Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Giá từ (USD)
+                </label>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={filters.priceMin}
+                  onChange={(e) => onFilterChange("priceMin", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black text-sm"
+                />
+              </div>
+
+              {/* Price Max Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Giá đến (USD)
+                </label>
+                <input
+                  type="number"
+                  placeholder="999999"
+                  value={filters.priceMax}
+                  onChange={(e) => onFilterChange("priceMax", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Filter Actions */}
+            <div className="flex gap-3 pt-2 border-t">
+              <button
+                onClick={() => {
+                  onFilterChange("status", "");
+                  onFilterChange("manufacturer", "");
+                  onFilterChange("bodyType", "");
+                  onFilterChange("priceMin", "");
+                  onFilterChange("priceMax", "");
+                  onSearchChange("");
+                }}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+              >
+                Xóa bộ lọc
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Vehicle Display */}
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -185,7 +361,8 @@ export default function VehicleList({
           <div className="text-center py-12">
             <p className="text-gray-600">Không có xe nào</p>
           </div>
-        ) : (
+        ) : viewMode === "list" ? (
+          // List View
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
@@ -200,7 +377,7 @@ export default function VehicleList({
                     Giá
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Hoạt động
+                    Kinh doanh
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
                     Trạng thái
@@ -215,15 +392,26 @@ export default function VehicleList({
                   <tr key={vehicle.id} className="hover:bg-gray-50 text-black">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
-                          <Car className="w-8 h-8 text-blue-600" />
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center overflow-hidden">
+                          {vehicle.images && vehicle.images.length > 0 ? (
+                            <img
+                              src={
+                                vehicle.images.find((img) => img.isMain)?.url ||
+                                vehicle.images[0].url
+                              }
+                              alt={`${vehicle.manufacturer?.name} ${vehicle.model}`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Car className="w-8 h-8 text-blue-600" />
+                          )}
                         </div>
-                        <div>
-                          <p className="font-medium">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-gray-900 truncate">
                             {vehicle.manufacturer?.name} {vehicle.model}
                           </p>
                           {vehicle.variant && (
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-500 truncate">
                               {vehicle.variant}
                             </p>
                           )}
@@ -260,34 +448,41 @@ export default function VehicleList({
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         <p className="font-semibold text-green-600">
-                          {vehicle.retailPrice.toLocaleString()}{" "}
-                          {vehicle.currency}
+                          {formatMoney(vehicle.retailPrice, vehicle.currency)}
                         </p>
                         <p className="text-xs text-gray-500">
-                          Giá sỉ: {vehicle.wholesalePrice.toLocaleString()}{" "}
-                          {vehicle.currency}
+                          Sỉ:{" "}
+                          {formatMoney(
+                            vehicle.wholesalePrice,
+                            vehicle.currency
+                          )}
                         </p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        {vehicle._count && (
-                          <>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                              <Package className="w-3 h-3" />
-                              {vehicle._count.dealerInventories} kho
-                            </span>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
-                              <DollarSign className="w-3 h-3" />
-                              {vehicle._count.contracts} HĐ
-                            </span>
-                          </>
-                        )}
+                      <div className="flex flex-wrap gap-1">
+                        {/* Hiển thị thông tin kinh doanh thực tế */}
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                          <Package className="w-3 h-3" />
+                          {vehicle._count?.dealerInventories || 0} kho
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
+                          <DollarSign className="w-3 h-3" />
+                          {vehicle._count?.contracts || 0} HĐ
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">
+                          <Edit className="w-3 h-3" />
+                          {vehicle._count?.quotations || 0} BG
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-700 rounded text-xs">
+                          <Users className="w-3 h-3" />
+                          {vehicle._count?.testDrives || 0} LT
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-5 w-34">
                       <span
-                        className={`px-3 py-1 text-xs font-medium rounded-full ${
+                        className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
                           statusConfig[
                             vehicle.status as keyof typeof statusConfig
                           ]?.color || "bg-gray-100 text-gray-700"
@@ -299,27 +494,250 @@ export default function VehicleList({
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex gap-3 justify-center">
+                      <div className="flex gap-2 justify-center">
                         <button
-                          onClick={() => onEditClick(vehicle)}
-                          className="text-green-600 hover:text-green-700"
-                          title="Chỉnh sửa"
+                          onClick={() => {
+                            setSelectedVehicleForDetail(vehicle);
+                            setShowDetailModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-700"
+                          title="Xem chi tiết"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </button>
+                        {/* Nút so sánh với xe khác */}
                         <button
-                          onClick={() => onDeleteClick(vehicle)}
-                          className="text-red-600 hover:text-red-700"
-                          title="Xóa"
+                          onClick={() => {
+                            setSelectedVehicleForCompare(vehicle); // Chọn xe này làm xe thứ 1
+                            setShowCompareModal(true);
+                          }}
+                          className="text-purple-600 hover:text-purple-700 p-1 rounded"
+                          title="So sánh xe này với xe khác"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                            />
+                          </svg>
                         </button>
+                        {/* Chỉ EVM_STAFF và ADMIN mới được chỉnh sửa */}
+                        {(userRole === "EVM_STAFF" || userRole === "ADMIN") &&
+                          onEditClick && (
+                            <button
+                              onClick={() => onEditClick(vehicle)}
+                              className="text-green-600 hover:text-green-700"
+                              title="Chỉnh sửa"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
+                        {/* Chỉ ADMIN mới được xóa */}
+                        {userRole === "ADMIN" && onDeleteClick && (
+                          <button
+                            onClick={() => onDeleteClick(vehicle)}
+                            className="text-red-600 hover:text-red-700"
+                            title="Xóa"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        ) : (
+          // Grid View
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {vehicles.map((vehicle) => (
+              <div
+                key={vehicle.id}
+                className="bg-white rounded-lg border-2 border-gray-200 hover:shadow-lg transition-all duration-200"
+              >
+                {/* Vehicle Image */}
+                <div className="relative">
+                  <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-t-lg overflow-hidden">
+                    {vehicle.images && vehicle.images.length > 0 ? (
+                      <img
+                        src={
+                          vehicle.images.find((img) => img.isMain)?.url ||
+                          vehicle.images[0].url
+                        }
+                        alt={`${vehicle.manufacturer?.name} ${vehicle.model}`}
+                        className="w-full h-48 object-cover"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-48">
+                        <Car className="w-16 h-16 text-blue-600" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className="absolute top-3 right-3">
+                    <span
+                      className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap ${
+                        statusConfig[
+                          vehicle.status as keyof typeof statusConfig
+                        ]?.color || "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {statusConfig[vehicle.status as keyof typeof statusConfig]
+                        ?.label || vehicle.status}
+                    </span>
+                  </div>
+
+                  {/* Quick Compare Button */}
+                  <div className="absolute bottom-3 right-3">
+                    <button
+                      onClick={() => {
+                        setSelectedVehicleForCompare(vehicle);
+                        setShowCompareModal(true);
+                      }}
+                      className="p-2 bg-white/90 hover:bg-white rounded-full shadow-md transition-all duration-200"
+                      title="So sánh xe này với xe khác"
+                    >
+                      <svg
+                        className="w-4 h-4 text-purple-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Vehicle Info */}
+                <div className="p-4 space-y-3">
+                  {/* Title */}
+                  <div className="min-h-[3rem]">
+                    <h3 className="font-semibold text-sm text-gray-900 leading-tight mb-1">
+                      <span className="line-clamp-2 block">
+                        {vehicle.manufacturer?.name} {vehicle.model}
+                      </span>
+                    </h3>
+                    {vehicle.variant && (
+                      <p className="text-xs text-gray-600 mb-1">
+                        <span className="line-clamp-1 block">
+                          {vehicle.variant}
+                        </span>
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      {vehicle.year} •{" "}
+                      {bodyTypeConfig[vehicle.bodyType] || vehicle.bodyType}
+                    </p>
+                  </div>
+
+                  {/* Specs */}
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-1 text-gray-700">
+                      <Battery className="w-3 h-3 text-green-600" />
+                      <span>{vehicle.batteryCapacity} kWh</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-gray-700">
+                      <Zap className="w-3 h-3 text-yellow-600" />
+                      <span>{vehicle.range} km</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-gray-700">
+                      <Gauge className="w-3 h-3 text-red-600" />
+                      <span>{vehicle.motorPower || "N/A"} kW</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-gray-700">
+                      <Users className="w-3 h-3 text-blue-600" />
+                      <span>{vehicle.seats} chỗ</span>
+                    </div>
+                  </div>
+
+                  {/* Price */}
+                  <div className="border-t pt-3">
+                    <p className="font-bold text-xm text-green-600 leading-tight break-words">
+                      {formatMoneyShort(vehicle.retailPrice, vehicle.currency)}
+                    </p>
+                    <p className="text-xs text-gray-500 break-words">
+                      Sỉ:{" "}
+                      {formatMoneyShort(
+                        vehicle.wholesalePrice,
+                        vehicle.currency
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Business Stats */}
+                  <div className="border-t pt-3">
+                    <div className="flex flex-wrap gap-1">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                        <Package className="w-3 h-3" />
+                        {vehicle._count?.dealerInventories || 0}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
+                        <DollarSign className="w-3 h-3" />
+                        {vehicle._count?.contracts || 0}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">
+                        <Edit className="w-3 h-3" />
+                        {vehicle._count?.quotations || 0}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-700 rounded text-xs">
+                        <Users className="w-3 h-3" />
+                        {vehicle._count?.testDrives || 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="border-t pt-3 flex gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedVehicleForDetail(vehicle);
+                        setShowDetailModal(true);
+                      }}
+                      className="flex-1 px-3 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 text-sm font-medium transition-colors"
+                    >
+                      Xem chi tiết
+                    </button>
+
+                    {(userRole === "EVM_STAFF" || userRole === "ADMIN") &&
+                      onEditClick && (
+                        <button
+                          onClick={() => onEditClick(vehicle)}
+                          className="px-3 py-2 text-green-600 border border-green-600 rounded-lg hover:bg-green-50"
+                          title="Chỉnh sửa"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
+
+                    {userRole === "ADMIN" && onDeleteClick && (
+                      <button
+                        onClick={() => onDeleteClick(vehicle)}
+                        className="px-3 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50"
+                        title="Xóa"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -376,6 +794,29 @@ export default function VehicleList({
           </div>
         )}
       </div>
+
+      {/* Vehicle Compare Modal */}
+      <VehicleCompareModal
+        isOpen={showCompareModal}
+        onClose={() => {
+          setShowCompareModal(false);
+          setSelectedVehicleForCompare(null);
+        }}
+        selectedVehicle={selectedVehicleForCompare}
+      />
+
+      {/* Vehicle Detail Modal */}
+      <VehicleDetailModal
+        isOpen={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedVehicleForDetail(null);
+        }}
+        vehicle={selectedVehicleForDetail}
+        onEditClick={onEditClick}
+        onDeleteClick={onDeleteClick}
+        userRole={userRole}
+      />
     </div>
   );
 }

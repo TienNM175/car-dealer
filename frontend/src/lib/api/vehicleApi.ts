@@ -51,6 +51,7 @@ export interface VehicleImage {
   blurhash?: string;
   isMain: boolean;
   order: number;
+  publicId?: string;
 }
 
 export interface CreateVehicleInput {
@@ -131,7 +132,7 @@ export const vehicleApi = {
 
   // Update vehicle
   updateVehicle: async (id: string, data: UpdateVehicleInput) => {
-    return axiosClient.patch(`/vehicles/${id}`, data);
+    return axiosClient.put(`/vehicles/${id}`, data);
   },
 
   // Delete vehicle
@@ -139,13 +140,42 @@ export const vehicleApi = {
     return axiosClient.delete(`/vehicles/${id}`);
   },
 
-  // Get vehicle statistics
-  getVehicleStats: async () => {
-    return axiosClient.get("/vehicles/stats");
+  // Get vehicles by manufacturer
+  getVehiclesByManufacturer: async (manufacturerId: string) => {
+    return axiosClient.get(`/vehicles/manufacturer/${manufacturerId}`);
   },
 
   // Compare vehicles
   compareVehicles: async (vehicleIds: string[]) => {
     return axiosClient.post("/vehicles/compare", { vehicleIds });
+  },
+
+  // Upload vehicle images
+  uploadImages: async (vehicleId: string, formData: FormData) => {
+    return axiosClient.post(`/vehicles/${vehicleId}/images`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  // Delete vehicle image
+  deleteImage: async (vehicleId: string, imageId: string) => {
+    return axiosClient.delete(`/vehicles/${vehicleId}/images/${imageId}`);
+  },
+
+  // Set main image
+  setMainImage: async (vehicleId: string, imageId: string) => {
+    return axiosClient.patch(`/vehicles/${vehicleId}/images/${imageId}/main`);
+  },
+
+  // Reorder images
+  reorderImages: async (
+    vehicleId: string,
+    imageOrders: { imageId: string; order: number }[]
+  ) => {
+    return axiosClient.put(`/vehicles/${vehicleId}/images/reorder`, {
+      imageOrders,
+    });
   },
 };
