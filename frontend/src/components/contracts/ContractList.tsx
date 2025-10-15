@@ -44,6 +44,8 @@ interface ContractListProps {
       DRAFT: number;
       PENDING: number;
       SIGNED: number;
+      DELIVERING: number;
+      COMPLETED: number;
       CANCELLED: number;
     };
   };
@@ -52,18 +54,18 @@ interface ContractListProps {
 const statusConfig = {
   DRAFT: { label: "Nháp", color: "bg-gray-100 text-gray-700", icon: Edit },
   PENDING: {
-    label: "Chờ duyệt",
+    label: "Chờ ký",
     color: "bg-yellow-100 text-yellow-700",
     icon: Clock,
   },
-  APPROVED: {
-    label: "Đã duyệt",
+  SIGNED: {
+    label: "Đã ký",
     color: "bg-blue-100 text-blue-700",
     icon: CheckCircle,
   },
-  SIGNED: {
-    label: "Đã ký",
-    color: "bg-green-100 text-green-700",
+  DELIVERING: {
+    label: "Đang giao xe",
+    color: "bg-orange-100 text-orange-700",
     icon: CheckCircle,
   },
   COMPLETED: {
@@ -204,16 +206,16 @@ export default function ContractList({
             {contracts.map((contract) => (
               <div
                 key={contract.id}
-                className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition"
+                className="bg-white border-2 border-gray-700 rounded-xl p-6 hover:shadow-lg transition-all duration-200"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
                       <FileText className="w-6 h-6 text-white" />
                     </div>
                     <div>
                       <h3 className="font-bold text-lg">
-                        Hợp đồng #{contract.contractNumber}
+                        Hợp đồng #{contract.contractCode}
                       </h3>
                       <p className="text-sm text-gray-600">
                         Khách hàng: {contract.customer?.firstName}{" "}
@@ -253,7 +255,7 @@ export default function ContractList({
                   <div>
                     <p className="text-xs text-gray-600 mb-1">Giá gốc</p>
                     <p className="font-semibold">
-                      {formatMoney(contract.totalAmount)}
+                      {formatMoney(contract.basePrice)}
                     </p>
                   </div>
                   <div>
@@ -267,7 +269,7 @@ export default function ContractList({
                       Tổng thanh toán
                     </p>
                     <p className="font-bold text-blue-600">
-                      {formatMoney(contract.finalAmount)}
+                      {formatMoney(contract.finalPrice)}
                     </p>
                   </div>
                 </div>

@@ -50,7 +50,7 @@ router.get(
   '/statistics',
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
-  contractController.getContractStatistics
+  contractController.getStatistics
 );
 
 /**

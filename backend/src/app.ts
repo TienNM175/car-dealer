@@ -42,13 +42,15 @@ class App {
       })
     );
 
-    // Rate limiting
-    const limiter = rateLimit({
-      windowMs: config.RATE_LIMIT_WINDOW_MS,
-      max: config.RATE_LIMIT_MAX_REQUESTS,
-      message: "Too many requests from this IP, please try again later",
-    });
-    this.app.use("/api/", limiter);
+    // Rate limiting - Disable in development
+    if (config.NODE_ENV !== "development") {
+      const limiter = rateLimit({
+        windowMs: config.RATE_LIMIT_WINDOW_MS,
+        max: config.RATE_LIMIT_MAX_REQUESTS,
+        message: "Too many requests from this IP, please try again later",
+      });
+      this.app.use("/api/", limiter);
+    }
 
     // Body parser
     this.app.use(express.json({ limit: "10mb" }));

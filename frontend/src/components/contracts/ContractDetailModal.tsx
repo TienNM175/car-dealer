@@ -124,7 +124,7 @@ export default function ContractDetailModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl border-2 border-gray-700 shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto modal-scrollbar">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-600 to-blue-700">
           <div className="flex items-center gap-4">
@@ -133,7 +133,7 @@ export default function ContractDetailModal({
             </div>
             <div className="text-white">
               <h2 className="text-xl font-bold">Chi tiết hợp đồng</h2>
-              <p className="text-blue-100">#{contract.contractNumber}</p>
+              <p className="text-blue-100">#{contract.contractCode}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -228,15 +228,11 @@ export default function ContractDetailModal({
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-gray-600">Năm</p>
-                    <p className="font-medium">
-                      {contract.vehicle?.year || "N/A"}
-                    </p>
+                    <p className="font-medium">N/A</p>
                   </div>
                   <div>
                     <p className="text-gray-600">Màu sắc</p>
-                    <p className="font-medium">
-                      {contract.vehicle?.color || "N/A"}
-                    </p>
+                    <p className="font-medium">N/A</p>
                   </div>
                 </div>
               </div>
@@ -255,19 +251,19 @@ export default function ContractDetailModal({
                 <div>
                   <p className="text-sm text-gray-600">Giá gốc</p>
                   <p className="text-xl font-semibold text-gray-900">
-                    {formatMoney(contract.totalAmount, contract.currency)}
+                    {formatMoney(contract.basePrice)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Chiết khấu</p>
                   <p className="text-lg font-semibold text-red-600">
-                    -{formatMoney(contract.discount || 0, contract.currency)}
+                    -{formatMoney(contract.discount || 0)}
                   </p>
                 </div>
                 <div className="border-t pt-4">
                   <p className="text-sm text-gray-600">Thành tiền</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {formatMoney(contract.finalAmount, contract.currency)}
+                    {formatMoney(contract.finalPrice)}
                   </p>
                 </div>
               </div>
@@ -292,20 +288,12 @@ export default function ContractDetailModal({
                   <>
                     <div>
                       <p className="text-sm text-gray-600">Trả trước</p>
-                      <p className="font-semibold">
-                        {formatMoney(
-                          contract.downPayment || 0,
-                          contract.currency
-                        )}
-                      </p>
+                      <p className="font-semibold">{formatMoney(0)}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Hàng tháng</p>
                       <p className="text-lg font-bold text-blue-600">
-                        {formatMoney(
-                          contract.monthlyPayment || 0,
-                          contract.currency
-                        )}
+                        {formatMoney(contract.monthlyPayment || 0)}
                       </p>
                     </div>
                   </>
@@ -358,23 +346,19 @@ export default function ContractDetailModal({
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Đại lý</p>
-                  <p className="font-medium text-gray-900">
-                    {contract.staff?.dealer?.name || "N/A"}
-                  </p>
+                  <p className="font-medium text-gray-900">N/A</p>
                 </div>
               </div>
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-600">Mã đại lý</p>
-                  <p className="font-medium text-gray-900">
-                    {contract.staff?.dealer?.code || "N/A"}
-                  </p>
+                  <p className="font-medium text-gray-900">N/A</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Địa điểm</p>
                   <p className="font-medium text-gray-900 flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-gray-500" />
-                    {contract.staff?.dealer?.city || "N/A"}
+                    N/A
                   </p>
                 </div>
               </div>

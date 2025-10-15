@@ -16,6 +16,7 @@ model DealerDiscount {
   isActive    Boolean             @default(true) @map("is_active")
   
   dealer      Dealer @relation(fields: [dealerId], references: [id])
+  contracts   Contract[]
   
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")

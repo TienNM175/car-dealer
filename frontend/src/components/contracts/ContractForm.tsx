@@ -13,9 +13,15 @@ import {
   CreditCard,
   AlertTriangle,
 } from "lucide-react";
-import { Contract, CreateContractInput, contractApi } from "@/lib/api/contractApi";
+import {
+  Contract,
+  CreateContractInput,
+  contractApi,
+} from "@/lib/api/contractApi";
 import { customerApi, Customer } from "@/lib/api/customerApi";
 import { vehicleApi, Vehicle } from "@/lib/api/vehicleApi";
+import { promotionApi } from "@/lib/api/promotionApi";
+import { quotationApi, Quotation } from "@/lib/api/quotationApi";
 import { formatMoney } from "@/lib/utils/formatMoney";
 
 interface ContractFormProps {
@@ -25,6 +31,9 @@ interface ContractFormProps {
   contract?: Contract | null; // For editing
   selectedCustomer?: Customer | null;
   selectedVehicle?: Vehicle | null;
+  selectedQuotation?: Quotation | null; // For creating contract from quotation
+  dealerId?: string; // Add dealerId for fetching promotions
+  userId?: string; // Add userId to set as staffId
 }
 
 export default function ContractForm({
@@ -34,34 +43,69 @@ export default function ContractForm({
   contract,
   selectedCustomer,
   selectedVehicle,
+  selectedQuotation,
+  dealerId,
+  userId,
 }: ContractFormProps) {
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [promotions, setPromotions] = useState<any[]>([]);
   const [searchCustomer, setSearchCustomer] = useState("");
   const [searchVehicle, setSearchVehicle] = useState("");
-  
+
   const [formData, setFormData] = useState<CreateContractInput>({
     customerId: "",
     vehicleId: "",
-    totalAmount: 0,
+    staffId: "", // Required by backend
+    quotationId: "",
+    promotionId: "",
+    basePrice: 0, // Changed from totalAmount
     discount: 0,
     paymentType: "FULL",
     installmentMonths: 24,
-    downPayment: 0,
+    interestRate: 12, // Default 12% annual rate
+    deliveryDate: "",
     notes: "",
   });
-  
+
+  // Separate state for promotion selection (UI only)
+  const [selectedPromotionId, setSelectedPromotionId] = useState<string>("");
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Calculated values
-  const finalAmount = formData.totalAmount - (formData.discount || 0);
-  const monthlyPayment = formData.paymentType === "INSTALLMENT" && formData.installmentMonths 
-    ? finalAmount / formData.installmentMonths 
-    : 0;
-  const totalInstallmentAmount = formData.paymentType === "INSTALLMENT" 
-    ? monthlyPayment * (formData.installmentMonths || 0)
-    : finalAmount;
+  const finalPrice = formData.basePrice - (formData.discount || 0);
+
+  // Proper installment calculation with interest (matching backend logic)
+  const calculateMonthlyPayment = () => {
+    if (
+      formData.paymentType !== "INSTALLMENT" ||
+      !formData.installmentMonths ||
+      !formData.interestRate
+    ) {
+      return 0;
+    }
+
+    const principal = finalPrice;
+    const monthlyRate = (formData.interestRate || 0) / 100 / 12;
+    const numberOfPayments = formData.installmentMonths;
+
+    if (monthlyRate === 0) return principal / numberOfPayments;
+
+    // Formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
+    const monthlyPayment =
+      (principal * monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) /
+      (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+
+    return Math.round(monthlyPayment * 100) / 100;
+  };
+
+  const monthlyPayment = calculateMonthlyPayment();
+  const totalInstallmentAmount =
+    formData.paymentType === "INSTALLMENT"
+      ? monthlyPayment * (formData.installmentMonths || 0)
+      : finalPrice;
 
   useEffect(() => {
     if (isOpen) {
@@ -71,51 +115,104 @@ export default function ContractForm({
         setFormData({
           customerId: contract.customerId,
           vehicleId: contract.vehicleId,
-          totalAmount: contract.totalAmount,
+          staffId: contract.staffId,
+          basePrice: contract.basePrice,
           discount: contract.discount || 0,
           paymentType: contract.paymentType,
           installmentMonths: contract.installmentMonths || 24,
-          downPayment: contract.downPayment || 0,
+          interestRate: contract.interestRate || 12,
+          deliveryDate: contract.deliveryDate || "",
           notes: contract.notes || "",
         });
+        // Reset promotion selection in edit mode
+        setSelectedPromotionId("");
+      } else if (selectedQuotation) {
+        // Create from quotation - populate form with quotation data
+        setFormData((prev) => ({
+          ...prev,
+          customerId: selectedQuotation.customerId,
+          vehicleId: selectedQuotation.vehicleId,
+          staffId: userId || selectedQuotation.staffId,
+          quotationId: selectedQuotation.id,
+          promotionId: "",
+          basePrice: selectedQuotation.basePrice,
+          discount: selectedQuotation.discount,
+          paymentType: selectedQuotation.paymentType,
+          installmentMonths: selectedQuotation.installmentMonths || 24,
+          interestRate: 12, // Default rate, can be updated
+          deliveryDate: "",
+          notes:
+            selectedQuotation.notes ||
+            `Tạo từ báo giá ${selectedQuotation.quoteNumber}`,
+        }));
+        setSelectedPromotionId("");
       } else {
         // Create mode - set selected customer/vehicle
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           customerId: selectedCustomer?.id || "",
           vehicleId: selectedVehicle?.id || "",
-          totalAmount: selectedVehicle?.retailPrice ? Number(selectedVehicle.retailPrice) : 0,
+          staffId: userId || "", // Set from user context
+          basePrice: selectedVehicle?.retailPrice
+            ? Number(selectedVehicle.retailPrice)
+            : 0,
         }));
+        setSelectedPromotionId("");
       }
     }
-  }, [isOpen, contract, selectedCustomer, selectedVehicle]);
+  }, [isOpen, contract, selectedCustomer, selectedVehicle, selectedQuotation]);
 
   const fetchInitialData = async () => {
     try {
-      const [customersRes, vehiclesRes] = await Promise.all([
+      // Get user's dealerId from props
+      const userDealerId = dealerId || "";
+
+      const [customersRes, vehiclesRes, promotionsRes] = await Promise.all([
         customerApi.getAllCustomers({}, { limit: 100 }),
         vehicleApi.getAllVehicles({}, { limit: 100 }),
+        promotionApi.getActivePromotions(userDealerId),
       ]);
 
       setCustomers(customersRes.data?.data || []);
       setVehicles(vehiclesRes.data?.data || []);
+      setPromotions(promotionsRes || []);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
   };
 
   const handleCustomerSelect = (customer: Customer) => {
-    setFormData(prev => ({ ...prev, customerId: customer.id }));
+    setFormData((prev) => ({ ...prev, customerId: customer.id }));
     setSearchCustomer(`${customer.firstName} ${customer.lastName}`);
   };
 
   const handleVehicleSelect = (vehicle: Vehicle) => {
-    setFormData(prev => ({
+    const newBasePrice = Number(vehicle.retailPrice || 0);
+
+    // Recalculate discount if promotion is selected
+    let newDiscount = formData.discount;
+    if (selectedPromotionId && newBasePrice > 0) {
+      const selectedPromotion = promotions.find(
+        (p) => p.id === selectedPromotionId
+      );
+      if (selectedPromotion) {
+        if (selectedPromotion.discountType === "PERCENTAGE") {
+          newDiscount = (newBasePrice * selectedPromotion.discountValue) / 100;
+        } else {
+          newDiscount = selectedPromotion.discountValue;
+        }
+      }
+    }
+
+    setFormData((prev) => ({
       ...prev,
       vehicleId: vehicle.id,
-      totalAmount: Number(vehicle.retailPrice || 0),
+      basePrice: newBasePrice, // Changed from totalAmount
+      discount: newDiscount,
     }));
-    setSearchVehicle(`${vehicle.manufacturer?.name} ${vehicle.model} ${vehicle.variant || ""}`);
+    setSearchVehicle(
+      `${vehicle.manufacturer?.name} ${vehicle.model} ${vehicle.variant || ""}`
+    );
   };
 
   const validateForm = (): boolean => {
@@ -123,13 +220,21 @@ export default function ContractForm({
 
     if (!formData.customerId) newErrors.customerId = "Vui lòng chọn khách hàng";
     if (!formData.vehicleId) newErrors.vehicleId = "Vui lòng chọn xe";
-    if (formData.totalAmount <= 0) newErrors.totalAmount = "Giá xe phải lớn hơn 0";
-    if (formData.discount && formData.discount >= formData.totalAmount) {
+    if (!formData.staffId) newErrors.staffId = "Thiếu thông tin nhân viên";
+    if (formData.basePrice <= 0) newErrors.basePrice = "Giá xe phải lớn hơn 0";
+    if (formData.discount && formData.discount >= formData.basePrice) {
       newErrors.discount = "Chiết khấu không thể lớn hơn giá xe";
     }
     if (formData.paymentType === "INSTALLMENT") {
       if (!formData.installmentMonths || formData.installmentMonths < 1) {
         newErrors.installmentMonths = "Số tháng phải lớn hơn 0";
+      }
+      if (
+        !formData.interestRate ||
+        formData.interestRate < 0 ||
+        formData.interestRate > 100
+      ) {
+        newErrors.interestRate = "Lãi suất phải từ 0% đến 100%";
       }
     }
 
@@ -182,7 +287,7 @@ export default function ContractForm({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl border-2 border-gray-700 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-scrollbar">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-600 to-blue-700">
           <div className="flex items-center gap-3">
@@ -190,7 +295,11 @@ export default function ContractForm({
               <FileText className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-xl font-bold text-white">
-              {contract ? "Chỉnh sửa hợp đồng" : "Tạo hợp đồng mới"}
+              {contract
+                ? "Chỉnh sửa hợp đồng"
+                : selectedQuotation
+                ? `Tạo hợp đồng từ báo giá ${selectedQuotation.quoteNumber}`
+                : "Tạo hợp đồng mới"}
             </h2>
           </div>
           <button
@@ -238,9 +347,13 @@ export default function ContractForm({
                         <p className="font-medium">
                           {customer.firstName} {customer.lastName}
                         </p>
-                        <p className="text-sm text-gray-600">{customer.email}</p>
+                        <p className="text-sm text-gray-600">
+                          {customer.email}
+                        </p>
                       </div>
-                      <span className="text-xs text-gray-500">{customer.phone}</span>
+                      <span className="text-xs text-gray-500">
+                        {customer.phone}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -278,7 +391,9 @@ export default function ContractForm({
                         <p className="font-medium">
                           {vehicle.manufacturer?.name} {vehicle.model}
                         </p>
-                        <p className="text-sm text-gray-600">{vehicle.variant}</p>
+                        <p className="text-sm text-gray-600">
+                          {vehicle.variant}
+                        </p>
                       </div>
                       <span className="text-sm font-medium text-green-600">
                         {formatMoney(Number(vehicle.retailPrice || 0))}
@@ -303,25 +418,101 @@ export default function ContractForm({
               </label>
               <input
                 type="number"
-                value={formData.totalAmount}
+                value={formData.basePrice}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    totalAmount: Number(e.target.value),
+                    basePrice: Number(e.target.value),
                   }))
                 }
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
                 min="0"
               />
-              {errors.totalAmount && (
-                <p className="text-red-500 text-sm">{errors.totalAmount}</p>
+              {errors.basePrice && (
+                <p className="text-red-500 text-sm">{errors.basePrice}</p>
+              )}
+            </div>
+
+            {/* Promotion Selection */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Mã khuyến mãi
+              </label>
+              <select
+                value={selectedPromotionId || ""}
+                onChange={(e) => {
+                  const promotionId = e.target.value;
+                  setSelectedPromotionId(promotionId);
+
+                  // Update formData with promotionId
+                  setFormData((prev) => ({
+                    ...prev,
+                    promotionId: promotionId,
+                  }));
+
+                  const selectedPromotion = promotions.find(
+                    (p) => p.id === promotionId
+                  );
+
+                  let calculatedDiscount = 0;
+                  if (selectedPromotion && formData.basePrice > 0) {
+                    if (selectedPromotion.discountType === "PERCENTAGE") {
+                      calculatedDiscount =
+                        (formData.basePrice * selectedPromotion.discountValue) /
+                        100;
+                    } else {
+                      calculatedDiscount = selectedPromotion.discountValue;
+                    }
+                  }
+
+                  setFormData((prev) => ({
+                    ...prev,
+                    discount: calculatedDiscount,
+                  }));
+                }}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
+              >
+                <option value="">Không chọn khuyến mãi</option>
+                {promotions.map((promotion) => (
+                  <option key={promotion.id} value={promotion.id}>
+                    {promotion.name} -{" "}
+                    {promotion.discountType === "PERCENTAGE"
+                      ? `${promotion.discountValue}%`
+                      : formatMoney(promotion.discountValue)}
+                  </option>
+                ))}
+              </select>
+              {selectedPromotionId && (
+                <div className="text-sm">
+                  {(() => {
+                    const selectedPromotion = promotions.find(
+                      (p) => p.id === selectedPromotionId
+                    );
+                    if (
+                      selectedPromotion?.minPurchase &&
+                      formData.basePrice < selectedPromotion.minPurchase
+                    ) {
+                      return (
+                        <p className="text-red-600">
+                          ⚠️ Đơn hàng tối thiểu:{" "}
+                          {formatMoney(selectedPromotion.minPurchase)}
+                        </p>
+                      );
+                    }
+                    return (
+                      <p className="text-green-600">
+                        ✅ Đã áp dụng mã khuyến mãi
+                      </p>
+                    );
+                  })()}
+                </div>
               )}
             </div>
 
             {/* Discount */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
-                Chiết khấu
+                Chiết khấu (tự động từ mã khuyến mãi)
               </label>
               <input
                 type="number"
@@ -334,7 +525,8 @@ export default function ContractForm({
                 }
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
                 min="0"
-                max={formData.totalAmount}
+                max={formData.basePrice}
+                readOnly={!!selectedPromotionId} // Read-only when promotion is selected
               />
               {errors.discount && (
                 <p className="text-red-500 text-sm">{errors.discount}</p>
@@ -423,7 +615,9 @@ export default function ContractForm({
                     <option value={60}>60 tháng</option>
                   </select>
                   {errors.installmentMonths && (
-                    <p className="text-red-500 text-sm">{errors.installmentMonths}</p>
+                    <p className="text-red-500 text-sm">
+                      {errors.installmentMonths}
+                    </p>
                   )}
                 </div>
 
@@ -434,16 +628,13 @@ export default function ContractForm({
                   </label>
                   <input
                     type="number"
-                    value={formData.downPayment || 0}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        downPayment: Number(e.target.value),
-                      }))
-                    }
+                    value={0}
+                    onChange={(e) => {
+                      // Down payment logic can be added here if needed
+                    }}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
                     min="0"
-                    max={finalAmount}
+                    max={finalPrice}
                   />
                 </div>
               </div>
@@ -453,7 +644,7 @@ export default function ContractForm({
                 <div className="flex justify-between">
                   <span className="text-gray-600">Số tiền cần trả góp:</span>
                   <span className="font-medium text-black">
-                    {formatMoney(finalAmount - (formData.downPayment || 0))}
+                    {formatMoney(finalPrice)}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -465,7 +656,7 @@ export default function ContractForm({
                 <div className="flex justify-between border-t pt-2">
                   <span className="text-gray-600">Tổng tiền phải trả:</span>
                   <span className="font-bold text-green-600">
-                    {formatMoney(totalInstallmentAmount + (formData.downPayment || 0))}
+                    {formatMoney(totalInstallmentAmount)}
                   </span>
                 </div>
               </div>
@@ -474,7 +665,9 @@ export default function ContractForm({
 
           {/* Notes */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Ghi chú</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Ghi chú
+            </label>
             <textarea
               value={formData.notes || ""}
               onChange={(e) =>
@@ -492,7 +685,7 @@ export default function ContractForm({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Giá xe:</span>
-                <span>{formatMoney(formData.totalAmount)}</span>
+                <span>{formatMoney(formData.basePrice)}</span>
               </div>
               <div className="flex justify-between text-red-600">
                 <span>Chiết khấu:</span>
@@ -500,7 +693,9 @@ export default function ContractForm({
               </div>
               <div className="flex justify-between font-bold text-lg border-t pt-2">
                 <span>Thành tiền:</span>
-                <span className="text-green-600">{formatMoney(finalAmount)}</span>
+                <span className="text-green-600">
+                  {formatMoney(finalPrice)}
+                </span>
               </div>
             </div>
           </div>
