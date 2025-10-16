@@ -3,11 +3,20 @@
 import React, { useEffect, useState } from "react";
 import VehicleList from "@/components/vehicles/VehicleList";
 import { Vehicle, vehicleApi } from "@/lib/api/vehicleApi";
+import ContractForm from "@/components/contracts/ContractForm";
+import { useAuth } from "@/contexts/AuthContext";
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 export default function VehiclesPage() {
+  const { user } = useAuth();
+
+  // Debug user info
+  console.log("👤 User in dealer/vehicles:", user);
+  console.log("🏢 User dealerId:", (user as any)?.dealerId);
+  console.log("🏢 User dealer:", (user as any)?.dealer);
+
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -16,10 +25,18 @@ export default function VehiclesPage() {
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
 
+  // Contract creation states
+  const [showContractForm, setShowContractForm] = useState(false);
+  const [preselectedVehicle, setPreselectedVehicle] = useState<Vehicle | null>(
+    null
+  );
+
   const fetchVehicles = async () => {
     try {
       setLoading(true);
-      console.log("Fetching vehicles - Page:", page, "Limit:", limit);
+      console.log("Fetching dealer vehicles - Page:", page, "Limit:", limit);
+
+      // Dealer uses same API as Admin/EVM - getAllVehicles
 
       const res = await vehicleApi.getAllVehicles(
         { search: searchTerm, status: filterStatus },
@@ -33,9 +50,6 @@ export default function VehiclesPage() {
       const responseData = res.data.data || res.data;
       const vehicles = responseData.data || responseData;
       const meta = responseData.meta || res.data.meta;
-
-      console.log("Processed vehicles:", vehicles);
-      console.log("Meta:", meta);
 
       setVehicles(Array.isArray(vehicles) ? vehicles : []);
       setTotal(meta?.total || vehicles?.length || 0);
@@ -99,6 +113,18 @@ export default function VehiclesPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleCreateContractFromVehicle = (vehicle: Vehicle) => {
+    setPreselectedVehicle(vehicle);
+    setShowContractForm(true);
+  };
+
+  const handleContractSuccess = (contract: any) => {
+    console.log("Contract created successfully:", contract);
+    setShowContractForm(false);
+    setPreselectedVehicle(null);
+    // Optional: Show success message or refresh data
+  };
+
   return (
     <div className="p-6">
       <VehicleList
@@ -122,6 +148,7 @@ export default function VehiclesPage() {
         }}
         userRole={"DEALER_STAFF"} // Dealer chỉ được xem, không CRUD
         onExportClick={handleExport}
+        onCreateContractFromVehicle={handleCreateContractFromVehicle}
         pagination={{
           page,
           limit,
@@ -130,6 +157,31 @@ export default function VehiclesPage() {
         }}
         onPageChange={handlePageChange}
       />
+
+      {/* Contract Form Modal */}
+      {showContractForm && (
+        <ContractForm
+          isOpen={showContractForm}
+          onClose={() => {
+            setShowContractForm(false);
+            setPreselectedVehicle(null);
+          }}
+          onSuccess={handleContractSuccess}
+          selectedVehicle={preselectedVehicle || undefined}
+          dealerId={(user as any)?.dealerId}
+          userId={(user as any)?.userId}
+          dealerInfo={{
+            name: (user as any)?.dealer?.name || "N/A",
+            address: (user as any)?.dealer?.address,
+            phone: (user as any)?.dealer?.phone,
+            email: (user as any)?.dealer?.email,
+          }}
+          staffInfo={{
+            firstName: (user as any)?.firstName || "",
+            lastName: (user as any)?.lastName || "",
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,15 +1,15 @@
-'use client'
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import RouteGuard from '@/components/auth/RouteGuard';
-import { 
-  Car, 
-  Users, 
-  Package, 
-  FileText, 
-  BarChart3, 
+"use client";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import RouteGuard from "@/components/auth/RouteGuard";
+import {
+  Car,
+  Users,
+  Package,
+  FileText,
+  BarChart3,
   TrendingUp,
   Menu,
   X,
@@ -19,18 +19,14 @@ import {
   UserCog  
 } from 'lucide-react';
 
-export default function EVMLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function EVMLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeMenu, setActiveMenu] = useState('dashboard');
+  const [activeMenu, setActiveMenu] = useState("dashboard");
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  
+
   // role normalize về UPPERCASE
-  const userRole = user?.role?.toUpperCase() || 'EVM_STAFF';
+  const userRole = user?.role?.toUpperCase() || "EVM_STAFF";
 
   const evmMenuItems = [
     { id: 'dashboard', icon: TrendingUp, label: 'Tổng quan', role: ['EVM_STAFF', 'ADMIN'] },
@@ -44,10 +40,12 @@ export default function EVMLayout({
     { id: 'reports', icon: BarChart3, label: 'Báo cáo & Phân tích', role: ['EVM_STAFF', 'ADMIN'] },
   ];
 
-  const filteredMenuItems = evmMenuItems.filter(item => item.role.includes(userRole));
+  const filteredMenuItems = evmMenuItems.filter((item) =>
+    item.role.includes(userRole)
+  );
 
   useEffect(() => {
-    const currentPath = pathname.split('/').pop() || 'dashboard';
+    const currentPath = pathname.split("/").pop() || "dashboard";
     setActiveMenu(currentPath);
   }, [pathname]);
 
@@ -55,7 +53,11 @@ export default function EVMLayout({
     <RouteGuard allowedRoles={['EVM_STAFF', 'ADMIN', 'DEALER_MANAGER']}>
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar */}
-        <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white shadow-lg transition-all duration-300 flex flex-col`}>
+        <div
+          className={`${
+            sidebarOpen ? "w-64" : "w-20"
+          } bg-white shadow-lg transition-all duration-300 flex flex-col`}
+        >
           <div className="p-6 border-b flex items-center justify-between">
             {sidebarOpen && (
               <div className="flex items-center space-x-3">
@@ -69,7 +71,11 @@ export default function EVMLayout({
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 hover:bg-gray-100 rounded-lg"
             >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {sidebarOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
             </button>
           </div>
 
@@ -80,13 +86,15 @@ export default function EVMLayout({
                 href={`/evm/${item.id}`}
                 onClick={() => setActiveMenu(item.id)}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition duration-200 ${
-                activeMenu === item.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
+                  activeMenu === item.id
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
               >
                 <item.icon className="w-5 h-5" />
-                {sidebarOpen && <span className="font-medium">{item.label}</span>}
+                {sidebarOpen && (
+                  <span className="font-medium">{item.label}</span>
+                )}
               </Link>
             ))}
           </nav>
@@ -113,9 +121,7 @@ export default function EVMLayout({
 
         {/* Main Content */}
         <div className="flex-1 overflow-auto">
-          <div className="p-8">
-            {children}
-          </div>
+          <div className="p-8">{children}</div>
         </div>
       </div>
     </RouteGuard>

@@ -413,6 +413,7 @@ model Quotation {
   customer    Customer @relation(fields: [customerId], references: [id])
   vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
   staff       User     @relation(fields: [staffId], references: [id])
+  contracts   Contract[]
   
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -429,6 +430,8 @@ model Contract {
   customerId      String         @map("customer_id")
   staffId         String         @map("staff_id")
   vehicleId       String         @map("vehicle_id")
+  quotationId     String?        @map("quotation_id")
+  promotionId     String?        @map("promotion_id")
   
   basePrice       Decimal        @map("base_price")
   discount        Decimal        @default(0)
@@ -449,6 +452,8 @@ model Contract {
   customer        Customer       @relation(fields: [customerId], references: [id])
   staff           User           @relation(fields: [staffId], references: [id])
   vehicle         Vehicle        @relation(fields: [vehicleId], references: [id])
+  quotation       Quotation?     @relation(fields: [quotationId], references: [id])
+  promotion       DealerDiscount? @relation(fields: [promotionId], references: [id])
   feedbacks       Feedback[]
   complaints      Complaint[]
   customerDebts   CustomerDebt[]
@@ -499,23 +504,33 @@ model DealerDiscount {
   discountValue Decimal           @map("discount_value") // % hoặc số tiền
   minPurchase  Decimal?           @map("min_purchase") // Giá trị đơn hàng tối thiểu
   
+  // Source of promotion: DEALER (tự tạo) or MANUFACTURER (hãng cấp)
+  source      PromotionSource     @default(DEALER)
+  
   startDate   DateTime            @map("start_date")
   endDate     DateTime?           @map("end_date")
   isActive    Boolean             @default(true) @map("is_active")
   
   dealer      Dealer @relation(fields: [dealerId], references: [id])
+  contracts   Contract[]
   
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([dealerId])
   @@index([isActive])
+  @@index([source])
   @@map("dealer_discounts")
 }
 
 enum DiscountType {
   PERCENTAGE  // Chiết khấu theo %
   FIXED       // Chiết khấu cố định (VND/USD)
+}
+
+enum PromotionSource {
+  DEALER        // Dealer tự tạo
+  MANUFACTURER  // Hãng cấp cho dealer
 }
 
 

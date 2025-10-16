@@ -14,20 +14,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-export default function ContractsPage() {
+export default function EVMContractsPage() {
   const { user } = useAuth();
-
-  // Determine user role for permissions
-  const userRole = user?.role?.toUpperCase() as
-    | "DEALER_STAFF"
-    | "DEALER_MANAGER"
-    | "ADMIN"
-    | undefined;
-
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterDealerId, setFilterDealerId] = useState(""); // EVM/Admin có thể filter theo dealer
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
@@ -46,8 +39,7 @@ export default function ContractsPage() {
         {
           search: searchTerm,
           status: filterStatus as any,
-          // ADMIN xem tất cả, DEALER chỉ xem của mình
-          dealerId: userRole === "ADMIN" ? undefined : (user as any)?.dealerId,
+          dealerId: filterDealerId || undefined, // EVM/Admin có thể filter theo dealerId
         },
         { page, limit }
       );
@@ -69,12 +61,6 @@ export default function ContractsPage() {
 
   const fetchStatistics = async () => {
     try {
-      // Only fetch statistics for DEALER_MANAGER and above
-      if (userRole === "DEALER_STAFF") {
-        setStatistics({ total: 0, byStatus: {} });
-        return;
-      }
-
       const res = await contractApi.getContractsByStatus();
       const data = res.data.data;
 
@@ -101,7 +87,7 @@ export default function ContractsPage() {
     fetchContracts();
     fetchStatistics();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, searchTerm, filterStatus]);
+  }, [page, searchTerm, filterStatus, filterDealerId]);
 
   const handleView = (contract: Contract) => {
     setViewingContract(contract);
@@ -125,9 +111,11 @@ export default function ContractsPage() {
       } else {
         fetchContracts();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error deleting contract:", err);
-      alert("Có lỗi xảy ra khi xóa hợp đồng");
+      const errorMessage =
+        err?.response?.data?.message || "Có lỗi xảy ra khi xóa hợp đồng";
+      alert(errorMessage);
     }
   };
 
@@ -136,12 +124,25 @@ export default function ContractsPage() {
     setShowForm(true);
   };
 
-  const handleSave = async (contract: any) => {
-    // Contract already created/updated in ContractForm
-    // Just refresh the list
-    console.log("✅ Contract saved, refreshing list...", contract);
-    fetchContracts();
-    fetchStatistics();
+  const handleSave = async (
+    data: CreateContractInput | UpdateContractInput
+  ) => {
+    try {
+      if (editingContract) {
+        await contractApi.updateContract(editingContract.id, data);
+      } else {
+        await contractApi.createContract(data as CreateContractInput);
+      }
+      setShowForm(false);
+      setEditingContract(null);
+      fetchContracts();
+      fetchStatistics();
+    } catch (err: any) {
+      console.error("Error saving contract:", err);
+      const errorMessage =
+        err?.response?.data?.message || "Có lỗi xảy ra khi lưu hợp đồng";
+      alert(errorMessage);
+    }
   };
 
   const handleStatusChange = async (
@@ -152,20 +153,24 @@ export default function ContractsPage() {
       await contractApi.updateContractStatus(contractId, { status: newStatus });
       fetchContracts();
       fetchStatistics();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating contract status:", err);
+      const errorMessage =
+        err?.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái";
+      alert(errorMessage);
     }
   };
 
   const handleExport = () => {
     const worksheet = XLSX.utils.json_to_sheet(
       contracts.map((c) => ({
-        "Số HĐ": c.contractCode, // Updated field name
+        "Số HĐ": c.contractCode,
         "Khách hàng": `${c.customer?.firstName} ${c.customer?.lastName}`,
+        "Đại lý": c.staff?.dealer?.name || "N/A",
         Xe: `${c.vehicle?.manufacturer?.name} ${c.vehicle?.model}`,
-        "Giá gốc": c.basePrice, // Updated field name
+        "Giá gốc": c.basePrice,
         "Chiết khấu": c.discount || 0,
-        "Thành tiền": c.finalPrice, // Updated field name
+        "Thành tiền": c.finalPrice,
         "Thanh toán":
           c.paymentType === "FULL"
             ? "Trả thẳng"
@@ -191,6 +196,12 @@ export default function ContractsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // EVM_STAFF and ADMIN have full access
+  const userRole = user?.role?.toUpperCase() as
+    | "EVM_STAFF"
+    | "ADMIN"
+    | undefined;
+
   return (
     <div className="p-6">
       <ContractList
@@ -211,7 +222,7 @@ export default function ContractsPage() {
         onEditClick={handleEdit}
         onDeleteClick={handleDelete}
         onExportClick={handleExport}
-        userRole={userRole || "DEALER_STAFF"}
+        userRole={userRole || "EVM_STAFF"}
         pagination={{
           page,
           limit,
@@ -232,18 +243,8 @@ export default function ContractsPage() {
           }}
           onSuccess={handleSave}
           contract={editingContract}
-          dealerId={(user as any)?.dealerId}
-          userId={(user as any)?.id} // Pass user.id as staffId
-          dealerInfo={{
-            name: (user as any)?.dealer?.name || "N/A",
-            address: (user as any)?.dealer?.address,
-            phone: (user as any)?.dealer?.phone,
-            email: (user as any)?.dealer?.email,
-          }}
-          staffInfo={{
-            firstName: (user as any)?.firstName || "",
-            lastName: (user as any)?.lastName || "",
-          }}
+          dealerId={editingContract?.staff?.dealerId} // For editing existing contract
+          userId={(user as any)?.userId} // Pass userId as staffId
         />
       )}
 
@@ -258,7 +259,7 @@ export default function ContractsPage() {
           contract={viewingContract}
           onStatusChange={handleStatusChange}
           onEditClick={handleEdit}
-          userRole={userRole || "DEALER_STAFF"}
+          userRole={userRole || "EVM_STAFF"}
         />
       )}
     </div>

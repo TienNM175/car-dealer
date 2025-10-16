@@ -1,13 +1,16 @@
 // frontend/src/lib/utils/formatMoney.ts
 
 export const formatMoney = (
-  amount: number,
+  amount: number | undefined | null,
   currency: string = "VND"
 ): string => {
-  if (amount === 0) return "0 VNĐ";
+  if (!amount || amount === 0) return "0 VNĐ";
+
+  // Round to integer to avoid decimal issues
+  const roundedAmount = Math.round(amount);
 
   // Simple format với dấu chấm ngăn cách hàng nghìn
-  const numStr = amount.toString();
+  const numStr = roundedAmount.toString();
   const parts = [];
 
   for (let i = numStr.length; i > 0; i -= 3) {
@@ -19,17 +22,19 @@ export const formatMoney = (
 };
 
 export const formatMoneyDetailed = (
-  amount: number,
+  amount: number | undefined | null,
   currency: string = "VND"
 ): string => {
+  if (!amount || amount === 0) return "0 VNĐ";
   // Full format with thousand separators
   return `${amount.toLocaleString("vi-VN")} VNĐ`;
 };
 
 export const formatMoneyShort = (
-  amount: number,
+  amount: number | undefined | null,
   currency: string = "VND"
 ): string => {
+  if (!amount || amount === 0) return "0 VNĐ";
   // Very short format for grid view: 2.082.800.000 VNĐ -> 2.082.800.000 VNĐ (rút gọn số)
   if (amount >= 1000000000) {
     // Tỷ: 2.082.800.000 VNĐ -> 2.082.800.000 VNĐ (chỉ hiển thị 3 chữ số đầu của triệu)
@@ -51,9 +56,10 @@ export const formatMoneyShort = (
 };
 
 export const formatMoneyCompact = (
-  amount: number,
+  amount: number | undefined | null,
   currency: string = "VND"
 ): string => {
+  if (!amount || amount === 0) return "0 VNĐ";
   // Compact format for tight spaces: 2.08B VNĐ
   const formatted = amount.toLocaleString("vi-VN");
 
