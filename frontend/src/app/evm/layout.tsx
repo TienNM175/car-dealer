@@ -15,7 +15,8 @@ import {
   X,
   LogOut,
   Tag,
-  Sparkles 
+  Sparkles,
+  UserCog  
 } from 'lucide-react';
 
 export default function EVMLayout({
@@ -37,6 +38,7 @@ export default function EVMLayout({
     { id: 'products', icon: Car, label: 'Quản lý sản phẩm', role: ['EVM_STAFF', 'ADMIN'] },
     { id: 'inventory', icon: Package, label: 'Tồn kho', role: ['EVM_STAFF', 'ADMIN'] },
     { id: 'dealers', icon: Users, label: 'Quản lý đại lý', role: ['ADMIN'] },
+    { id: 'users', icon: UserCog, label: 'Quản lý Users', role: ['ADMIN'] }, 
     { id: 'promotions', icon: Tag, label: 'Quản lý Khuyến mãi', role: ['ADMIN', 'EVM_STAFF'] },
     { id: 'pricing', icon: FileText, label: 'Giá & Chiết khấu', role: ['ADMIN'] },
     { id: 'reports', icon: BarChart3, label: 'Báo cáo & Phân tích', role: ['EVM_STAFF', 'ADMIN'] },
@@ -50,7 +52,7 @@ export default function EVMLayout({
   }, [pathname]);
 
   return (
-    <RouteGuard allowedRoles={['EVM_STAFF', 'ADMIN']}>
+    <RouteGuard allowedRoles={['EVM_STAFF', 'ADMIN', 'DEALER_MANAGER']}>
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar */}
         <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white shadow-lg transition-all duration-300 flex flex-col`}>
@@ -96,6 +98,7 @@ export default function EVMLayout({
                 <p className="text-sm font-semibold text-gray-800">
                   {user.firstName} {user.lastName}
                 </p>
+                <p className="text-xs text-blue-600 mt-1">{user.role}</p>
               </div>
             )}
             <button
