@@ -16,7 +16,8 @@ import {
   LogOut,
   Tag,
   Sparkles,
-} from "lucide-react";
+  UserCog  
+} from 'lucide-react';
 
 export default function EVMLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -28,55 +29,15 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
   const userRole = user?.role?.toUpperCase() || "EVM_STAFF";
 
   const evmMenuItems = [
-    {
-      id: "dashboard",
-      icon: TrendingUp,
-      label: "Tổng quan",
-      role: ["EVM_STAFF", "ADMIN"],
-    },
-    {
-      id: "ai-insights",
-      icon: Sparkles,
-      label: "AI Insights",
-      role: ["ADMIN"],
-    },
-    {
-      id: "products",
-      icon: Car,
-      label: "Quản lý sản phẩm",
-      role: ["EVM_STAFF", "ADMIN"],
-    },
-    {
-      id: "inventory",
-      icon: Package,
-      label: "Tồn kho",
-      role: ["EVM_STAFF", "ADMIN"],
-    },
-    { id: "dealers", icon: Users, label: "Quản lý đại lý", role: ["ADMIN"] },
-    {
-      id: "contracts",
-      icon: FileText,
-      label: "Quản lý Hợp đồng",
-      role: ["EVM_STAFF", "ADMIN"],
-    },
-    {
-      id: "promotions",
-      icon: Tag,
-      label: "Quản lý Khuyến mãi",
-      role: ["ADMIN", "EVM_STAFF"],
-    },
-    {
-      id: "pricing",
-      icon: FileText,
-      label: "Giá & Chiết khấu",
-      role: ["ADMIN"],
-    },
-    {
-      id: "reports",
-      icon: BarChart3,
-      label: "Báo cáo & Phân tích",
-      role: ["EVM_STAFF", "ADMIN"],
-    },
+    { id: 'dashboard', icon: TrendingUp, label: 'Tổng quan', role: ['EVM_STAFF', 'ADMIN'] },
+    { id: 'ai-insights', icon: Sparkles, label: 'AI Insights', role: ['ADMIN'] }, 
+    { id: 'products', icon: Car, label: 'Quản lý sản phẩm', role: ['EVM_STAFF', 'ADMIN'] },
+    { id: 'inventory', icon: Package, label: 'Tồn kho', role: ['EVM_STAFF', 'ADMIN'] },
+    { id: 'dealers', icon: Users, label: 'Quản lý đại lý', role: ['ADMIN'] },
+    { id: 'users', icon: UserCog, label: 'Quản lý Users', role: ['ADMIN'] }, 
+    { id: 'promotions', icon: Tag, label: 'Quản lý Khuyến mãi', role: ['ADMIN', 'EVM_STAFF'] },
+    { id: 'pricing', icon: FileText, label: 'Giá & Chiết khấu', role: ['ADMIN'] },
+    { id: 'reports', icon: BarChart3, label: 'Báo cáo & Phân tích', role: ['EVM_STAFF', 'ADMIN'] },
   ];
 
   const filteredMenuItems = evmMenuItems.filter((item) =>
@@ -89,7 +50,7 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   return (
-    <RouteGuard allowedRoles={["EVM_STAFF", "ADMIN"]}>
+    <RouteGuard allowedRoles={['EVM_STAFF', 'ADMIN', 'DEALER_MANAGER']}>
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar */}
         <div
@@ -145,6 +106,7 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
                 <p className="text-sm font-semibold text-gray-800">
                   {user.firstName} {user.lastName}
                 </p>
+                <p className="text-xs text-blue-600 mt-1">{user.role}</p>
               </div>
             )}
             <button
