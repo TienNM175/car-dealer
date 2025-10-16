@@ -1,6 +1,5 @@
-// frontend/src/components/vehicles/VehicleDetailModal.tsx
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import {
   X,
   Car,
@@ -10,22 +9,9 @@ import {
   Users,
   DollarSign,
   Calendar,
-  MapPin,
-  Package,
-  Eye,
-  Edit,
-  Trash2,
-  Building,
-  Phone,
-  Mail,
-  ChevronLeft,
-  ChevronRight,
-  Play,
-  Pause,
-  Clock,
-  Wind,
-  Wrench,
+  Globe,
   Info,
+  FileText,
 } from "lucide-react";
 import { Vehicle } from "@/lib/api/vehicleApi";
 import { formatMoney } from "@/lib/utils/formatMoney";
@@ -34,628 +20,423 @@ interface VehicleDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   vehicle: Vehicle | null;
-  onEditClick?: (vehicle: Vehicle) => void;
-  onDeleteClick?: (vehicle: Vehicle) => void;
-  userRole?: "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN";
+  onCreateContract?: (vehicle: Vehicle) => void; // New prop
 }
-
-const statusConfig = {
-  ACTIVE: { label: "Đang bán", color: "bg-green-100 text-green-700" },
-  INACTIVE: { label: "Ngừng bán", color: "bg-gray-100 text-gray-700" },
-  OUT_OF_STOCK: { label: "Hết hàng", color: "bg-red-100 text-red-700" },
-};
-
-const bodyTypeConfig: Record<string, string> = {
-  SEDAN: "Sedan",
-  SUV: "SUV",
-  HATCHBACK: "Hatchback",
-  COUPE: "Coupe",
-  WAGON: "Wagon",
-  VAN: "Van",
-  TRUCK: "Truck",
-  OTHER: "Khác",
-};
-
-const colorConfig: Record<string, string> = {
-  WHITE: "Trắng",
-  BLACK: "Đen",
-  SILVER: "Bạc",
-  GREY: "Xám",
-  GRAY: "Xám",
-  RED: "Đỏ",
-  BLUE: "Xanh dương",
-  GREEN: "Xanh lá",
-  YELLOW: "Vàng",
-  ORANGE: "Cam",
-  BROWN: "Nâu",
-  GOLD: "Vàng",
-  BEIGE: "Be",
-  OTHER: "Khác",
-};
 
 export default function VehicleDetailModal({
   isOpen,
   onClose,
   vehicle,
-  onEditClick,
-  onDeleteClick,
-  userRole = "DEALER_STAFF",
+  onCreateContract,
 }: VehicleDetailModalProps) {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
-
   if (!isOpen || !vehicle) return null;
 
-  const currentStatusConfig =
-    statusConfig[vehicle.status as keyof typeof statusConfig];
-  const allImages = vehicle.images || [];
-  // Hiển thị tối đa 3 ảnh đầu tiên
-  const images = allImages.slice(0, 3);
-  const currentImage = images[currentImageIndex];
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-
-  const canEdit = userRole === "EVM_STAFF" || userRole === "ADMIN";
-  const canDelete = userRole === "ADMIN";
-
   return (
-    <>
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f8fafc;
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #e2e8f0;
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #cbd5e1;
-        }
-      `}</style>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-3xl shadow-2xl border border-gray-200 max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-          {/* Header - Blue Gradient */}
-          <div className="flex items-center justify-between p-4 border-b border-blue-200 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-3xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Car className="w-6 h-6 text-white" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl border-2 border-gray-700 max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="p-5 border-b flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
+          <div className="flex items-center gap-4">
+            <h3 className="text-xl font-bold text-white">Chi tiết xe điện</h3>
+            {onCreateContract && (
+              <button
+                onClick={() => {
+                  onCreateContract(vehicle);
+                  onClose();
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-medium text-sm"
+              >
+                <FileText className="w-4 h-4" />
+                Tạo hợp đồng
+              </button>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white hover:text-gray-200 p-1 rounded-full transition"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 modal-scrollbar">
+          {/* Ảnh xe to phía trên */}
+          <div className="w-full h-96 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-xl overflow-hidden shadow-lg">
+            {vehicle.images?.find((img) => img.isMain) ? (
+              <img
+                src={vehicle.images.find((img) => img.isMain)?.url}
+                alt={`${vehicle.manufacturer?.name} ${vehicle.model}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Car className="w-24 h-24 text-blue-400" />
               </div>
-              <div className="text-white">
-                <h2 className="text-lg font-bold leading-tight">
+            )}
+          </div>
+
+          {/* Thông tin xe & Hãng */}
+          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 border border-gray-200">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h4 className="text-3xl font-bold text-gray-900 mb-2">
                   {vehicle.manufacturer?.name} {vehicle.model}
-                </h2>
+                </h4>
                 {vehicle.variant && (
-                  <p className="text-blue-100 text-sm">{vehicle.variant}</p>
+                  <p className="text-xl text-blue-600 font-semibold mb-2">
+                    Phiên bản: {vehicle.variant}
+                  </p>
                 )}
+                <div className="flex items-center gap-4 text-gray-600 mb-3">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    Năm {vehicle.year}
+                  </span>
+                  <span>•</span>
+                  <span>{vehicle.bodyType}</span>
+                  <span>•</span>
+                  <span>{vehicle.color}</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Globe className="w-4 h-4" />
+                  <span className="font-medium">
+                    Xuất xứ: {vehicle.manufacturer?.country}
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Status Badge */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border-2 border-white/30 bg-white/20">
-                <span className="text-white font-medium text-sm">
-                  {currentStatusConfig?.label}
+
+              <div>
+                <span
+                  className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                    vehicle.status === "ACTIVE"
+                      ? "bg-green-100 text-green-700 border border-green-300"
+                      : vehicle.status === "INACTIVE"
+                      ? "bg-red-100 text-red-700 border border-red-300"
+                      : "bg-orange-100 text-orange-700 border border-orange-300"
+                  }`}
+                >
+                  {vehicle.status === "ACTIVE"
+                    ? "✓ Đang bán"
+                    : vehicle.status === "INACTIVE"
+                    ? "✕ Ngừng bán"
+                    : vehicle.status === "OUT_OF_STOCK"
+                    ? "⚠ Hết hàng"
+                    : vehicle.status}
                 </span>
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 text-white hover:bg-white/20 rounded-full transition-all duration-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-            {/* Large Image Gallery - Full Width */}
-            <div className="space-y-3">
-              {images.length > 0 ? (
-                <>
-                  {/* Main Large Image */}
-                  <div className="relative">
-                    <div
-                      className="w-full h-[300px] lg:h-[400px] bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden cursor-pointer shadow-lg border border-gray-200"
-                      onClick={() => setIsImageGalleryOpen(true)}
-                    >
-                      {currentImage?.url ? (
-                        <img
-                          src={currentImage.url}
-                          alt={`${vehicle.manufacturer?.name} ${vehicle.model}`}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            // Nếu ảnh lỗi, ẩn ảnh và hiển thị placeholder
-                            e.currentTarget.style.display = "none";
-                            const placeholder =
-                              e.currentTarget.parentElement?.querySelector(
-                                ".image-placeholder"
-                              );
-                            if (placeholder) {
-                              (placeholder as HTMLElement).style.display =
-                                "flex";
-                            }
-                          }}
-                        />
-                      ) : null}
+          {/* Thông số kỹ thuật chính */}
+          <div className="bg-white rounded-xl p-6 border-2 border-blue-200 shadow-sm">
+            <h5 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-blue-600" />
+              Thông số kỹ thuật chính
+            </h5>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2 text-green-700 mb-2">
+                  <Battery className="w-5 h-5" />
+                  <span className="text-sm font-semibold">Dung lượng pin</span>
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {vehicle.batteryCapacity} <span className="text-lg">kWh</span>
+                </p>
+              </div>
 
-                      {/* Placeholder khi không có ảnh hoặc ảnh lỗi */}
-                      <div
-                        className="image-placeholder w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200"
-                        style={{ display: currentImage?.url ? "none" : "flex" }}
-                      >
-                        <div className="text-center">
-                          <Car className="w-24 h-24 text-gray-400 mx-auto mb-4" />
-                          <p className="text-black font-medium text-lg">
-                            Chưa có ảnh
-                          </p>
-                          <p className="text-gray-600 text-sm mt-2">
-                            Hình ảnh xe sẽ được cập nhật sớm
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 text-blue-700 mb-2">
+                  <Gauge className="w-5 h-5" />
+                  <span className="text-sm font-semibold">
+                    Phạm vi hoạt động
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {vehicle.range} <span className="text-lg">km</span>
+                </p>
+              </div>
 
-                    {/* Navigation Arrows */}
-                    {images.length > 1 && (
-                      <>
-                        <button
-                          onClick={prevImage}
-                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors shadow-lg"
-                        >
-                          <ChevronLeft className="w-6 h-6" />
-                        </button>
-                        <button
-                          onClick={nextImage}
-                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors shadow-lg"
-                        >
-                          <ChevronRight className="w-6 h-6" />
-                        </button>
-                      </>
-                    )}
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-2 text-purple-700 mb-2">
+                  <Zap className="w-5 h-5" />
+                  <span className="text-sm font-semibold">
+                    Công suất động cơ
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {vehicle.motorPower || 0} <span className="text-lg">kW</span>
+                </p>
+              </div>
 
-                    {/* Image Counter */}
-                    {images.length > 1 && (
-                      <div className="absolute bottom-4 right-4 bg-gray-800 text-white px-3 py-2 rounded-full text-sm font-medium">
-                        {currentImageIndex + 1} / {images.length}
-                        {allImages.length > 3 && (
-                          <span className="text-xs opacity-75">
-                            {" "}
-                            (+{allImages.length - 3})
-                          </span>
-                        )}
-                      </div>
-                    )}
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
+                <div className="flex items-center gap-2 text-orange-700 mb-2">
+                  <Users className="w-5 h-5" />
+                  <span className="text-sm font-semibold">Số chỗ ngồi</span>
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {vehicle.seats} <span className="text-lg">chỗ</span>
+                </p>
+              </div>
+            </div>
+          </div>
 
-                    {/* Click to enlarge hint */}
-                    <div className="absolute bottom-4 left-4 bg-gray-800 text-white px-3 py-2 rounded-full text-sm">
-                      <Eye className="w-4 h-4 inline mr-1" />
-                      Nhấn để phóng to
-                    </div>
-                  </div>
+          {/* Giá cả */}
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-6 border-2 border-emerald-200 shadow-sm">
+            <h5 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-emerald-600" />
+              Thông tin giá cả
+            </h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white p-4 rounded-lg border border-emerald-300">
+                <span className="text-gray-600 text-sm block mb-1">
+                  Giá bán lẻ (dành cho khách hàng)
+                </span>
+                <span className="text-3xl font-bold text-emerald-600">
+                  {formatMoney(vehicle.retailPrice, vehicle.currency)}
+                </span>
+              </div>
+              <div className="bg-white p-4 rounded-lg border border-blue-300">
+                <span className="text-gray-600 text-sm block mb-1">
+                  Giá sỉ (dành cho đại lý)
+                </span>
+                <span className="text-3xl font-bold text-blue-600">
+                  {formatMoney(vehicle.wholesalePrice, vehicle.currency)}
+                </span>
+              </div>
+            </div>
+          </div>
 
-                  {/* Large Thumbnail Gallery */}
-                  {images.length > 1 && (
-                    <div className="flex gap-3 overflow-x-auto pb-2">
-                      {images.map((image, index) => (
-                        <button
-                          key={image.id}
-                          onClick={() => setCurrentImageIndex(index)}
-                          className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 shadow-md transition-all duration-200 ${
-                            index === currentImageIndex
-                              ? "border-blue-500 ring-2 ring-blue-200"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                        >
-                          <img
-                            src={image.url}
-                            alt={`${vehicle.manufacturer?.name} ${
-                              vehicle.model
-                            } ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
-                      ))}
+          {/* Chi tiết cấu hình & Tính năng */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <h5 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Info className="w-5 h-5 text-indigo-600" />
+              Cấu hình & Tính năng chi tiết
+            </h5>
 
-                      {/* Indicator nếu có nhiều hơn 3 ảnh */}
-                      {allImages.length > 3 && (
-                        <div className="flex-shrink-0 w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
-                          <div className="text-center">
-                            <p className="text-xs text-gray-500 font-medium">
-                              +{allImages.length - 3}
-                            </p>
-                            <p className="text-xs text-gray-400">ảnh khác</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="w-full h-[300px] lg:h-[400px] bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center shadow-lg border border-gray-200">
-                  <div className="text-center">
-                    <Car className="w-24 h-24 text-gray-400 mx-auto mb-4" />
-                    <p className="text-black font-medium text-lg">
-                      Chưa có ảnh
+            <div className="space-y-6">
+              {/* Thiết kế & Ngoại thất */}
+              <div>
+                <h6 className="font-semibold text-gray-700 mb-3 text-sm bg-gray-100 px-3 py-2 rounded">
+                  🚗 THIẾT KẾ & NGOẠI THẤT
+                </h6>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm pl-3">
+                  <div>
+                    <span className="text-gray-500">Kiểu dáng:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.bodyType}
                     </p>
-                    <p className="text-gray-600 text-sm mt-2">
-                      Hình ảnh xe sẽ được cập nhật sớm
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Màu sắc:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.color || "Đa dạng"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Số cửa:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.doors} cửa
                     </p>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Vehicle Information Grid - Below Image */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Basic Info Card */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  <Car className="w-5 h-5 text-blue-600" />
-                  Thông tin cơ bản
-                </h3>
-                <div className="space-y-3">
+              {/* Động cơ & Hiệu suất */}
+              <div>
+                <h6 className="font-semibold text-gray-700 mb-3 text-sm bg-gray-100 px-3 py-2 rounded">
+                  ⚡ ĐỘNG CƠ & HIỆU SUẤT
+                </h6>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm pl-3">
                   <div>
-                    <p className="text-sm text-black font-medium">Hãng xe</p>
-                    <p className="font-bold text-lg text-black">
+                    <span className="text-gray-500">Công suất tối đa:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.motorPower || 0} kW (
+                      {Math.round((vehicle.motorPower || 0) * 1.341)} HP)
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Tốc độ tối đa:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.topSpeed} km/h
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Tăng tốc 0-100 km/h:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.acceleration} giây
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pin & Sạc điện */}
+              <div>
+                <h6 className="font-semibold text-gray-700 mb-3 text-sm bg-gray-100 px-3 py-2 rounded">
+                  🔋 PIN & SẠC ĐIỆN
+                </h6>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm pl-3">
+                  <div>
+                    <span className="text-gray-500">Dung lượng pin:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.batteryCapacity} kWh
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">
+                      Quãng đường di chuyển:
+                    </span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.range} km (đầy pin)
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Thời gian sạc nhanh:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.chargingTime} phút (80%)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nội thất & Tiện nghi */}
+              <div>
+                <h6 className="font-semibold text-gray-700 mb-3 text-sm bg-gray-100 px-3 py-2 rounded">
+                  🪑 NỘI THẤT & TIỆN NGHI
+                </h6>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm pl-3">
+                  <div>
+                    <span className="text-gray-500">Số ghế ngồi:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.seats} chỗ
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Chất liệu nội thất:</span>
+                    <p className="font-semibold text-gray-900">Cao cấp</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Điều hòa:</span>
+                    <p className="font-semibold text-gray-900">
+                      Tự động đa vùng
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Thông tin hãng xe */}
+              <div>
+                <h6 className="font-semibold text-gray-700 mb-3 text-sm bg-gray-100 px-3 py-2 rounded">
+                  🏭 THÔNG TIN HÃNG XE
+                </h6>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm pl-3">
+                  <div>
+                    <span className="text-gray-500">Hãng sản xuất:</span>
+                    <p className="font-semibold text-gray-900">
                       {vehicle.manufacturer?.name}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-black font-medium">Model</p>
-                    <p className="font-bold text-black">{vehicle.model}</p>
-                  </div>
-                  {vehicle.variant && (
-                    <div>
-                      <p className="text-sm text-black font-medium">
-                        Phiên bản
-                      </p>
-                      <p className="font-semibold text-black">
-                        {vehicle.variant}
-                      </p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-sm text-black font-medium">Năm</p>
-                      <p className="font-semibold text-black">{vehicle.year}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-black font-medium">
-                        Kiểu dáng
-                      </p>
-                      <p className="font-semibold text-black">
-                        {bodyTypeConfig[vehicle.bodyType] || vehicle.bodyType}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-black font-medium">Màu sắc</p>
-                      <p className="font-semibold text-black">
-                        {colorConfig[vehicle.color] || vehicle.color}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-black font-medium">Số ghế</p>
-                      <p className="font-semibold text-black">
-                        {vehicle.seats}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-black font-medium">Số cửa</p>
-                      <p className="font-semibold text-black">
-                        {vehicle.doors}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Technical Specs Card */}
-              <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  <Gauge className="w-5 h-5 text-green-600" />
-                  Thông số kỹ thuật
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Battery className="w-5 h-5 text-green-600" />
-                    <div>
-                      <p className="text-sm text-black font-medium">
-                        Dung lượng pin
-                      </p>
-                      <p className="font-bold text-black">
-                        {vehicle.batteryCapacity} kWh
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Zap className="w-5 h-5 text-yellow-600" />
-                    <div>
-                      <p className="text-sm text-black font-medium">
-                        Tầm hoạt động
-                      </p>
-                      <p className="font-bold text-black">{vehicle.range} km</p>
-                    </div>
-                  </div>
-                  {vehicle.motorPower && (
-                    <div className="flex items-center gap-3">
-                      <Gauge className="w-5 h-5 text-red-600" />
-                      <div>
-                        <p className="text-sm text-black font-medium">
-                          Công suất
-                        </p>
-                        <p className="font-bold text-black">
-                          {vehicle.motorPower} kW
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {vehicle.chargingTime && (
-                    <div className="flex items-center gap-3">
-                      <Clock className="w-5 h-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm text-black font-medium">
-                          Thời gian sạc
-                        </p>
-                        <p className="font-bold text-black">
-                          {vehicle.chargingTime} phút (0-80%)
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {vehicle.topSpeed && (
-                    <div className="flex items-center gap-3">
-                      <Wind className="w-5 h-5 text-purple-600" />
-                      <div>
-                        <p className="text-sm text-black font-medium">
-                          Tốc độ tối đa
-                        </p>
-                        <p className="font-bold text-black">
-                          {vehicle.topSpeed} km/h
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {vehicle.acceleration && (
-                    <div className="flex items-center gap-3">
-                      <Zap className="w-5 h-5 text-indigo-600" />
-                      <div>
-                        <p className="text-sm text-black font-medium">
-                          Gia tốc 0-100km/h
-                        </p>
-                        <p className="font-bold text-black">
-                          {vehicle.acceleration} giây
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3">
-                    <Users className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-black font-medium">Số chỗ</p>
-                      <p className="font-bold text-black">
-                        {vehicle.seats} chỗ
-                      </p>
-                    </div>
-                  </div>
-                  {vehicle.topSpeed && (
-                    <div className="flex items-center gap-3">
-                      <Wind className="w-5 h-5 text-purple-600" />
-                      <div>
-                        <p className="text-sm text-black font-medium">
-                          Tốc độ tối đa
-                        </p>
-                        <p className="font-bold text-black">
-                          {vehicle.topSpeed} km/h
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {vehicle.acceleration && (
-                    <div className="flex items-center gap-3">
-                      <Clock className="w-5 h-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm text-black font-medium">
-                          Tăng tốc 0-100km/h
-                        </p>
-                        <p className="font-bold text-black">
-                          {vehicle.acceleration}s
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Pricing Card */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-4 space-y-3">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-green-600" />
-                  Giá bán
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-black font-medium">Giá bán lẻ</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {formatMoney(vehicle.retailPrice, vehicle.currency)}
+                    <span className="text-gray-500">Quốc gia:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.manufacturer?.country}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-black font-medium">Giá bán sỉ</p>
-                    <p className="text-lg font-bold text-black">
-                      {formatMoney(vehicle.wholesalePrice, vehicle.currency)}
+                    <span className="text-gray-500">Năm sản xuất:</span>
+                    <p className="font-semibold text-gray-900">
+                      {vehicle.year}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Description Section */}
-            {(vehicle.description || vehicle.specifications) && (
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
-                  <Info className="w-5 h-5 text-blue-600" />
-                  Thông tin chi tiết
-                </h3>
-                {vehicle.description && (
-                  <div className="mb-4">
-                    <h4 className="text-md font-medium text-gray-700 mb-2">
-                      Mô tả
-                    </h4>
-                    <p className="text-gray-800 leading-relaxed">
-                      {vehicle.description}
-                    </p>
-                  </div>
-                )}
-                {vehicle.specifications && (
-                  <div>
-                    <h4 className="text-md font-medium text-gray-700 mb-2">
-                      Thông số kỹ thuật
-                    </h4>
-                    <pre className="text-gray-800 text-sm bg-gray-50 p-3 rounded-lg overflow-auto whitespace-pre-wrap">
-                      {vehicle.specifications}
-                    </pre>
-                  </div>
-                )}
+          {/* Mô tả chi tiết */}
+          {vehicle.description && (
+            <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+              <h5 className="text-lg font-bold text-gray-800 mb-3">
+                📝 Mô tả sản phẩm
+              </h5>
+              <p className="text-gray-700 leading-relaxed">
+                {vehicle.description}
+              </p>
+            </div>
+          )}
+
+          {/* Thông số kỹ thuật đầy đủ */}
+          {vehicle.specifications && (
+            <div className="bg-purple-50 rounded-xl p-6 border border-purple-200">
+              <h5 className="text-lg font-bold text-gray-800 mb-3">
+                📋 Thông số kỹ thuật đầy đủ
+              </h5>
+              <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                {vehicle.specifications}
+              </p>
+            </div>
+          )}
+
+          {/* Thông tin thống kê */}
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
+            <h5 className="text-lg font-bold text-gray-800 mb-4">
+              📊 Thống kê hoạt động
+            </h5>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-lg text-center border border-indigo-200">
+                <p className="text-3xl font-bold text-blue-600">
+                  {vehicle._count?.dealerInventories || 0}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Tại đại lý</p>
               </div>
-            )}
-
-            {/* Business Stats */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
-                <Building className="w-5 h-5 text-indigo-600" />
-                Thống kê kinh doanh
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <DollarSign className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                  <p className="text-sm text-black font-medium">Hợp đồng</p>
-                  <p className="text-xl font-bold text-green-600">
-                    {vehicle._count?.contracts || 0}
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <Edit className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-                  <p className="text-sm text-black font-medium">Báo giá</p>
-                  <p className="text-xl font-bold text-purple-600">
-                    {vehicle._count?.quotations || 0}
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-orange-50 rounded-lg">
-                  <Users className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-                  <p className="text-sm text-black font-medium">Lái thử</p>
-                  <p className="text-xl font-bold text-orange-600">
-                    {vehicle._count?.testDrives || 0}
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <Package className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                  <p className="text-sm text-black font-medium">Đơn đặt hàng</p>
-                  <p className="text-xl font-bold text-blue-600">
-                    {vehicle._count?.dealerOrders || 0}
-                  </p>
-                </div>
+              <div className="bg-white p-4 rounded-lg text-center border border-indigo-200">
+                <p className="text-3xl font-bold text-green-600">
+                  {vehicle._count?.contracts || 0}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Hợp đồng</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg text-center border border-indigo-200">
+                <p className="text-3xl font-bold text-purple-600">
+                  {vehicle._count?.testDrives || 0}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Lái thử</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg text-center border border-indigo-200">
+                <p className="text-3xl font-bold text-orange-600">
+                  {vehicle._count?.quotations || 0}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Báo giá</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg text-center border border-indigo-200">
+                <p className="text-3xl font-bold text-teal-600">
+                  {vehicle._count?.dealerOrders || 0}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Đơn đặt hàng</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg text-center border border-indigo-200">
+                <p className="text-3xl font-bold text-indigo-600">
+                  {vehicle._count?.evmInventories || 0}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Tồn kho EVM</p>
               </div>
             </div>
+          </div>
 
-            {/* Actions */}
-            <div className="flex flex-wrap gap-3 pt-6 border-t">
-              <button
-                onClick={onClose}
-                className="px-6 py-3 text-black font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Đóng
-              </button>
-
-              {canEdit && onEditClick && (
-                <button
-                  onClick={() => onEditClick(vehicle)}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                >
-                  <Edit className="w-4 h-4" />
-                  Chỉnh sửa
-                </button>
-              )}
-
-              {canDelete && onDeleteClick && (
-                <button
-                  onClick={() => onDeleteClick(vehicle)}
-                  className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Xóa xe
-                </button>
-              )}
-            </div>
+          {/* Ngày tạo */}
+          <div className="text-center text-sm text-gray-500 pt-4 border-t">
+            <p>
+              Ngày tạo:{" "}
+              {new Date(vehicle.createdAt).toLocaleDateString("vi-VN", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
           </div>
         </div>
       </div>
-
-      {/* Full Screen Image Gallery Modal */}
-      {isImageGalleryOpen && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-95 flex items-center justify-center z-60">
-          <div className="relative max-w-7xl max-h-full p-4">
-            <button
-              onClick={() => setIsImageGalleryOpen(false)}
-              className="absolute top-4 right-4 text-white hover:bg-gray-700 rounded-full p-3 z-10 bg-gray-800"
-            >
-              <X className="w-6 h-6" />
-            </button>
-
-            {images.length > 1 && (
-              <>
-                <button
-                  onClick={prevImage}
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white p-4 rounded-full hover:bg-gray-700 transition-colors z-10"
-                >
-                  <ChevronLeft className="w-8 h-8" />
-                </button>
-                <button
-                  onClick={nextImage}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white p-4 rounded-full hover:bg-gray-700 transition-colors z-10"
-                >
-                  <ChevronRight className="w-8 h-8" />
-                </button>
-              </>
-            )}
-
-            <img
-              src={currentImage?.url}
-              alt={`${vehicle.manufacturer?.name} ${vehicle.model}`}
-              className="max-w-full max-h-full object-contain"
-            />
-
-            {images.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full">
-                {currentImageIndex + 1} / {images.length}
-                {allImages.length > 3 && (
-                  <span className="text-sm opacity-75">
-                    {" "}
-                    (+{allImages.length - 3} ảnh khác)
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Vehicle name overlay */}
-            <div className="absolute bottom-4 left-4 bg-gray-800 text-white px-4 py-2 rounded-lg">
-              <p className="font-semibold">
-                {vehicle.manufacturer?.name} {vehicle.model}
-              </p>
-              {vehicle.variant && (
-                <p className="text-sm opacity-80">{vehicle.variant}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 }

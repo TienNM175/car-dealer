@@ -105,6 +105,91 @@ export class VehicleService {
     };
   }
 
+  async getDealerVehicles(
+    dealerId: string,
+    filters: VehicleFilters,
+    pagination: PaginationParams
+  ) {
+    const page = pagination.page || 1;
+    const limit = pagination.limit || 10;
+    const skip = (page - 1) * limit;
+    const sortBy = pagination.sortBy || "createdAt";
+    const sortOrder = pagination.sortOrder || "desc";
+
+    const where: Prisma.VehicleWhereInput = {
+      // For dealer: show all active vehicles (same as getAllVehicles)
+      // TODO: Add inventory filtering when inventory system is properly implemented
+      ...(filters.search && {
+        OR: [
+          { model: { contains: filters.search, mode: "insensitive" } },
+          { variant: { contains: filters.search, mode: "insensitive" } },
+          {
+            manufacturer: {
+              name: { contains: filters.search, mode: "insensitive" },
+            },
+          },
+        ],
+      }),
+      ...(filters.manufacturerId && { manufacturerId: filters.manufacturerId }),
+      ...(filters.status && { status: filters.status }),
+      ...(filters.year && { year: filters.year }),
+      ...(filters.bodyType && { bodyType: filters.bodyType as any }),
+      ...(filters.color && { color: filters.color as any }),
+      ...(filters.minPrice && { retailPrice: { gte: filters.minPrice } }),
+      ...(filters.maxPrice && { retailPrice: { lte: filters.maxPrice } }),
+    };
+
+    const total = await prisma.vehicle.count({ where });
+
+    const vehicles = await prisma.vehicle.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { [sortBy]: sortOrder },
+      include: {
+        manufacturer: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            country: true,
+          },
+        },
+        images: {
+          where: { isMain: true },
+          take: 1,
+        },
+        dealerInventories: {
+          where: { dealerId },
+          select: {
+            quantity: true,
+            available: true,
+            reserved: true,
+          },
+        },
+        _count: {
+          select: {
+            evmInventories: true,
+            dealerInventories: true,
+            dealerOrders: true,
+            quotations: true,
+            contracts: true,
+            testDrives: true,
+          },
+        },
+      },
+    });
+
+    const meta = {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+
+    return { data: vehicles, meta };
+  }
+
   async getVehicleById(id: string) {
     const vehicle = await prisma.vehicle.findUnique({
       where: { id },
@@ -137,12 +222,28 @@ export class VehicleService {
   }
 
   async createVehicle(data: Prisma.VehicleCreateInput) {
-    const vehicle = await prisma.vehicle.create({
-      data,
-      include: {
-        manufacturer: true,
-        images: true,
-      },
+    const vehicle = await prisma.$transaction(async (tx) => {
+      // Create vehicle
+      const newVehicle = await tx.vehicle.create({
+        data,
+        include: {
+          manufacturer: true,
+          images: true,
+        },
+      });
+
+      // Automatically create EVM inventory for new vehicle
+      await tx.eVMInventory.create({
+        data: {
+          vehicleId: newVehicle.id,
+          quantity: 0,
+          reserved: 0,
+          available: 0,
+          location: "EVM Warehouse",
+        },
+      });
+
+      return newVehicle;
     });
 
     return vehicle;
@@ -174,8 +275,25 @@ export class VehicleService {
       throw new Error("Cannot delete vehicle with active contracts");
     }
 
-    await prisma.vehicle.delete({
-      where: { id },
+    // Use transaction to delete related records first
+    await prisma.$transaction(async (tx) => {
+      // Delete related records in correct order
+      await tx.vehicleImage.deleteMany({
+        where: { vehicleId: id },
+      });
+
+      await tx.eVMInventory.deleteMany({
+        where: { vehicleId: id },
+      });
+
+      await tx.inventory.deleteMany({
+        where: { vehicleId: id },
+      });
+
+      // Finally delete the vehicle
+      await tx.vehicle.delete({
+        where: { id },
+      });
     });
 
     return { message: "Vehicle deleted successfully" };
@@ -229,6 +347,19 @@ export class VehicleService {
     });
 
     return vehicles;
+  }
+
+  async getAllManufacturers() {
+    const manufacturers = await prisma.manufacturer.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    return manufacturers;
   }
 
   async updateVehicleStatus(id: string, status: VehicleStatus) {

@@ -25,6 +25,10 @@ export default function ProductsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string>("");
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
 
   const fetchVehicles = async () => {
     try {
@@ -56,15 +60,24 @@ export default function ProductsPage() {
 
   const handleSave = async (data: CreateVehicleInput | UpdateVehicleInput) => {
     try {
+      let createdVehicle: Vehicle | null = null;
+
       if (editingVehicle) {
         await vehicleApi.updateVehicle(editingVehicle.id, data);
+        // For editing, close form and refresh immediately
+        setShowForm(false);
+        setEditingVehicle(null);
+        setPage(1);
+        fetchVehicles();
       } else {
-        await vehicleApi.createVehicle(data as CreateVehicleInput);
+        const response = await vehicleApi.createVehicle(
+          data as CreateVehicleInput
+        );
+        createdVehicle = response.data?.data || response.data;
+        // For new vehicle, don't close form yet - let VehicleForm handle it after image upload
       }
-      setShowForm(false);
-      setEditingVehicle(null);
-      setPage(1);
-      fetchVehicles();
+
+      return createdVehicle; // Return created vehicle for image upload
     } catch (err) {
       console.error("Error saving vehicle:", err);
       throw err;
@@ -78,22 +91,50 @@ export default function ProductsPage() {
     setShowForm(true);
   };
 
-  const handleDelete = async (vehicle: Vehicle) => {
-    if (!confirm(`Bạn có chắc muốn xóa xe ${vehicle.model}?`)) {
-      return;
-    }
+  const handleDelete = (vehicle: Vehicle) => {
+    setVehicleToDelete(vehicle);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!vehicleToDelete) return;
 
     try {
-      await vehicleApi.deleteVehicle(vehicle.id);
-      if (vehicles.length === 1 && page > 1) {
-        setPage(page - 1);
-      } else {
-        fetchVehicles();
-      }
-    } catch (err) {
+      await vehicleApi.deleteVehicle(vehicleToDelete.id);
+
+      // Show success message like upload
+      const successMsg = `Xóa xe ${vehicleToDelete.model} thành công!`;
+      setSuccessMessage(successMsg);
+      setShowSuccessPopup(true);
+
+      setTimeout(() => {
+        setSuccessMessage("");
+        setShowSuccessPopup(false);
+      }, 3000);
+
+      // Refresh the list
+      fetchVehicles();
+    } catch (err: any) {
       console.error("Error deleting vehicle:", err);
-      alert("Có lỗi xảy ra khi xóa xe");
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Có lỗi xảy ra khi xóa xe";
+      setSuccessMessage(`❌ ${errorMsg}`);
+      setShowSuccessPopup(true);
+      setTimeout(() => {
+        setSuccessMessage("");
+        setShowSuccessPopup(false);
+      }, 5000); // Show error longer
+    } finally {
+      setShowDeleteModal(false);
+      setVehicleToDelete(null);
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setVehicleToDelete(null);
   };
 
   const handleCreate = () => {
@@ -183,7 +224,69 @@ export default function ProductsPage() {
             setEditingVehicle(null);
           }}
           onSave={handleSave}
+          onRefresh={fetchVehicles}
         />
+      )}
+
+      {/* Success Toast - Same as VehicleForm */}
+      {showSuccessPopup && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in">
+          <div className="bg-white rounded-lg shadow-lg border border-green-200 p-4 flex items-center gap-3 max-w-sm">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <svg
+                className="w-5 h-5 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">
+                {successMessage}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && vehicleToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl border-2 border-gray-700 overflow-hidden w-full max-w-sm mx-4">
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-3 text-center">
+              <h3 className="text-base font-semibold text-white">
+                Xác nhận xóa xe
+              </h3>
+            </div>
+            <div className="p-4 text-center">
+              <div className="text-red-500 text-2xl mb-3">⚠️</div>
+              <p className="text-gray-600 mb-4 text-sm">
+                Xóa xe <strong>{vehicleToDelete.model}</strong>?
+              </p>
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={cancelDelete}
+                  className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  Xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

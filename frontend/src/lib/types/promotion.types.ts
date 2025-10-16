@@ -3,6 +3,7 @@
 // ============================================
 
 export type DiscountType = "PERCENTAGE" | "FIXED";
+export type PromotionSource = "DEALER" | "MANUFACTURER";
 
 export interface Promotion {
   id: string;
@@ -12,6 +13,7 @@ export interface Promotion {
   discountType: DiscountType;
   discountValue: number;
   minPurchase?: number | null;
+  source: PromotionSource; // Added: source field
   startDate: string | Date;
   endDate?: string | Date | null;
   isActive: boolean;
@@ -32,6 +34,7 @@ export interface CreatePromotionDTO {
   discountType: DiscountType;
   discountValue: number;
   minPurchase?: number;
+  source?: PromotionSource; // Optional: auto-filled based on user role
   startDate: string | Date;
   endDate?: string | Date;
   isActive?: boolean;

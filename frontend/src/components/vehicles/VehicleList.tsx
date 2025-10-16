@@ -22,8 +22,8 @@ import {
 } from "lucide-react";
 import { Vehicle } from "@/lib/api/vehicleApi";
 import { formatMoney, formatMoneyShort } from "@/lib/utils/formatMoney";
-import VehicleCompareModal from "./VehicleCompareModal";
 import VehicleDetailModal from "./VehicleDetailModal";
+import VehicleCompareModal from "./VehicleCompareModal";
 
 interface VehicleListProps {
   vehicles: Vehicle[];
@@ -41,8 +41,9 @@ interface VehicleListProps {
   onCreateClick?: () => void; // Optional - chỉ EVM/ADMIN
   onViewClick?: (vehicle: Vehicle) => void;
   onEditClick?: (vehicle: Vehicle) => void; // Optional - chỉ EVM/ADMIN
-  onDeleteClick?: (vehicle: Vehicle) => void; // Optional - chỉ ADMIN
+  onDeleteClick?: (vehicle: Vehicle) => void; // Optional - chỉ ADMIN và EVM_STAFF
   onExportClick: () => void;
+  onCreateContractFromVehicle?: (vehicle: Vehicle) => void; // New - Tạo hợp đồng từ xe
   userRole?: "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN"; // Role để control UI
   pagination: {
     page: number;
@@ -83,16 +84,17 @@ export default function VehicleList({
   onEditClick,
   onDeleteClick,
   onExportClick,
+  onCreateContractFromVehicle,
   userRole = "DEALER_STAFF", // Default to most restrictive
   pagination,
   onPageChange,
   manufacturers = [],
 }: VehicleListProps) {
-  const [showCompareModal, setShowCompareModal] = useState(false);
-  const [selectedVehicleForCompare, setSelectedVehicleForCompare] =
-    useState<Vehicle | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedVehicleForDetail, setSelectedVehicleForDetail] =
+    useState<Vehicle | null>(null);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [selectedVehicleForCompare, setSelectedVehicleForCompare] =
     useState<Vehicle | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -152,7 +154,7 @@ export default function VehicleList({
           {/* Nút so sánh xe */}
           <button
             onClick={() => {
-              setSelectedVehicleForCompare(null); // Không có xe nào được chọn sẵn
+              setSelectedVehicleForCompare(null);
               setShowCompareModal(true);
             }}
             className="px-4 py-2 text-green-600 border border-green-600 rounded-lg hover:bg-green-50 flex items-center gap-2"
@@ -367,22 +369,22 @@ export default function VehicleList({
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-48">
                     Xe
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
                     Thông số
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-40">
                     Giá
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
                     Kinh doanh
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-24">
                     Trạng thái
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
                     Hành động
                   </th>
                 </tr>
@@ -390,7 +392,7 @@ export default function VehicleList({
               <tbody className="divide-y divide-gray-200">
                 {vehicles.map((vehicle) => (
                   <tr key={vehicle.id} className="hover:bg-gray-50 text-black">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 w-48">
                       <div className="flex items-center gap-3">
                         <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center overflow-hidden">
                           {vehicle.images && vehicle.images.length > 0 ? (
@@ -423,7 +425,7 @@ export default function VehicleList({
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 w-32">
                       <div className="space-y-1 text-sm">
                         <div className="flex items-center gap-1 text-gray-900">
                           <Battery className="w-3 h-3 text-green-600" />
@@ -445,7 +447,7 @@ export default function VehicleList({
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 w-40">
                       <div className="text-sm">
                         <p className="font-semibold text-green-600">
                           {formatMoney(vehicle.retailPrice, vehicle.currency)}
@@ -459,7 +461,7 @@ export default function VehicleList({
                         </p>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 w-32">
                       <div className="flex flex-wrap gap-1">
                         {/* Hiển thị thông tin kinh doanh thực tế */}
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
@@ -493,29 +495,29 @@ export default function VehicleList({
                         ]?.label || vehicle.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2 justify-center">
+                    <td className="px-2 py-4 w-32">
+                      <div className="flex gap-1 justify-center flex-wrap">
                         <button
                           onClick={() => {
                             setSelectedVehicleForDetail(vehicle);
                             setShowDetailModal(true);
                           }}
-                          className="text-blue-600 hover:text-blue-700"
+                          className="text-blue-600 hover:text-blue-700 p-1 rounded hover:bg-blue-50"
                           title="Xem chi tiết"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3 h-3" />
                         </button>
                         {/* Nút so sánh với xe khác */}
                         <button
                           onClick={() => {
-                            setSelectedVehicleForCompare(vehicle); // Chọn xe này làm xe thứ 1
+                            setSelectedVehicleForCompare(vehicle);
                             setShowCompareModal(true);
                           }}
-                          className="text-purple-600 hover:text-purple-700 p-1 rounded"
+                          className="text-purple-600 hover:text-purple-700 p-1 rounded hover:bg-purple-50"
                           title="So sánh xe này với xe khác"
                         >
                           <svg
-                            className="w-4 h-4"
+                            className="w-3 h-3"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -533,22 +535,23 @@ export default function VehicleList({
                           onEditClick && (
                             <button
                               onClick={() => onEditClick(vehicle)}
-                              className="text-green-600 hover:text-green-700"
+                              className="text-green-600 hover:text-green-700 p-1 rounded hover:bg-green-50"
                               title="Chỉnh sửa"
                             >
-                              <Edit className="w-4 h-4" />
+                              <Edit className="w-3 h-3" />
                             </button>
                           )}
-                        {/* Chỉ ADMIN mới được xóa */}
-                        {userRole === "ADMIN" && onDeleteClick && (
-                          <button
-                            onClick={() => onDeleteClick(vehicle)}
-                            className="text-red-600 hover:text-red-700"
-                            title="Xóa"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        {/* ADMIN và EVM_STAFF được xóa */}
+                        {(userRole === "ADMIN" || userRole === "EVM_STAFF") &&
+                          onDeleteClick && (
+                            <button
+                              onClick={() => onDeleteClick(vehicle)}
+                              className="text-red-600 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
                       </div>
                     </td>
                   </tr>
@@ -595,32 +598,6 @@ export default function VehicleList({
                       {statusConfig[vehicle.status as keyof typeof statusConfig]
                         ?.label || vehicle.status}
                     </span>
-                  </div>
-
-                  {/* Quick Compare Button */}
-                  <div className="absolute bottom-3 right-3">
-                    <button
-                      onClick={() => {
-                        setSelectedVehicleForCompare(vehicle);
-                        setShowCompareModal(true);
-                      }}
-                      className="p-2 bg-white/90 hover:bg-white rounded-full shadow-md transition-all duration-200"
-                      title="So sánh xe này với xe khác"
-                    >
-                      <svg
-                        className="w-4 h-4 text-purple-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                        />
-                      </svg>
-                    </button>
                   </div>
                 </div>
 
@@ -703,37 +680,64 @@ export default function VehicleList({
                   </div>
 
                   {/* Actions */}
-                  <div className="border-t pt-3 flex gap-2">
-                    <button
-                      onClick={() => {
-                        setSelectedVehicleForDetail(vehicle);
-                        setShowDetailModal(true);
-                      }}
-                      className="flex-1 px-3 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 text-sm font-medium transition-colors"
-                    >
-                      Xem chi tiết
-                    </button>
-
-                    {(userRole === "EVM_STAFF" || userRole === "ADMIN") &&
-                      onEditClick && (
-                        <button
-                          onClick={() => onEditClick(vehicle)}
-                          className="px-3 py-2 text-green-600 border border-green-600 rounded-lg hover:bg-green-50"
-                          title="Chỉnh sửa"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      )}
-
-                    {userRole === "ADMIN" && onDeleteClick && (
+                  <div className="border-t pt-3">
+                    <div className="flex gap-1 justify-center">
                       <button
-                        onClick={() => onDeleteClick(vehicle)}
-                        className="px-3 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50"
-                        title="Xóa"
+                        onClick={() => {
+                          setSelectedVehicleForDetail(vehicle);
+                          setShowDetailModal(true);
+                        }}
+                        className="text-blue-600 hover:text-blue-700 p-1 rounded hover:bg-blue-50"
+                        title="Xem chi tiết"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Eye className="w-4 h-4" />
                       </button>
-                    )}
+
+                      <button
+                        onClick={() => {
+                          setSelectedVehicleForCompare(vehicle);
+                          setShowCompareModal(true);
+                        }}
+                        className="text-purple-600 hover:text-purple-700 p-1 rounded hover:bg-purple-50"
+                        title="So sánh xe"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                          />
+                        </svg>
+                      </button>
+
+                      {(userRole === "EVM_STAFF" || userRole === "ADMIN") &&
+                        onEditClick && (
+                          <button
+                            onClick={() => onEditClick(vehicle)}
+                            className="text-green-600 hover:text-green-700 p-1 rounded hover:bg-green-50"
+                            title="Chỉnh sửa"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
+
+                      {(userRole === "ADMIN" || userRole === "EVM_STAFF") &&
+                        onDeleteClick && (
+                          <button
+                            onClick={() => onDeleteClick(vehicle)}
+                            className="text-red-600 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                            title="Xóa"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -795,16 +799,6 @@ export default function VehicleList({
         )}
       </div>
 
-      {/* Vehicle Compare Modal */}
-      <VehicleCompareModal
-        isOpen={showCompareModal}
-        onClose={() => {
-          setShowCompareModal(false);
-          setSelectedVehicleForCompare(null);
-        }}
-        selectedVehicle={selectedVehicleForCompare}
-      />
-
       {/* Vehicle Detail Modal */}
       <VehicleDetailModal
         isOpen={showDetailModal}
@@ -813,9 +807,17 @@ export default function VehicleList({
           setSelectedVehicleForDetail(null);
         }}
         vehicle={selectedVehicleForDetail}
-        onEditClick={onEditClick}
-        onDeleteClick={onDeleteClick}
-        userRole={userRole}
+        onCreateContract={onCreateContractFromVehicle}
+      />
+
+      {/* Vehicle Compare Modal */}
+      <VehicleCompareModal
+        isOpen={showCompareModal}
+        onClose={() => {
+          setShowCompareModal(false);
+          setSelectedVehicleForCompare(null);
+        }}
+        selectedVehicle={selectedVehicleForCompare}
       />
     </div>
   );

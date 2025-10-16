@@ -5,24 +5,27 @@ export interface Contract {
   id: string;
   customerId: string;
   vehicleId: string;
-  dealerId: string;
   staffId: string;
-  contractNumber: string;
-  totalAmount: number;
+  quotationId?: string;
+  promotionId?: string;
+  contractCode: string; // Backend uses contractCode
+  contractNumber: string; // Alias for contractCode (display purpose)
+  basePrice: number;
   discount: number;
-  finalAmount: number;
-  currency: string;
+  finalPrice: number;
   paymentType: "FULL" | "INSTALLMENT";
   installmentMonths?: number;
-  downPayment?: number;
   monthlyPayment?: number;
+  interestRate?: number;
   status:
     | "DRAFT"
     | "PENDING"
-    | "APPROVED"
     | "SIGNED"
+    | "DELIVERING"
     | "COMPLETED"
     | "CANCELLED";
+  deliveryDate?: string;
+  deliveredAt?: string;
   notes?: string;
   signedAt?: string;
   completedAt?: string;
@@ -36,18 +39,43 @@ export interface Contract {
     lastName: string;
     email: string;
     phone?: string;
+    address?: string;
   };
   vehicle?: {
     id: string;
     model: string;
+    variant?: string;
+    year?: number;
+    color?: string;
+    batteryCapacity?: number;
+    range?: number;
+    motorPower?: number;
     manufacturer: {
       name: string;
     };
+  };
+  dealer?: {
+    id: string;
+    name: string;
+    address?: string;
+    phone?: string;
   };
   staff?: {
     id: string;
     firstName: string;
     lastName: string;
+    dealerId?: string;
+    dealer?: {
+      id: string;
+      name: string;
+    };
+  };
+  promotion?: {
+    id: string;
+    title: string;
+    code: string;
+    discountType: string;
+    discountValue: number;
   };
 }
 
@@ -75,11 +103,15 @@ export interface PaginationParams {
 export interface CreateContractInput {
   customerId: string;
   vehicleId: string;
-  totalAmount: number;
+  staffId: string; // Required by backend
+  quotationId?: string;
+  promotionId?: string;
+  basePrice: number; // Backend expects basePrice
   discount?: number;
   paymentType: Contract["paymentType"];
   installmentMonths?: number;
-  downPayment?: number;
+  interestRate?: number; // Required for installment calculation
+  deliveryDate?: string;
   notes?: string;
 }
 

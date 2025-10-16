@@ -11,21 +11,31 @@ model DealerDiscount {
   discountValue Decimal           @map("discount_value") // % hoặc số tiền
   minPurchase  Decimal?           @map("min_purchase") // Giá trị đơn hàng tối thiểu
   
+  // Source of promotion: DEALER (tự tạo) or MANUFACTURER (hãng cấp)
+  source      PromotionSource     @default(DEALER)
+  
   startDate   DateTime            @map("start_date")
   endDate     DateTime?           @map("end_date")
   isActive    Boolean             @default(true) @map("is_active")
   
   dealer      Dealer @relation(fields: [dealerId], references: [id])
+  contracts   Contract[]
   
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([dealerId])
   @@index([isActive])
+  @@index([source])
   @@map("dealer_discounts")
 }
 
 enum DiscountType {
   PERCENTAGE  // Chiết khấu theo %
   FIXED       // Chiết khấu cố định (VND/USD)
+}
+
+enum PromotionSource {
+  DEALER        // Dealer tự tạo
+  MANUFACTURER  // Hãng cấp cho dealer
 }
