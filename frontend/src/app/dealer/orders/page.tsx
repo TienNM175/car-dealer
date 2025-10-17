@@ -1,91 +1,283 @@
-'use client'
-import React from 'react';
-import { Plus, Eye, Edit } from 'lucide-react';
+'use client';
+import React, { useEffect, useState } from "react";
+import DealerOrderList from "@/components/dealer-orders/DealerOrderList";
+import DealerOrderForm from "@/components/dealer-orders/DealerOrderForm";
+import DealerOrderDetailModal from "@/components/dealer-orders/DealerOrderDetailModal";
+import dealerOrderApi, { 
+  DealerOrder, 
+  CreateDealerOrderInput, 
+  UpdateDealerOrderInput 
+} from "@/lib/api/dealerOrderApi";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function OrdersPage() {
-  const mockOrders = [
-    { id: 'ORD001', dealer: 'Đại lý Hà Nội', vehicle: 'VF e34', quantity: 5, status: 'confirmed', createdAt: '2024-10-01', user: 'Nhân viên A' },
-    { id: 'ORD002', dealer: 'Đại lý TP.HCM', vehicle: 'VF 8', quantity: 3, status: 'pending', createdAt: '2024-10-02', user: 'Nhân viên B' },
-    { id: 'ORD003', dealer: 'Đại lý Đà Nẵng', vehicle: 'VF 9', quantity: 2, status: 'shipped', createdAt: '2024-09-28', user: 'Nhân viên C' },
-  ];
+  const { user } = useAuth();
+  const router = useRouter();
 
-  const getOrderStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      confirmed: 'bg-green-100 text-green-700',
-      pending: 'bg-yellow-100 text-yellow-700',
-      shipped: 'bg-blue-100 text-blue-700',
-      delivered: 'bg-purple-100 text-purple-700',
-      cancelled: 'bg-red-100 text-red-700'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+  const userRole = user?.role?.toUpperCase() as
+    | "DEALER_STAFF"
+    | "DEALER_MANAGER"
+    | "ADMIN"
+    | undefined;
+
+  const [orders, setOrders] = useState<DealerOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [statistics, setStatistics] = useState<any>(null);
+
+  const [showForm, setShowForm] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<DealerOrder | null>(null);
+  const [viewingOrder, setViewingOrder] = useState<DealerOrder | null>(null);
+
+  // Redirect nếu không phải Manager
+  useEffect(() => {
+    if (userRole !== 'DEALER_MANAGER' && userRole !== 'ADMIN') {
+      router.push('/dealer/dashboard');
+    }
+  }, [userRole, router]);
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+
+      const res = await dealerOrderApi.getAllDealerOrders(
+        {
+          search: searchTerm,
+          status: filterStatus as any,
+          dealerId: userRole === "ADMIN" ? undefined : (user as any)?.dealerId,
+        },
+        { page, limit }
+      );
+
+      const responseData = res.data.data || res.data;
+      const orders = responseData.data || responseData;
+      const meta = responseData.meta || res.data.meta;
+
+      setOrders(Array.isArray(orders) ? orders : []);
+      setTotal(meta?.total || orders?.length || 0);
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+      setOrders([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      confirmed: 'Đã xác nhận',
-      pending: 'Chờ xử lý',
-      shipped: 'Đã giao hàng',
-      delivered: 'Hoàn tất',
-      cancelled: 'Đã hủy'
-    };
-    return labels[status] || status;
+  const fetchStatistics = async () => {
+    try {
+      const dealerId = userRole === "ADMIN" ? undefined : (user as any)?.dealerId;
+      const res = await dealerOrderApi.getOrdersByStatus(dealerId);
+      const data = res.data.data || res.data;
+
+      if (Array.isArray(data)) {
+        const byStatus = data.reduce((acc: any, item: any) => {
+          acc[item.status] = item.count;
+          return acc;
+        }, {});
+
+        setStatistics({
+          total: data.reduce((sum: number, item: any) => sum + item.count, 0),
+          byStatus,
+        });
+      } else {
+        setStatistics(data);
+      }
+    } catch (err) {
+      console.error("Error fetching statistics:", err);
+      setStatistics(null);
+    }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">Đơn đặt xe</h2>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Tạo đơn đặt xe
-        </button>
-      </div>
+  useEffect(() => {
+    if (userRole === 'DEALER_MANAGER' || userRole === 'ADMIN') {
+      fetchOrders();
+      fetchStatistics();
+    }
+  }, [page, searchTerm, filterStatus, userRole]);
 
-      <div className="bg-white rounded-xl shadow-md p-6">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã đơn</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Đại lý</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Xe</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Số lượng</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người tạo</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày tạo</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {mockOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 text-black">
-                  <td className="px-6 py-4 font-semibold text-blue-600">{order.id}</td>
-                  <td className="px-6 py-4">{order.dealer}</td>
-                  <td className="px-6 py-4 font-medium">{order.vehicle}</td>
-                  <td className="px-6 py-4 font-semibold">{order.quantity} xe</td>
-                  <td className="px-6 py-4 text-sm">{order.user}</td>
-                  <td className="px-6 py-4 text-sm">{order.createdAt}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 text-xs font-medium rounded-full ${getOrderStatusColor(order.status)}`}>
-                      {getStatusLabel(order.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <button aria-label="Xem chi tiết" className="text-blue-600 hover:text-blue-700">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button aria-label="Chỉnh sửa" className="text-green-600 hover:text-green-700">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  const handleView = (order: DealerOrder) => {
+    setViewingOrder(order);
+    setShowDetailModal(true);
+  };
+
+  const handleEdit = (order: DealerOrder) => {
+    setEditingOrder(order);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (order: DealerOrder) => {
+    if (!confirm(`Bạn có chắc muốn hủy đơn hàng ${order.orderNumber}?`)) {
+      return;
+    }
+
+    try {
+      await dealerOrderApi.cancelDealerOrder(order.id, "Hủy bởi người dùng");
+      
+      if (orders.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchOrders();
+        fetchStatistics();
+      }
+      
+      alert("Đã hủy đơn hàng thành công!");
+    } catch (err: any) {
+      console.error("Error cancelling order:", err);
+      const errorMessage = err.response?.data?.message || "Có lỗi xảy ra khi hủy đơn hàng";
+      alert(errorMessage);
+    }
+  };
+
+  const handleCreate = () => {
+    setEditingOrder(null);
+    setShowForm(true);
+  };
+
+  const handleSave = async (order: any) => {
+    fetchOrders();
+    fetchStatistics();
+  };
+
+  const handleStatusChange = async (orderId: string, newStatus: DealerOrder["status"]) => {
+    try {
+      await dealerOrderApi.updateDealerOrderStatus(orderId, newStatus);
+      
+      fetchOrders();
+      fetchStatistics();
+      
+      alert(`Đã cập nhật trạng thái đơn hàng thành công!`);
+    } catch (err: any) {
+      console.error("Error updating order status:", err);
+      const errorMessage = err.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái";
+      alert(`Lỗi: ${errorMessage}`);
+    }
+  };
+
+  const handleExport = () => {
+    const worksheet = XLSX.utils.json_to_sheet(
+      orders.map((o) => ({
+        "Số đơn": o.orderNumber,
+        "Đại lý": o.dealer?.name || "N/A",
+        "Xe": `${o.vehicle?.manufacturer?.name} ${o.vehicle?.model}`,
+        "Số lượng": o.quantity,
+        "Đơn giá": o.unitPrice,
+        "Tổng tiền": o.totalAmount,
+        "Trạng thái": o.status,
+        "Ngày đặt": o.orderedAt ? new Date(o.orderedAt).toLocaleDateString() : "",
+        "Người tạo": `${o.staff?.firstName} ${o.staff?.lastName}`,
+        "Ngày tạo": new Date(o.createdAt).toLocaleDateString(),
+      }))
+    );
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Đơn đặt hàng");
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    const data = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(data, `dealer-orders_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Hiển thị access denied nếu không phải Manager
+  if (userRole !== 'DEALER_MANAGER' && userRole !== 'ADMIN') {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <h2 className="text-xl font-semibold text-red-800 mb-2">Truy cập bị từ chối</h2>
+          <p className="text-red-600">
+            Bạn không có quyền truy cập trang Quản lý Đơn hàng. 
+            Chỉ DEALER_MANAGER mới có quyền truy cập trang này.
+          </p>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <DealerOrderList
+        orders={orders}
+        loading={loading}
+        searchTerm={searchTerm}
+        filterStatus={filterStatus}
+        onSearchChange={(value) => {
+          setSearchTerm(value);
+          setPage(1);
+        }}
+        onFilterChange={(value) => {
+          setFilterStatus(value);
+          setPage(1);
+        }}
+        onCreateClick={handleCreate}
+        onViewClick={handleView}
+        onEditClick={handleEdit}
+        onDeleteClick={handleDelete}
+        onExportClick={handleExport}
+        userRole={userRole || "DEALER_MANAGER"}
+        pagination={{
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        }}
+        onPageChange={handlePageChange}
+        statistics={statistics}
+        onStatusChange={handleStatusChange}
+      />
+
+      {showForm && (
+        <DealerOrderForm
+          isOpen={showForm}
+          onClose={() => {
+            setShowForm(false);
+            setEditingOrder(null);
+          }}
+          onSuccess={handleSave}
+          order={editingOrder}
+          dealerId={(user as any)?.dealerId}
+          userId={(user as any)?.id}
+          dealerInfo={{
+            name: (user as any)?.dealer?.name || "N/A",
+            address: (user as any)?.dealer?.address,
+            phone: (user as any)?.dealer?.phone,
+            email: (user as any)?.dealer?.email,
+          }}
+          staffInfo={{
+            firstName: (user as any)?.firstName || "",
+            lastName: (user as any)?.lastName || "",
+          }}
+        />
+      )}
+
+      {showDetailModal && (
+        <DealerOrderDetailModal
+          isOpen={showDetailModal}
+          onClose={() => {
+            setShowDetailModal(false);
+            setViewingOrder(null);
+          }}
+          order={viewingOrder}
+          onStatusChange={handleStatusChange}
+          onEditClick={handleEdit}
+          userRole={userRole || "DEALER_MANAGER"}
+        />
+      )}
     </div>
   );
 }
