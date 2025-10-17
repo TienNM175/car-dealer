@@ -35,6 +35,52 @@ export type ReportsUserRole =
 
 const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#14b8a6"];
 
+const VN_LABELS: Record<string, string> = {
+    sales: "Doanh số",
+    revenue: "Doanh thu",
+    count: "Số lượng",
+    staff: "Nhân viên",
+    available: "Còn hàng",
+    reserved: "Đã giữ",
+    sold: "Đã bán",
+    type: "Hình thức",
+    status: "Trạng thái",
+    vehicle: "Xe",
+    dealer: "Đại lý",
+    inventory: "Tồn kho",
+    testDrives: "Lái thử",
+    staffCount: "Nhân viên",
+    total: "Tổng",
+    value: "Giá trị",
+    date: "Ngày",
+    month: "Tháng",
+    completed: "Hoàn thành",
+    delivering: "Đang giao",
+    draft: "Nháp",
+    singed: "Đã ký",
+    totalSold: "Tổng bán",
+    totalStock: "Tổng tồn kho",
+    CANCELLED: "Đã hủy",
+    DELIVERING: "Đang giao",
+    COMPLETED: "Hoàn thành",
+    SIGNED: "Đã ký nhận",
+    FULL: "Thanh toán toàn bộ",
+    INSTALLMENT: "Trả góp",
+    totalRevenue: "Tổng doanh thu",
+    COLD: "Bỏ qua",
+    CONTACTED: "Đã liên hệ",
+    INTERESTED: "Quan tâm",
+    PURCHASED: "Đã mua",
+    QUOTED: "Đã báo giá",
+    TEST_DRIVE: "Lái thử",
+    interested: "Quan tâm",
+    contacted: "Đã liên hệ",
+    testDrive: "Lái thử",
+    quoted: "Đã báo giá",
+    purchased: "Đã mua",
+
+};
+
 type ChartData = Record<string, string | number>;
 
 interface ReportsProps {
@@ -355,7 +401,7 @@ export default function Reports({
                 )}
 
                 {funnel.length > 0 && (
-                    <ChartCard title="Funnel chuyển đổi khách hàng">
+                    <ChartCard title="Mô hình tiếp thị chuyển đổi khách hàng">
                         <BarChartComponent
                             layout="vertical"
                             data={funnel}
@@ -657,8 +703,15 @@ function PieChartComponent({
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                 </Pie>
-                <Tooltip formatter={valueFormatter} labelFormatter={(label) => `Nhóm: ${label}`} />
-                <Legend formatter={(v) => `• ${v}`} />
+                <Tooltip
+                    formatter={(value, name) => [
+                        valueFormatter ? valueFormatter(value, name) : value,
+                        VN_LABELS[name as string] ?? name
+                    ]}
+                    labelFormatter={(label) => `Nhóm: ${VN_LABELS[label] ?? label}`}
+                />
+
+                <Legend formatter={(v) => `• ${VN_LABELS[v] ?? v}`} />
             </PieChart>
         </ResponsiveContainer>
     );
@@ -691,7 +744,7 @@ function BarChartComponent({
                         interval={0}
                         width={200}
                         tick={{ fontSize: 12 }}
-                        tickFormatter={(v) => String(v)}
+                        tickFormatter={(v) => VN_LABELS[v] ?? String(v)}
                     />
                 ) : (
                     <XAxis
@@ -708,8 +761,16 @@ function BarChartComponent({
                 ) : (
                     <YAxis tickFormatter={formatCompactVN} />
                 )}
-                <Tooltip formatter={valueFormatter} labelFormatter={(label) => `Nhóm: ${label}`} />
-                <Legend formatter={(v) => `• ${v}`} />
+                <Tooltip
+                    formatter={(value, name) => [
+                        valueFormatter ? valueFormatter(value, name) : value,
+                        VN_LABELS[name as string] ?? name
+                    ]}
+                    labelFormatter={(label) => `Nhóm: ${VN_LABELS[label] ?? label}`}
+                />
+
+                <Legend formatter={(v) => `• ${VN_LABELS[v] ?? v}`} />
+
                 {bars.map((b) => (
                     <Bar
                         key={b.key}
@@ -749,8 +810,15 @@ function LineChartComponent({
                     minTickGap={8}
                 />
                 <YAxis tickFormatter={formatCompactVN} />
-                <Tooltip formatter={valueFormatter} labelFormatter={(label) => `Mốc: ${label}`} />
-                <Legend formatter={(v) => `• ${v}`} />
+                <Tooltip
+                    formatter={(value, name) => [
+                        valueFormatter ? valueFormatter(value, name) : value,
+                        VN_LABELS[name as string] ?? name
+                    ]}
+                    labelFormatter={(label) => `Nhóm: ${VN_LABELS[label] ?? label}`}
+                />
+
+                <Legend formatter={(v) => `• ${VN_LABELS[v] ?? v}`} />
                 {lines.map((l) => (
                     <Line
                         key={l.key}

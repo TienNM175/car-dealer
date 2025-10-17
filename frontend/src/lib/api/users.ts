@@ -1,14 +1,14 @@
 // frontend/src/lib/api/users.ts
 
 import api from '../utils/axiosClient';
-import { 
-  User, 
-  CreateUserData, 
-  UpdateUserData, 
+import {
+  User,
+  CreateUserData,
+  UpdateUserData,
   ChangePasswordData,
   UsersListResponse,
   UserResponse,
-  UserRole 
+  UserRole
 } from '@/lib/types/user';
 
 export interface ListUsersParams {
@@ -73,7 +73,7 @@ export const usersApi = {
    * Change password
    */
   changePassword: async (
-    userId: string, 
+    userId: string,
     data: ChangePasswordData
   ): Promise<{ success: boolean; data: { message: string } }> => {
     const response = await api.patch(`/users/${userId}/password`, data);
@@ -84,7 +84,7 @@ export const usersApi = {
    * Toggle active status
    */
   toggleStatus: async (
-    userId: string, 
+    userId: string,
     isActive: boolean
   ): Promise<UserResponse> => {
     const response = await api.patch(`/users/${userId}/status`, { isActive });

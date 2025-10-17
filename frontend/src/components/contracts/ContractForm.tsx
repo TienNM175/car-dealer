@@ -343,7 +343,7 @@ export default function ContractForm({
     if (!formData.vehicleId) newErrors.vehicleId = "Vui lòng chọn xe";
     if (!formData.staffId) newErrors.staffId = "Thiếu thông tin nhân viên";
     if (formData.basePrice <= 0) newErrors.basePrice = "Giá xe phải lớn hơn 0";
-    if (formData.discount && formData.discount >= formData.basePrice) {
+    if (formData.discount && formData.discount > formData.basePrice) {
       newErrors.discount = "Chiết khấu không thể lớn hơn giá xe";
     }
     if (formData.paymentType === "INSTALLMENT") {

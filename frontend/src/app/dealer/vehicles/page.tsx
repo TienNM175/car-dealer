@@ -36,9 +36,9 @@ export default function VehiclesPage() {
       setLoading(true);
       console.log("Fetching dealer vehicles - Page:", page, "Limit:", limit);
 
-      // Dealer uses same API as Admin/EVM - getAllVehicles
-
-      const res = await vehicleApi.getAllVehicles(
+      // Dealer should use getDealerVehicles API to filter by dealer inventory
+      const res = await vehicleApi.getDealerVehicles(
+        user?.dealerId || "",
         { search: searchTerm, status: filterStatus },
         { page, limit }
       );

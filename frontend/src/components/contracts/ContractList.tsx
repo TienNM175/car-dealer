@@ -25,9 +25,9 @@ interface ContractListProps {
   filterStatus: string;
   onSearchChange: (value: string) => void;
   onFilterChange: (value: string) => void;
-  onCreateClick: () => void;
+  onCreateClick?: () => void; // Optional - not available for EVM/ADMIN
   onViewClick: (contract: Contract) => void;
-  onEditClick: (contract: Contract) => void;
+  onEditClick?: (contract: Contract) => void; // Optional - not available for EVM/ADMIN
   onDeleteClick: (contract: Contract) => void;
   onExportClick: () => void;
   userRole?: "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN";
@@ -120,8 +120,8 @@ export default function ContractList({
             <Download className="w-4 h-4" />
             Xuất dữ liệu
           </button>
-          {/* Only show Create button for Dealer Staff/Manager and Admin (NOT EVM_STAFF) */}
-          {userRole !== "EVM_STAFF" && (
+          {/* Only show Create button if callback is provided */}
+          {onCreateClick && (
             <button
               onClick={onCreateClick}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
@@ -304,13 +304,12 @@ export default function ContractList({
                     >
                       Xem chi tiết
                     </button>
-                    {/* Edit permissions: DEALER_STAFF and above (DRAFT/PENDING only) */}
-                    {(contract.status === "DRAFT" ||
-                      contract.status === "PENDING") &&
+                    {/* Edit permissions: DEALER_STAFF and DEALER_MANAGER only (DRAFT/PENDING) */}
+                    {onEditClick &&
+                      (contract.status === "DRAFT" ||
+                        contract.status === "PENDING") &&
                       (userRole === "DEALER_STAFF" ||
-                        userRole === "DEALER_MANAGER" ||
-                        userRole === "EVM_STAFF" ||
-                        userRole === "ADMIN") && (
+                        userRole === "DEALER_MANAGER") && (
                         <button
                           onClick={() => onEditClick(contract)}
                           className="px-4 py-2 text-green-600 border border-green-600 rounded-lg hover:bg-green-50"
