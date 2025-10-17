@@ -30,7 +30,7 @@ export class RoleMiddleware {
   }
 
   static requireDealerManager(req: Request, res: Response, next: NextFunction): void | Response {
-    return RoleMiddleware.requireRole('ADMIN', 'DEALER_MANAGER')(req, res, next);
+    return RoleMiddleware.requireRole('ADMIN', 'EVM_STAFF', 'DEALER_MANAGER')(req, res, next);
   }
 
   static requireDealerStaff(req: Request, res: Response, next: NextFunction): void | Response {

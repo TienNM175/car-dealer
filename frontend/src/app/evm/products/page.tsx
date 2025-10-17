@@ -58,6 +58,16 @@ export default function ProductsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, searchTerm, filterStatus]);
 
+  // Auto-refresh when window gains focus (user returns from another tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchVehicles();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
+
   const handleSave = async (data: CreateVehicleInput | UpdateVehicleInput) => {
     try {
       let createdVehicle: Vehicle | null = null;

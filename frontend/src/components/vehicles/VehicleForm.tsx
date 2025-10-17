@@ -229,7 +229,7 @@ export default function VehicleForm({
 
       onClose(); // Close modal
       console.log("Calling onRefresh after vehicle creation");
-      onRefresh?.(); // Refresh parent list
+      onRefresh?.(); // Refresh parent list for vehicles without images
     } catch (err: any) {
       setError(err.response?.data?.message || "Có lỗi xảy ra");
     } finally {

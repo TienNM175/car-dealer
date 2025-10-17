@@ -32,12 +32,12 @@ router.get(
 /**
  * @route   GET /api/v1/contracts/by-status
  * @desc    Get contract count by status
- * @access  Private - Dealer Manager and above
+ * @access  Private - EVM Staff, Admin, Dealer Manager
  */
 router.get(
   "/by-status",
   AuthMiddleware.authenticate,
-  RoleMiddleware.requireDealerManager,
+  RoleMiddleware.requireDealerManager, // EVM_STAFF and ADMIN are higher than DEALER_MANAGER
   contractController.getContractsByStatus
 );
 
