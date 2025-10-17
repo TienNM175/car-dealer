@@ -48,6 +48,21 @@ interface UpdateContractInput {
 
 export class ContractService {
   /**
+   * Map contractCode to contractNumber for frontend compatibility
+   */
+  private mapContractResponse(contract: any) {
+    if (!contract) return contract;
+    return {
+      ...contract,
+      contractNumber: contract.contractCode,
+    };
+  }
+
+  private mapContractsResponse(contracts: any[]) {
+    return contracts.map((contract) => this.mapContractResponse(contract));
+  }
+
+  /**
    * Calculate contract financial details
    */
   private calculateFinancials(
@@ -222,7 +237,7 @@ export class ContractService {
     });
 
     return {
-      data: contracts,
+      data: this.mapContractsResponse(contracts),
       meta: {
         page,
         limit,
@@ -290,7 +305,7 @@ export class ContractService {
       throw new Error("Contract not found");
     }
 
-    return contract;
+    return this.mapContractResponse(contract);
   }
 
   /**
@@ -427,7 +442,7 @@ export class ContractService {
         },
       });
 
-      // Reserve inventory
+      // Reserve inventory and reduce quantity
       await tx.inventory.update({
         where: {
           dealerId_vehicleId: {
@@ -436,8 +451,9 @@ export class ContractService {
           },
         },
         data: {
-          reserved: { increment: 1 },
-          available: { decrement: 1 },
+          quantity: { decrement: 1 }, // Giảm tổng số lượng
+          reserved: { increment: 1 }, // Tăng số đã đặt
+          available: { decrement: 1 }, // Giảm số có sẵn
         },
       });
 
@@ -462,7 +478,11 @@ export class ContractService {
       return newContract;
     });
 
-    return contract;
+    // Map contractCode to contractNumber for frontend compatibility
+    return {
+      ...contract,
+      contractNumber: contract.contractCode,
+    };
   }
 
   /**
@@ -534,7 +554,7 @@ export class ContractService {
       },
     });
 
-    return contract;
+    return this.mapContractResponse(contract);
   }
 
   /**
@@ -625,8 +645,9 @@ export class ContractService {
             },
           },
           data: {
-            reserved: { decrement: 1 },
-            available: { increment: 1 },
+            quantity: { increment: 1 }, // Tăng lại tổng số lượng
+            reserved: { decrement: 1 }, // Giảm số đã đặt
+            available: { increment: 1 }, // Tăng số có sẵn
           },
         });
       }
@@ -634,7 +655,7 @@ export class ContractService {
       return updatedContract;
     });
 
-    return result;
+    return this.mapContractResponse(result);
   }
 
   /**

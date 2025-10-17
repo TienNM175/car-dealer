@@ -117,8 +117,13 @@ export class VehicleService {
     const sortOrder = pagination.sortOrder || "desc";
 
     const where: Prisma.VehicleWhereInput = {
-      // For dealer: show all active vehicles (same as getAllVehicles)
-      // TODO: Add inventory filtering when inventory system is properly implemented
+      // For dealer: only show vehicles that have inventory at this dealer
+      dealerInventories: {
+        some: {
+          dealerId: dealerId,
+          quantity: { gt: 0 }, // Only vehicles with stock > 0
+        },
+      },
       ...(filters.search && {
         OR: [
           { model: { contains: filters.search, mode: "insensitive" } },
@@ -236,9 +241,9 @@ export class VehicleService {
       await tx.eVMInventory.create({
         data: {
           vehicleId: newVehicle.id,
-          quantity: 0,
+          quantity: 10, // Default stock for new vehicles
           reserved: 0,
-          available: 0,
+          available: 10, // Same as quantity initially
           location: "EVM Warehouse",
         },
       });
