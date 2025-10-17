@@ -14,7 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { usersApi } from '@/lib/api/users';
-import { dealersApi } from '@/lib/api/dealerApi';
+import { dealersApi } from '@/lib/api/dealer';
 import { User as UserType, UpdateUserData, UserRole } from '@/lib/types/user';
 import { useAuth } from '@/contexts/AuthContext';
 
