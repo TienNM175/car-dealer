@@ -80,6 +80,13 @@ export default function DealerLayout({
       label: "Báo cáo",
       role: ["DEALER_MANAGER"],
     },
+    //thêm mục lái thử
+    {
+      id: "test-drive",
+      icon: Calendar,
+      label: "Lái thử",
+      role: ["DEALER_STAFF", "DEALER_MANAGER"],
+    },
   ];
 
   const filteredMenuItems = dealerMenuItems.filter((item) =>
@@ -96,9 +103,8 @@ export default function DealerLayout({
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar */}
         <div
-          className={`${
-            sidebarOpen ? "w-64" : "w-20"
-          } bg-white shadow-lg transition-all duration-300 flex flex-col`}
+          className={`${sidebarOpen ? "w-64" : "w-20"
+            } bg-white shadow-lg transition-all duration-300 flex flex-col`}
         >
           <div className="p-6 border-b flex items-center justify-between">
             {sidebarOpen && (
@@ -127,11 +133,10 @@ export default function DealerLayout({
                 key={item.id}
                 href={`/dealer/${item.id}`}
                 onClick={() => setActiveMenu(item.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition duration-200 ${
-                  activeMenu === item.id
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition duration-200 ${activeMenu === item.id
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+                  }`}
               >
                 <item.icon className="w-5 h-5" />
                 {sidebarOpen && (
