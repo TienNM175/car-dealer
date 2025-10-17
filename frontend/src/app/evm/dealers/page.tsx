@@ -26,19 +26,30 @@ import DealerTargetsModal from '@/components/dealers/DealerTargetsModal';
 import type { Dealer, Region, DealerFilters } from '@/components/dealers/types';
 
 // Toast Component
-function Toast({ message, isVisible, onClose }: { message: string; isVisible: boolean; onClose: () => void }) {
+function Toast({ message, isVisible, onClose, type = 'success' }: { 
+  message: string; 
+  isVisible: boolean; 
+  onClose: () => void;
+  type?: 'success' | 'error' | 'warning';
+}) {
   useEffect(() => {
     if (isVisible) {
-      const timer = setTimeout(onClose, 3000);
+      const timer = setTimeout(onClose, 4000);
       return () => clearTimeout(timer);
     }
   }, [isVisible, onClose]);
 
   if (!isVisible) return null;
 
+  const bgColor = {
+    success: 'bg-green-600',
+    error: 'bg-red-600',
+    warning: 'bg-yellow-600'
+  }[type];
+
   return (
     <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top duration-300">
-      <div className="bg-green-600 text-white px-6 py-4 rounded-xl shadow-xl flex items-center space-x-3">
+      <div className={`${bgColor} text-white px-6 py-4 rounded-xl shadow-xl flex items-center space-x-3`}>
         <CheckCircle className="w-5 h-5" />
         <span className="font-semibold">{message}</span>
       </div>
@@ -52,13 +63,17 @@ function ConfirmModal({
   onClose, 
   onConfirm, 
   title, 
-  message 
+  message,
+  dependencies = [],
+  isDeleting = false
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   onConfirm: () => void; 
   title: string; 
-  message: string; 
+  message: string;
+  dependencies?: string[];
+  isDeleting?: boolean;
 }) {
   if (!isOpen) return null;
 
@@ -68,29 +83,64 @@ function ConfirmModal({
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
         <div className="flex items-start space-x-4">
           <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-            <XCircle className="w-6 h-6 text-red-600" />
+            {isDeleting ? (
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-red-600 border-t-transparent"></div>
+            ) : (
+              <XCircle className="w-6 h-6 text-red-600" />
+            )}
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
-            <p className="text-sm text-gray-600">{message}</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              {isDeleting ? 'Đang xóa...' : title}
+            </h3>
+            <p className="text-sm text-gray-600">
+              {isDeleting ? 'Vui lòng chờ trong giây lát...' : message}
+            </p>
+            
+            {/* Hiển thị dependencies nếu có */}
+            {dependencies.length > 0 && (
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm font-medium text-yellow-800 mb-1">
+                  ⚠️ Cảnh báo: Đại lý có dữ liệu liên quan
+                </p>
+                <p className="text-xs text-yellow-700">
+                  Tồn tại: {dependencies.join(', ')}
+                </p>
+                <p className="text-xs text-yellow-600 mt-1">
+                  Vui lòng xóa các dữ liệu liên quan trước khi xóa đại lý.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="flex space-x-3 mt-6">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
+            disabled={isDeleting}
+            className="flex-1 px-4 py-2.5 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Hủy
           </button>
           <button
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-            className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-semibold shadow-md hover:shadow-lg"
+            onClick={onConfirm}
+            disabled={dependencies.length > 0 || isDeleting}
+            className={`flex-1 px-4 py-2.5 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${
+              dependencies.length > 0 || isDeleting
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                : 'bg-red-600 text-white hover:bg-red-700'
+            }`}
           >
-            Xóa
+            {isDeleting ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                Đang xóa...
+              </div>
+            ) : dependencies.length > 0 ? (
+              'Không thể xóa'
+            ) : (
+              'Xóa'
+            )}
           </button>
         </div>
       </div>
@@ -123,6 +173,7 @@ export default function DealersPage() {
   const [toast, setToast] = useState({
     isVisible: false,
     message: '',
+    type: 'success' as 'success' | 'error' | 'warning'
   });
 
   // Confirmation modal state
@@ -130,6 +181,10 @@ export default function DealersPage() {
     isOpen: false,
     dealer: null as Dealer | null,
   });
+
+  // Thêm state dependencies và deleting
+  const [dependencies, setDependencies] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadDealers();
@@ -148,10 +203,9 @@ export default function DealersPage() {
       const pagination = { page, limit: 9 };
       const response = await dealerApi.getAllDealers(filters, pagination);
       
-      console.log('Dealers API Response:', response); // Debug
+      console.log('Dealers API Response:', response);
       
       if (response.success) {
-        // API trả về data trực tiếp là mảng dealers
         const dealersData = response.data || [];
         const meta = response.meta?.pagination;
   
@@ -163,7 +217,7 @@ export default function DealersPage() {
       }
     } catch (error: any) {
       console.error('Failed to load dealers:', error);
-      showToast(error.message || 'Không thể tải danh sách đại lý');
+      showToast(error.message || 'Không thể tải danh sách đại lý', 'error');
     } finally {
       setLoading(false);
     }
@@ -180,29 +234,101 @@ export default function DealersPage() {
     }
   };
 
-  const showToast = (message: string) => {
-    setToast({ isVisible: true, message });
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    setToast({ isVisible: true, message, type });
+  };
+
+  const checkDealerDependencies = (dealer: Dealer): string[] => {
+    const dependencies = [];
+    
+    if (dealer._count?.users && dealer._count.users > 0) {
+      dependencies.push('nhân viên');
+    }
+    if (dealer._count?.dealerOrders && dealer._count.dealerOrders > 0) {
+      dependencies.push('đơn hàng');
+    }
+    if (dealer._count?.inventories && dealer._count.inventories > 0) {
+      dependencies.push('tồn kho');
+    }
+
+    return dependencies;
   };
 
   const handleDelete = async (dealer: Dealer) => {
-    setConfirmModal({ isOpen: true, dealer });
+    // Kiểm tra dependencies
+    const dealerDependencies = checkDealerDependencies(dealer);
+    
+    if (dealerDependencies.length > 0) {
+      // Nếu có dependencies, hiển thị confirm modal với cảnh báo
+      setDependencies(dealerDependencies);
+      setConfirmModal({ isOpen: true, dealer });
+    } else {
+      // Nếu không có dependencies, hiển thị confirm modal bình thường
+      setDependencies([]);
+      setConfirmModal({ isOpen: true, dealer });
+    }
   };
 
   const confirmDelete = async () => {
     if (!confirmModal.dealer) return;
 
+    // Nếu có dependencies, không cho phép xóa
+    if (dependencies.length > 0) {
+      showToast(`Không thể xóa đại lý. Tồn tại ${dependencies.join(', ')} liên quan.`, 'warning');
+      setConfirmModal({ isOpen: false, dealer: null });
+      setDependencies([]);
+      return;
+    }
+
+    setIsDeleting(true);
+
     try {
+      console.log('🚀 Deleting dealer:', {
+        id: confirmModal.dealer.id,
+        name: confirmModal.dealer.name,
+        code: confirmModal.dealer.code
+      });
+      
       const response = await dealerApi.deleteDealer(confirmModal.dealer.id);
+      
+      console.log('✅ Delete response:', response);
+      
       if (response.success) {
-        showToast(response.message || 'Đại lý đã được xóa thành công');
+        showToast(response.message || 'Đại lý đã được xóa thành công', 'success');
         loadDealers();
+        setConfirmModal({ isOpen: false, dealer: null });
       } else {
-        throw new Error(response.message);
+        throw new Error(response.message || 'Failed to delete dealer');
       }
     } catch (error: any) {
-      showToast(error.message || 'Có lỗi xảy ra khi xóa đại lý');
+      console.error('❌ Delete error details:', error);
+      
+      // Log chi tiết response từ server
+      if (error.response) {
+        console.error('📡 Server response:', {
+          data: error.response.data,
+          status: error.response.status,
+          headers: error.response.headers
+        });
+        
+        // Hiển thị thông báo lỗi chi tiết từ server
+        const serverMessage = error.response.data?.message || 
+                             error.response.data?.error ||
+                             error.response.data?.details ||
+                             `Lỗi ${error.response.status}: Không thể xóa đại lý`;
+        
+        showToast(`Lỗi: ${serverMessage}`, 'error');
+        
+      } else if (error.request) {
+        console.error('🌐 No response received:', error.request);
+        showToast('Lỗi kết nối: Không nhận được phản hồi từ server', 'error');
+      } else {
+        console.error('⚡ Request setup error:', error.message);
+        showToast(`Lỗi: ${error.message}`, 'error');
+      }
     } finally {
-      setConfirmModal({ isOpen: false, dealer: null });
+      setIsDeleting(false);
+      setDependencies([]);
     }
   };
 
@@ -216,15 +342,23 @@ export default function DealersPage() {
     return region?.name || 'Không xác định';
   };
 
-const getStatusColor = (isActive: boolean) => {
-  return isActive 
-    ? 'bg-green-100 text-green-700 border-green-200' 
-    : 'bg-red-100 text-red-700 border-red-200';
-};
+  const getStatusColor = (isActive: boolean) => {
+    return isActive 
+      ? 'bg-green-100 text-green-700 border-green-200' 
+      : 'bg-red-100 text-red-700 border-red-200';
+  };
 
+  // Thêm hàm kiểm tra có thể xóa được không (cho UI)
+  const canDeleteDealer = (dealer: Dealer) => {
+    const dependencies = checkDealerDependencies(dealer);
+    return dependencies.length === 0;
+  };
+
+  // Stats for dashboard
   const stats = {
     total: dealers.length,
     active: dealers.filter(d => d.isActive).length,
+    inactive: dealers.filter(d => !d.isActive).length,
     byRegion: regions.map(region => ({
       region: region.name,
       count: dealers.filter(d => d.regionId === region.id).length
@@ -240,7 +374,7 @@ const getStatusColor = (isActive: boolean) => {
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-1">Quản lý Đại lý</h2>
               <p className="text-sm text-gray-500">
-                Quản lý hệ thống đại lý toàn quốc
+                Quản lý hệ thống đại lý toàn quốc • {stats.total} đại lý ({stats.active} đang hoạt động)
               </p>
             </div>
             <button
@@ -295,25 +429,25 @@ const getStatusColor = (isActive: boolean) => {
               </select>
             </div>
 
-           {/* Status Filter */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              <CheckCircle className="w-4 h-4 inline mr-1.5 text-green-600" />
-              Trạng thái
-            </label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value as 'all' | 'active' | 'inactive');
-                setPage(1);
-              }}
-              className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none font-medium text-gray-900 bg-white"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="active">Đang hoạt động</option>
-              <option value="inactive">Ngừng hoạt động</option>
-            </select>
-          </div>
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <CheckCircle className="w-4 h-4 inline mr-1.5 text-green-600" />
+                Trạng thái
+              </label>
+              <select
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value as 'all' | 'active' | 'inactive');
+                  setPage(1);
+                }}
+                className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none font-medium text-gray-900 bg-white"
+              >
+                <option value="all">Tất cả trạng thái</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="inactive">Ngừng hoạt động</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex justify-end mt-4">
@@ -355,9 +489,9 @@ const getStatusColor = (isActive: boolean) => {
                       <Building2 className="w-6 h-6 text-blue-600" />
                     </div>
                     <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 border rounded-full text-xs font-semibold ${getStatusColor(dealer.isActive)}`}>
-                      {dealer.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
-                    </span>
+                      <span className={`px-3 py-1 border rounded-full text-xs font-semibold ${getStatusColor(dealer.isActive)}`}>
+                        {dealer.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
+                      </span>
                       <div className="relative">
                         <button
                           onClick={() => setOpenMenuId(openMenuId === dealer.id ? null : dealer.id)}
@@ -417,10 +551,14 @@ const getStatusColor = (isActive: boolean) => {
                               <div className="border-t my-2"></div>
                               <button
                                 onClick={() => handleDelete(dealer)}
-                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                                  canDeleteDealer(dealer)
+                                    ? 'text-red-600 hover:bg-red-50'
+                                    : 'text-gray-400 cursor-not-allowed'
+                                }`}
                               >
                                 <Trash2 className="w-4 h-4" />
-                                Xóa đại lý
+                                {canDeleteDealer(dealer) ? 'Xóa đại lý' : 'Không thể xóa'}
                               </button>
                             </div>
                           </>
@@ -505,7 +643,7 @@ const getStatusColor = (isActive: boolean) => {
             onSuccess={(message?: string) => {
               setShowCreateModal(false);
               loadDealers();
-              if (message) showToast(message);
+              if (message) showToast(message, 'success');
             }}
           />
         )}
@@ -521,7 +659,7 @@ const getStatusColor = (isActive: boolean) => {
               setShowEditModal(false);
               setSelectedDealer(null);
               loadDealers();
-              if (message) showToast(message);
+              if (message) showToast(message, 'success');
             }}
           />
         )}
@@ -543,7 +681,6 @@ const getStatusColor = (isActive: boolean) => {
               setShowStaffModal(false);
               setSelectedDealer(null);
             }}
-            
           />
         )}
 
@@ -555,24 +692,30 @@ const getStatusColor = (isActive: boolean) => {
               setSelectedDealer(null);
             }}
             onSuccess={(message?: string) => {
-              if (message) showToast(message);
+              if (message) showToast(message, 'success');
             }}
           />
         )}
 
-          <ConfirmModal
-            isOpen={confirmModal.isOpen}
-            onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-            onConfirm={confirmDelete}
-            title="Xóa Đại lý"
-            message={`Bạn có chắc muốn xóa đại lý ${confirmModal.dealer?.name}? Hành động này không thể hoàn tác.`}
-          />
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => {
+            setConfirmModal({ ...confirmModal, isOpen: false });
+            setDependencies([]);
+          }}
+          onConfirm={confirmDelete}
+          title="Xóa Đại lý"
+          message={`Bạn có chắc muốn xóa đại lý "${confirmModal.dealer?.name}"? Hành động này không thể hoàn tác.`}
+          dependencies={dependencies}
+          isDeleting={isDeleting}
+        />
 
         {/* Toast Notification */}
         <Toast
           message={toast.message}
           isVisible={toast.isVisible}
           onClose={() => setToast({ ...toast, isVisible: false })}
+          type={toast.type}
         />
       </div>
     </div>

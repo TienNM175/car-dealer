@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Loader } from 'lucide-react';
 import dealerOrderApi, { DealerOrder, CreateDealerOrderInput, UpdateDealerOrderInput } from '@/lib/api/dealerOrderApi';
 import { vehicleApi, Vehicle } from '@/lib/api/vehicleApi';
+import { toast } from 'react-hot-toast';
+
 interface DealerOrderFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -53,6 +55,7 @@ export default function DealerOrderForm({
         setVehicles(vehiclesData);
       } catch (err) {
         console.error('Error fetching vehicles:', err);
+        toast.error('Có lỗi xảy ra khi tải danh sách xe');
       }
     };
 
@@ -128,14 +131,20 @@ export default function DealerOrderForm({
       let result;
       if (order) {
         // Update existing order
+        const loadingToast = toast.loading('Đang cập nhật đơn hàng...');
         const updateData: UpdateDealerOrderInput = {
           quantity: formData.quantity,
           notes: formData.notes,
         };
         result = await dealerOrderApi.updateDealerOrder(order.id, updateData);
+        toast.dismiss(loadingToast);
+        toast.success('Cập nhật đơn hàng thành công!');
       } else {
         // Create new order
+        const loadingToast = toast.loading('Đang tạo đơn hàng...');
         result = await dealerOrderApi.createDealerOrder(orderData as CreateDealerOrderInput);
+        toast.dismiss(loadingToast);
+        toast.success('Tạo đơn hàng thành công!');
       }
 
       const responseData = result.data.data || result.data;
@@ -145,6 +154,7 @@ export default function DealerOrderForm({
       console.error('Error saving order:', err);
       const errorMessage = err.response?.data?.message || 'Có lỗi xảy ra khi lưu đơn hàng';
       setErrors({ submit: errorMessage });
+      toast.error(`Lỗi: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

@@ -8,7 +8,7 @@ interface DealerOrderDetailModalProps {
   onClose: () => void;
   order: DealerOrder | null;
   onStatusChange: (orderId: string, status: DealerOrder['status']) => void;
-  onEditClick: (order: DealerOrder) => void;
+  onEditClick?: (order: DealerOrder) => void; // Thêm dấu ? để thành optional
   userRole: string;
 }
 
@@ -63,7 +63,11 @@ export default function DealerOrderDetailModal({
 
   const canEdit = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
   const nextStatus = getNextStatus(order.status);
-  const canUpdateStatus = userRole === 'DEALER_MANAGER' && nextStatus && order.status !== 'CANCELLED';
+  
+  // EV Staff có thể update status trừ khi là CANCELLED
+  const canUpdateStatus = userRole === 'EVM_STAFF' && nextStatus && order.status !== 'CANCELLED';
+  // Manager chỉ có thể cancel
+  const canCancel = userRole === 'DEALER_MANAGER' && order.status !== 'CANCELLED';
 
   const StatusIcon = statusConfig[order.status].icon;
   const statusColorClass = statusConfig[order.status].color;
@@ -83,13 +87,10 @@ export default function DealerOrderDetailModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {canEdit && (
+            {onEditClick && canEdit && (
               <button
-                onClick={() => {
-                  onEditClick(order);
-                  onClose();
-                }}
-                className="flex items-center gap-2 px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                onClick={() => onEditClick(order)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Edit className="w-4 h-4" />
                 Chỉnh sửa
@@ -114,15 +115,29 @@ export default function DealerOrderDetailModal({
               {statusConfig[order.status].label}
             </span>
             
-            {canUpdateStatus && nextStatus && (
-              <button
-                onClick={() => onStatusChange(order.id, nextStatus)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Chuyển sang {statusConfig[nextStatus].label}
-              </button>
-            )}
+            <div className="flex gap-2">
+              {/* EV Staff - Update status */}
+              {canUpdateStatus && nextStatus && (
+                <button
+                  onClick={() => onStatusChange(order.id, nextStatus)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Chuyển sang {statusConfig[nextStatus].label}
+                </button>
+              )}
+              
+              {/* Manager - Cancel order */}
+              {canCancel && (
+                <button
+                  onClick={() => onStatusChange(order.id, 'CANCELLED')}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Ban className="w-4 h-4" />
+                  Hủy đơn hàng
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Order Timeline */}

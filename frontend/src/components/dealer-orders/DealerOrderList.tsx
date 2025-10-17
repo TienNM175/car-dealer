@@ -10,11 +10,11 @@ interface DealerOrderListProps {
   filterStatus: string;
   onSearchChange: (value: string) => void;
   onFilterChange: (value: string) => void;
-  onCreateClick: () => void;
+  onCreateClick?: () => void;
   onViewClick: (order: DealerOrder) => void;
-  onEditClick: (order: DealerOrder) => void;
-  onDeleteClick: (order: DealerOrder) => void;
-  onExportClick: () => void;
+  onEditClick?: (order: DealerOrder) => void;
+  onDeleteClick?: (order: DealerOrder) => void;
+  onExportClick?: () => void;
   userRole: string;
   pagination: {
     page: number;
@@ -25,6 +25,10 @@ interface DealerOrderListProps {
   onPageChange: (page: number) => void;
   statistics?: any;
   onStatusChange?: (orderId: string, status: DealerOrder['status']) => void;
+  showCreateButton?: boolean;
+  showExportButton?: boolean;
+  showEditButton?: boolean;
+  showDeleteButton?: boolean;
 }
 
 const statusConfig = {
@@ -63,6 +67,10 @@ export default function DealerOrderList({
   onPageChange,
   statistics,
   onStatusChange,
+  showCreateButton = true, // Mặc định hiển thị
+  showExportButton = true, // Mặc định hiển thị
+  showEditButton = true, // Mặc định hiển thị
+  showDeleteButton = true, // Mặc định hiển thị
 }: DealerOrderListProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -83,6 +91,9 @@ export default function DealerOrderList({
     return order.status !== 'DELIVERED' && order.status !== 'CANCELLED';
   };
 
+  // Kiểm tra xem user có phải EVM Staff không
+  const isEVMStaff = userRole === 'EVM_STAFF';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -93,22 +104,27 @@ export default function DealerOrderList({
           </p>
         </div>
         
+        {/* Chỉ hiển thị các nút khi được cho phép */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={onExportClick}
-            className="flex items-center gap-2 px-4 py-2 border border-blue-600 rounded-lg hover:bg-gray-50 text-blue-700"
-          >
-            <Download className="w-4 h-4" />
-            Xuất Excel
-          </button>
+          {showExportButton && onExportClick && (
+            <button
+              onClick={onExportClick}
+              className="flex items-center gap-2 px-4 py-2 border border-blue-600 rounded-lg hover:bg-gray-50 text-blue-700"
+            >
+              <Download className="w-4 h-4" />
+              Xuất Excel
+            </button>
+          )}
           
-          <button
-            onClick={onCreateClick}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-600"
-          >
-            <Plus className="w-4 h-4" />
-            Tạo đơn đặt xe
-          </button>
+          {showCreateButton && onCreateClick && (
+            <button
+              onClick={onCreateClick}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4" />
+              Tạo đơn đặt xe
+            </button>
+          )}
         </div>
       </div>
 
@@ -258,7 +274,7 @@ export default function DealerOrderList({
                             <Eye className="w-4 h-4" />
                           </button>
                           
-                          {canEdit(order) && (
+                          {showEditButton && onEditClick && canEdit(order) && (
                             <button
                               onClick={() => onEditClick(order)}
                               className="text-green-600 hover:text-green-900"
@@ -268,7 +284,7 @@ export default function DealerOrderList({
                             </button>
                           )}
                           
-                          {canCancel(order) && (
+                          {showDeleteButton && onDeleteClick && canCancel(order) && (
                             <button
                               onClick={() => onDeleteClick(order)}
                               className="text-red-600 hover:text-red-900"
@@ -293,14 +309,16 @@ export default function DealerOrderList({
                   </svg>
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-1">Không có đơn hàng nào</h3>
-                <p className="text-gray-500 mb-4">Hãy tạo đơn hàng đầu tiên để bắt đầu</p>
-                <button
-                  onClick={onCreateClick}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  <Plus className="w-4 h-4" />
-                  Tạo đơn hàng
-                </button>
+                <p className="text-gray-500 mb-4">Không tìm thấy đơn hàng nào phù hợp</p>
+                {showCreateButton && onCreateClick && (
+                  <button
+                    onClick={onCreateClick}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tạo đơn hàng
+                  </button>
+                )}
               </div>
             )}
 
