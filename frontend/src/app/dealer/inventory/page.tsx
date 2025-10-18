@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X as CloseIcon,
+  Filter,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import inventoryApi, {
@@ -49,6 +50,15 @@ export default function DealerInventoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Thêm states cho search và filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterTotal, setFilterTotal] = useState(""); // Exact number for Tổng
+  const [filterReserved, setFilterReserved] = useState(""); // Exact number for Reserved
+  const [filterSold, setFilterSold] = useState(""); // Exact number for Sold
+  const [filterAvailable, setFilterAvailable] = useState(""); // Exact number for Khả dụng
+  const [filterStatus, setFilterStatus] = useState(""); // '', 'low', 'normal', 'high'
+
   // Kiểm tra auth và role (staff/manager đều được xem, nhưng có thể giới hạn export cho staff)
   useEffect(() => {
     if (!authLoading && (!user || !user.dealerId)) {
@@ -80,12 +90,48 @@ export default function DealerInventoryPage() {
     if (user?.dealerId) fetchData();
   }, [user?.dealerId]);
 
+  // Reset page to 1 when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterTotal, filterReserved, filterSold, filterAvailable, filterStatus]);
+
   // Pagination logic
-  const totalItems = dealerInventory.length;
+  // Lọc dữ liệu dựa trên search và filters
+  const filteredData = dealerInventory.filter((item) => {
+    // Search theo model
+    const matchesSearch = item.vehicle.model.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filter theo Tổng (exact)
+    const totalFilter = parseInt(filterTotal) || NaN;
+    const matchesTotal = !isNaN(totalFilter) ? item.quantity === totalFilter : true;
+
+    // Filter theo Reserved (exact)
+    const reservedFilter = parseInt(filterReserved) || NaN;
+    const matchesReserved = !isNaN(reservedFilter) ? item.reserved === reservedFilter : true;
+
+    // Filter theo Sold (exact)
+    const soldFilter = parseInt(filterSold) || NaN;
+    const matchesSold = !isNaN(soldFilter) ? item.sold === soldFilter : true;
+
+    // Filter theo Khả dụng (exact)
+    const availableFilter = parseInt(filterAvailable) || NaN;
+    const matchesAvailable = !isNaN(availableFilter) ? item.available === availableFilter : true;
+
+    // Filter theo trạng thái (dựa trên available: low <5, normal 5-20, high >20)
+    let itemStatus = '';
+    if (item.available < 5) itemStatus = 'low';
+    else if (item.available <= 20) itemStatus = 'normal';
+    else itemStatus = 'high';
+    const matchesStatus = !filterStatus || itemStatus === filterStatus;
+
+    return matchesSearch && matchesTotal && matchesReserved && matchesSold && matchesAvailable && matchesStatus;
+  });
+
+  const totalItems = filteredData.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedData = dealerInventory.slice(startIndex, endIndex);
+  const paginatedData = filteredData.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages) return;
@@ -106,12 +152,21 @@ export default function DealerInventoryPage() {
     return pages;
   };
 
-  // Thống kê
+  // Thống kê (dựa trên filtered data? No, keep original for stats)
   const totalStock = dealerInventory.reduce((sum, item) => sum + item.quantity, 0);
   const totalReserved = dealerInventory.reduce((sum, item) => sum + item.reserved, 0);
   const totalSold = dealerInventory.reduce((sum, item) => sum + item.sold, 0);
   const totalAvailable = dealerInventory.reduce((sum, item) => sum + item.available, 0);
   const lowStockCount = dealerInventory.filter(item => item.available < 5).length;
+
+  // Xóa bộ lọc
+  const clearFilters = () => {
+    setFilterTotal("");
+    setFilterReserved("");
+    setFilterSold("");
+    setFilterAvailable("");
+    setFilterStatus("");
+  };
 
   // Xem chi tiết (API 2: getDealerInventoryItem)
   const handleViewDetail = async (vehicleId: string) => {
@@ -351,6 +406,118 @@ export default function DealerInventoryPage() {
         </div>
       </div>
 
+      {/* Phần Search và Nút Bộ lọc */}
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-4">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo tên model..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
+            />
+            <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+
+          {/* Nút Bộ lọc */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 text-gray-700"
+          >
+            <Filter className="w-4 h-4" />
+            Bộ lọc
+            {showFilters && <span className="text-xs text-red-500">▲</span>}
+            {!showFilters && <span className="text-xs text-red-500">▼</span>}
+          </button>
+        </div>
+
+        {/* Chi tiết Bộ lọc (xổ xuống) */}
+        {showFilters && (
+          <div className="space-y-4 pt-4 border-t border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {/* Filter Tổng tồn kho (exact) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tổng tồn kho</label>
+                <input
+                  type="number"
+                  placeholder="Nhập số lượng"
+                  value={filterTotal}
+                  onChange={(e) => setFilterTotal(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
+                  min="0"
+                />
+              </div>
+
+              {/* Filter Reserved (exact) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reserved</label>
+                <input
+                  type="number"
+                  placeholder="Nhập số lượng"
+                  value={filterReserved}
+                  onChange={(e) => setFilterReserved(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
+                  min="0"
+                />
+              </div>
+
+              {/* Filter Sold (exact) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sold</label>
+                <input
+                  type="number"
+                  placeholder="Nhập số lượng"
+                  value={filterSold}
+                  onChange={(e) => setFilterSold(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
+                  min="0"
+                />
+              </div>
+
+              {/* Filter Khả dụng (exact) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Khả dụng</label>
+                <input
+                  type="number"
+                  placeholder="Nhập số lượng"
+                  value={filterAvailable}
+                  onChange={(e) => setFilterAvailable(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
+                  min="0"
+                />
+              </div>
+
+              {/* Filter Trạng thái */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                >
+                  <option value="">Tất cả</option>
+                  <option value="low">Thấp</option>
+                  <option value="normal">Bình thường</option>
+                  <option value="high">Cao</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
+              >
+                Xóa bộ lọc
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Table */}
       <div className="bg-white rounded-xl shadow-md p-6 text-black">
         <h3 className="font-semibold text-lg mb-4">Danh sách tồn kho</h3>
@@ -398,6 +565,13 @@ export default function DealerInventoryPage() {
                   </td>
                 </tr>
               ))}
+              {paginatedData.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    Không tìm thấy dữ liệu phù hợp.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -431,7 +605,7 @@ export default function DealerInventoryPage() {
         <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between p-6 border-b border-border border-gray-200">
               <h3 className="text-2xl font-bold text-gray-900">Chi tiết xe</h3>
               <button
                 onClick={() => setShowDetailModal(false)}

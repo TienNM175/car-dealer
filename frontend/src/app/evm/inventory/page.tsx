@@ -9,6 +9,7 @@ import {
   Eye,
   Edit,
   Truck,
+  Filter,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import inventoryApi, {
@@ -41,6 +42,18 @@ export default function InventoryPage() {
     notes: "",
   });
 
+  // Thêm states cho search và filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterTotalStock, setFilterTotalStock] = useState(""); // Exact number
+  const [filterDealerStock, setFilterDealerStock] = useState(""); // Exact number
+  const [filterAvailable, setFilterAvailable] = useState(""); // Exact number
+  const [filterStatus, setFilterStatus] = useState(""); // '', 'excess', 'normal', 'low'
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit] = useState(15);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -69,6 +82,11 @@ export default function InventoryPage() {
     fetchData();
   }, []);
 
+  // Reset page to 1 when filters or search change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterTotalStock, filterDealerStock, filterAvailable, filterStatus]);
+
   // Tính dealerStock cho từng vehicle
   const getDealerStockByVehicle = (vehicleId: string): number => {
     return dealerInventories
@@ -85,6 +103,37 @@ export default function InventoryPage() {
     available: item.available,
     vehicleId: item.vehicleId,
   }));
+
+  // Lọc dữ liệu dựa trên search và filters
+  const filteredTableData = tableData.filter((item) => {
+    // Search theo model
+    const matchesSearch = item.vehicle.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filter theo tổng tồn kho (exact)
+    const totalFilter = parseInt(filterTotalStock) || NaN;
+    const matchesTotalStock = !isNaN(totalFilter) ? item.totalStock === totalFilter : true;
+
+    // Filter theo tại đại lý (exact)
+    const dealerFilter = parseInt(filterDealerStock) || NaN;
+    const matchesDealerStock = !isNaN(dealerFilter) ? item.dealerStock === dealerFilter : true;
+
+    // Filter theo khả dụng (exact)
+    const availableFilter = parseInt(filterAvailable) || NaN;
+    const matchesAvailable = !isNaN(availableFilter) ? item.available === availableFilter : true;
+
+    // Filter theo trạng thái
+    let itemStatus = '';
+    if (item.available > 100) itemStatus = 'excess';
+    else if (item.available > 50) itemStatus = 'normal';
+    else itemStatus = 'low';
+    const matchesStatus = !filterStatus || itemStatus === filterStatus;
+
+    return matchesSearch && matchesTotalStock && matchesDealerStock && matchesAvailable && matchesStatus;
+  });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredTableData.length / limit);
+  const paginatedData = filteredTableData.slice((page - 1) * limit, page * limit);
 
   // Tính thống kê
   const totalStock = summary?.evm.totalQuantity || 0;
@@ -202,7 +251,7 @@ export default function InventoryPage() {
   const handleExportReport = () => {
     const csvContent = [
       ["Model", "Tổng tồn kho", "Tại đại lý", "Khả dụng", "Trạng thái"],
-      ...tableData.map((item) => [
+      ...filteredTableData.map((item) => [
         item.vehicle,
         item.totalStock,
         item.dealerStock,
@@ -221,6 +270,18 @@ export default function InventoryPage() {
     a.click();
     window.URL.revokeObjectURL(url);
     toast.success("Đã xuất báo cáo thành công!");
+  };
+
+  // Xóa bộ lọc
+  const clearFilters = () => {
+    setFilterTotalStock("");
+    setFilterDealerStock("");
+    setFilterAvailable("");
+    setFilterStatus("");
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   if (loading) {
@@ -287,6 +348,105 @@ export default function InventoryPage() {
         </div>
       </div>
 
+      {/* Phần Search và Nút Bộ lọc */}
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-4">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo tên model..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
+            />
+            <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+
+          {/* Nút Bộ lọc */}
+         <button
+  onClick={() => setShowFilters(!showFilters)}
+  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 text-gray-700"
+>
+  <Filter className="w-4 h-4" />
+  Bộ lọc
+  {showFilters && <span className="text-xs text-red-500">▲</span>}
+  {!showFilters && <span className="text-xs text-red-500">▼</span>}
+</button>
+        </div>
+
+        {/* Chi tiết Bộ lọc (xổ xuống) */}
+        {showFilters && (
+          <div className="space-y-4 pt-4 border-t border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Filter Tổng tồn kho (exact) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tổng tồn kho</label>
+                <input
+                  type="number"
+                  placeholder="Nhập số lượng"
+                  value={filterTotalStock}
+                  onChange={(e) => setFilterTotalStock(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
+                  min="0"
+                />
+              </div>
+
+              {/* Filter Tại đại lý (exact) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tại đại lý</label>
+                <input
+                  type="number"
+                  placeholder="Nhập số lượng"
+                  value={filterDealerStock}
+                  onChange={(e) => setFilterDealerStock(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
+                  min="0"
+                />
+              </div>
+
+              {/* Filter Khả dụng (exact) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Khả dụng</label>
+                <input
+                  type="number"
+                  placeholder="Nhập số lượng"
+                  value={filterAvailable}
+                  onChange={(e) => setFilterAvailable(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
+                  min="0"
+                />
+              </div>
+
+              {/* Filter Trạng thái */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                >
+                  <option value="">Tất cả</option>
+                  <option value="excess">Dư thừa</option>
+                  <option value="normal">Bình thường</option>
+                  <option value="low">Cần bổ sung</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
+              >
+                Xóa bộ lọc
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="bg-white rounded-xl shadow-md p-6 text-black">
         <h3 className="font-semibold text-lg mb-4">Chi tiết tồn kho</h3>
         <div className="overflow-x-auto">
@@ -302,7 +462,7 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-black">
-              {tableData.map((item) => (
+              {paginatedData.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <span className="font-semibold">{item.vehicle}</span>
@@ -356,9 +516,70 @@ export default function InventoryPage() {
                   </td>
                 </tr>
               ))}
+              {(paginatedData.length === 0 && filteredTableData.length > 0) || filteredTableData.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    Không tìm thấy dữ liệu phù hợp.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6 mt-4">
+            <div className="flex flex-1 justify-between sm:hidden">
+              <button
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === totalPages}
+                className="relative ml-3 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div className="text-sm text-gray-700">
+                <span className="font-medium">
+                  Hiển thị <span className="font-semibold">{(page - 1) * limit + 1}</span> đến{" "}
+                  <span className="font-semibold">
+                    {Math.min(page * limit, filteredTableData.length)}
+                  </span>{" "}
+                  của <span className="font-semibold">{filteredTableData.length}</span> kết quả
+                </span>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => handlePageChange(page - 1)}
+                    disabled={page === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Trước
+                  </button>
+                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                    {page} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(page + 1)}
+                    disabled={page === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Sau
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal chi tiết */}
