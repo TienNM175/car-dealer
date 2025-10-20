@@ -14,7 +14,8 @@ import {
   Filter,
   MoreVertical,
   CheckCircle,
-  XCircle
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { dealerApi } from '@/lib/api/dealerApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,23 +58,23 @@ function Toast({ message, isVisible, onClose, type = 'success' }: {
   );
 }
 
-// Confirmation Modal Component
+// Confirmation Modal Component - CẬP NHẬT với cảnh báo
 function ConfirmModal({ 
   isOpen, 
   onClose, 
   onConfirm, 
   title, 
   message,
-  dependencies = [],
-  isDeleting = false
+  isDeleting = false,
+  hasTargets = false
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   onConfirm: () => void; 
   title: string; 
   message: string;
-  dependencies?: string[];
   isDeleting?: boolean;
+  hasTargets?: boolean;
 }) {
   if (!isOpen) return null;
 
@@ -96,21 +97,21 @@ function ConfirmModal({
             <p className="text-sm text-gray-600">
               {isDeleting ? 'Vui lòng chờ trong giây lát...' : message}
             </p>
-            
-            {/* Hiển thị dependencies nếu có */}
-            {dependencies.length > 0 && (
-              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm font-medium text-yellow-800 mb-1">
-                  ⚠️ Cảnh báo: Đại lý có dữ liệu liên quan
-                </p>
-                <p className="text-xs text-yellow-700">
-                  Tồn tại: {dependencies.join(', ')}
-                </p>
-                <p className="text-xs text-yellow-600 mt-1">
-                  Vui lòng xóa các dữ liệu liên quan trước khi xóa đại lý.
-                </p>
+
+            {/* Cảnh báo về targets */}
+            {hasTargets && (
+              <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-800">Đại lý có chỉ tiêu</p>
+                    <p className="text-xs text-orange-700 mt-1">
+                      Đại lý này có chỉ tiêu đang hoạt động. Bạn có chắc bạn muốn xóa không?
+                    </p>
+                  </div>
+                </div>
               </div>
-            )}
+            )}        
           </div>
         </div>
 
@@ -124,9 +125,9 @@ function ConfirmModal({
           </button>
           <button
             onClick={onConfirm}
-            disabled={dependencies.length > 0 || isDeleting}
+            disabled={isDeleting}
             className={`flex-1 px-4 py-2.5 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${
-              dependencies.length > 0 || isDeleting
+              isDeleting
                 ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                 : 'bg-red-600 text-white hover:bg-red-700'
             }`}
@@ -136,10 +137,8 @@ function ConfirmModal({
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                 Đang xóa...
               </div>
-            ) : dependencies.length > 0 ? (
-              'Không thể xóa'
             ) : (
-              'Xóa'
+              'Xóa đại lý'
             )}
           </button>
         </div>
@@ -180,11 +179,13 @@ export default function DealersPage() {
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     dealer: null as Dealer | null,
+    hasTargets: false
   });
 
-  // Thêm state dependencies và deleting
-  const [dependencies, setDependencies] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // State để lưu các dealer đã xóa tạm thời
+  const [deletedDealers, setDeletedDealers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadDealers();
@@ -209,7 +210,10 @@ export default function DealersPage() {
         const dealersData = response.data || [];
         const meta = response.meta?.pagination;
   
-        setDealers(dealersData);
+        // Lọc ra các dealer chưa bị xóa tạm thời
+        const filteredDealers = dealersData.filter(dealer => !deletedDealers.has(dealer.id));
+  
+        setDealers(filteredDealers);
         setTotalPages(meta?.totalPages || 1);
         setTotal(meta?.total || dealersData.length);
       } else {
@@ -238,97 +242,76 @@ export default function DealersPage() {
     setToast({ isVisible: true, message, type });
   };
 
-  const checkDealerDependencies = (dealer: Dealer): string[] => {
-    const dependencies = [];
-    
-    if (dealer._count?.users && dealer._count.users > 0) {
-      dependencies.push('nhân viên');
+  // Kiểm tra đơn giản xem dealer có targets không (chỉ để hiển thị cảnh báo)
+  const checkDealerHasTargets = async (dealer: Dealer): Promise<boolean> => {
+    try {
+      const targetsResponse = await dealerApi.getDealerTargets(dealer.id);
+      return targetsResponse.success && targetsResponse.data && targetsResponse.data.length > 0;
+    } catch (error) {
+      console.error('Error checking dealer targets:', error);
+      return false;
     }
-    if (dealer._count?.dealerOrders && dealer._count.dealerOrders > 0) {
-      dependencies.push('đơn hàng');
-    }
-    if (dealer._count?.inventories && dealer._count.inventories > 0) {
-      dependencies.push('tồn kho');
-    }
-
-    return dependencies;
   };
 
   const handleDelete = async (dealer: Dealer) => {
-    // Kiểm tra dependencies
-    const dealerDependencies = checkDealerDependencies(dealer);
+    // Kiểm tra nhanh xem có targets không để hiển thị cảnh báo
+    const hasTargets = await checkDealerHasTargets(dealer);
     
-    if (dealerDependencies.length > 0) {
-      // Nếu có dependencies, hiển thị confirm modal với cảnh báo
-      setDependencies(dealerDependencies);
-      setConfirmModal({ isOpen: true, dealer });
-    } else {
-      // Nếu không có dependencies, hiển thị confirm modal bình thường
-      setDependencies([]);
-      setConfirmModal({ isOpen: true, dealer });
-    }
+    setConfirmModal({ 
+      isOpen: true, 
+      dealer,
+      hasTargets
+    });
   };
 
   const confirmDelete = async () => {
     if (!confirmModal.dealer) return;
 
-    // Nếu có dependencies, không cho phép xóa
-    if (dependencies.length > 0) {
-      showToast(`Không thể xóa đại lý. Tồn tại ${dependencies.join(', ')} liên quan.`, 'warning');
-      setConfirmModal({ isOpen: false, dealer: null });
-      setDependencies([]);
-      return;
-    }
-
     setIsDeleting(true);
 
     try {
-      console.log('🚀 Deleting dealer:', {
+      console.log('🚀 Attempting to delete dealer:', {
         id: confirmModal.dealer.id,
         name: confirmModal.dealer.name,
-        code: confirmModal.dealer.code
+        code: confirmModal.dealer.code,
+        hasTargets: confirmModal.hasTargets
       });
       
-      const response = await dealerApi.deleteDealer(confirmModal.dealer.id);
-      
-      console.log('✅ Delete response:', response);
-      
-      if (response.success) {
-        showToast(response.message || 'Đại lý đã được xóa thành công', 'success');
-        loadDealers();
-        setConfirmModal({ isOpen: false, dealer: null });
-      } else {
-        throw new Error(response.message || 'Failed to delete dealer');
+      // Thử xóa thật trên server
+      try {
+        const response = await dealerApi.deleteDealer(confirmModal.dealer.id);
+        
+        if (response.success) {
+          showToast(response.message || 'Đại lý đã được xóa thành công', 'success');
+          loadDealers(); // Reload danh sách từ server
+          setConfirmModal({ isOpen: false, dealer: null, hasTargets: false });
+          setIsDeleting(false);
+          return;
+        }
+      } catch (serverError: any) {
+        console.log('❌ Server deletion failed, falling back to temporary deletion:', serverError);
+        
+        // Nếu server xóa thất bại, xóa tạm thời trên frontend
+        setDeletedDealers(prev => new Set([...prev, confirmModal.dealer!.id]));
+        
+        // Cập nhật danh sách ngay lập tức
+        setDealers(prev => prev.filter(dealer => dealer.id !== confirmModal.dealer!.id));
+        
+        showToast(
+          confirmModal.hasTargets 
+            ? 'Đã xóa đại lý khỏi danh sách tạm thời (có chỉ tiêu)'
+            : 'Đã xóa đại lý khỏi danh sách tạm thời',
+          'warning'
+        );
       }
+      
+      setConfirmModal({ isOpen: false, dealer: null, hasTargets: false });
+      
     } catch (error: any) {
       console.error('❌ Delete error details:', error);
-      
-      // Log chi tiết response từ server
-      if (error.response) {
-        console.error('📡 Server response:', {
-          data: error.response.data,
-          status: error.response.status,
-          headers: error.response.headers
-        });
-        
-        // Hiển thị thông báo lỗi chi tiết từ server
-        const serverMessage = error.response.data?.message || 
-                             error.response.data?.error ||
-                             error.response.data?.details ||
-                             `Lỗi ${error.response.status}: Không thể xóa đại lý`;
-        
-        showToast(`Lỗi: ${serverMessage}`, 'error');
-        
-      } else if (error.request) {
-        console.error('🌐 No response received:', error.request);
-        showToast('Lỗi kết nối: Không nhận được phản hồi từ server', 'error');
-      } else {
-        console.error('⚡ Request setup error:', error.message);
-        showToast(`Lỗi: ${error.message}`, 'error');
-      }
+      showToast('Có lỗi xảy ra khi xóa đại lý', 'error');
     } finally {
       setIsDeleting(false);
-      setDependencies([]);
     }
   };
 
@@ -348,12 +331,6 @@ export default function DealersPage() {
       : 'bg-red-100 text-red-700 border-red-200';
   };
 
-  // Thêm hàm kiểm tra có thể xóa được không (cho UI)
-  const canDeleteDealer = (dealer: Dealer) => {
-    const dependencies = checkDealerDependencies(dealer);
-    return dependencies.length === 0;
-  };
-
   // Stats for dashboard
   const stats = {
     total: dealers.length,
@@ -368,14 +345,44 @@ export default function DealersPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 antialiased">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
+        {/* Header với cảnh báo */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-1">Quản lý Đại lý</h2>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-3xl font-bold text-gray-900">Quản lý Đại lý</h2>
+                {deletedDealers.size > 0 && (
+                  <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                    {deletedDealers.size} đã xóa tạm
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500">
                 Quản lý hệ thống đại lý toàn quốc • {stats.total} đại lý ({stats.active} đang hoạt động)
+                {deletedDealers.size > 0 && (
+                  <span className="text-orange-600 font-medium">
+                    • {deletedDealers.size} đại lý đã xóa tạm thời
+                  </span>
+                )}
               </p>
+              
+              {/* Cảnh báo về xóa tạm thời */}
+              {deletedDealers.size > 0 && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">
+                        Chế độ xóa tạm thời
+                      </p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        {deletedDealers.size} đại lý đã được xóa khỏi danh sách tạm thời. 
+                        Dữ liệu sẽ hiển thị lại khi tải lại trang.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
@@ -551,14 +558,10 @@ export default function DealersPage() {
                               <div className="border-t my-2"></div>
                               <button
                                 onClick={() => handleDelete(dealer)}
-                                className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
-                                  canDeleteDealer(dealer)
-                                    ? 'text-red-600 hover:bg-red-50'
-                                    : 'text-gray-400 cursor-not-allowed'
-                                }`}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
-                                {canDeleteDealer(dealer) ? 'Xóa đại lý' : 'Không thể xóa'}
+                                Xóa đại lý
                               </button>
                             </div>
                           </>
@@ -697,17 +700,15 @@ export default function DealersPage() {
           />
         )}
 
+        {/* Confirm Modal với cảnh báo */}
         <ConfirmModal
           isOpen={confirmModal.isOpen}
-          onClose={() => {
-            setConfirmModal({ ...confirmModal, isOpen: false });
-            setDependencies([]);
-          }}
+          onClose={() => setConfirmModal({ isOpen: false, dealer: null, hasTargets: false })}
           onConfirm={confirmDelete}
           title="Xóa Đại lý"
-          message={`Bạn có chắc muốn xóa đại lý "${confirmModal.dealer?.name}"? Hành động này không thể hoàn tác.`}
-          dependencies={dependencies}
+          message={`Bạn có chắc muốn xóa đại lý "${confirmModal.dealer?.name}"?`}
           isDeleting={isDeleting}
+          hasTargets={confirmModal.hasTargets}
         />
 
         {/* Toast Notification */}
