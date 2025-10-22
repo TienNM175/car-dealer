@@ -74,25 +74,46 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
         return [];
     };
 
+    // useEffect(() => {
+    //     const fetchData = async () => {
+    //         try {
+    //             const [customersRes, vehiclesRes, staffRes] = await Promise.all([
+    //                 customerApi.getAllCustomers(),
+    //                 vehicleApi.getAllVehicles(),
+    //                 usersApi.list(),
+    //             ]);
+
+    //             setCustomers(normalizeResponse(customersRes));
+    //             setVehicles(normalizeResponse(vehiclesRes));
+    //             setStaff(normalizeResponse(staffRes));
+    //         } catch (error) {
+    //             console.error('Failed to fetch form data:', error);
+    //             toast.error('Không thể tải dữ liệu cho biểu mẫu.');
+    //         }
+    //     };
+    //     fetchData();
+    // }, []);
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [customersRes, vehiclesRes, staffRes] = await Promise.all([
-                    customerApi.getAllCustomers(),
-                    vehicleApi.getAllVehicles(),
-                    usersApi.list(),
-                ]);
+                const customersRes = await customerApi.getAllCustomers();
+                console.log("customers ok");
+                const vehiclesRes = await vehicleApi.getAllVehicles();
+                console.log("vehicles ok");
+                const staffRes = await usersApi.list();
+                console.log("staff ok");
 
                 setCustomers(normalizeResponse(customersRes));
                 setVehicles(normalizeResponse(vehiclesRes));
                 setStaff(normalizeResponse(staffRes));
             } catch (error) {
-                console.error('Failed to fetch form data:', error);
-                toast.error('Không thể tải dữ liệu cho biểu mẫu.');
+                console.error("Failed to fetch form data:", error);
+                toast.error("Không thể tải dữ liệu cho biểu mẫu.");
             }
         };
         fetchData();
     }, []);
+
 
     useEffect(() => {
         if (initialData) {

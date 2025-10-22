@@ -1,28 +1,23 @@
 'use client';
 
 import { TestDrive } from '@/lib/types/test-drive';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import Link from 'next/link';
-import { Eye, Pencil, Plus } from "lucide-react";
+import { Eye, Pencil, Plus, Clock, Car } from "lucide-react";
+import { useState } from 'react';
 
 interface TestDriveListProps {
     testDrives: TestDrive[];
     loading: boolean;
     pagination: { page: number; limit: number; total: number; totalPages: number; sortBy?: string; sortOrder?: 'asc' | 'desc' };
     onPageChange: (page: number) => void;
-    onSort: (sortBy: string) => void;
 }
 
-export const TestDriveList: React.FC<TestDriveListProps> = ({ testDrives, loading, pagination, onPageChange, onSort }) => {
-    const SortableHeader = ({ label, sortBy }: { label: string; sortBy: string }) => (
-        <th
-            className="px-4 py-2 cursor-pointer text-white font-semibold"
-            onClick={() => onSort(sortBy)}
-        >
-            {label}{pagination.sortBy === sortBy && <span>{pagination.sortOrder === 'asc' ? ' ▲' : ' ▼'}</span>}
-        </th>
-    );
+export const TestDriveList: React.FC<TestDriveListProps> = ({ testDrives, loading, pagination, onPageChange }) => {
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+    const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
     const translateStatus = (status: string): string => {
         switch (status) {
@@ -37,80 +32,209 @@ export const TestDriveList: React.FC<TestDriveListProps> = ({ testDrives, loadin
 
     if (loading) return <div className="p-4 text-center">Đang tải...</div>;
 
+    const filteredTestDrives = selectedDate
+        ? testDrives.filter(d => isSameDay(new Date(d.scheduledDate), selectedDate))
+        : testDrives;
+
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    const handlePrevMonth = () => {
+        if (currentMonth === 0) {
+            setCurrentMonth(11);
+            setCurrentYear(currentYear - 1);
+        } else {
+            setCurrentMonth(currentMonth - 1);
+        }
+    };
+
+    const handleNextMonth = () => {
+        if (currentMonth === 11) {
+            setCurrentMonth(0);
+            setCurrentYear(currentYear + 1);
+        } else {
+            setCurrentMonth(currentMonth + 1);
+        }
+    };
+
     return (
-        <div className="bg-white shadow rounded-lg overflow-x-auto">
-            <div className="flex justify-between items-center p-4 border-b">
-                <h2 className="text-xl font-bold text-black">Danh sách Lái thử</h2>
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-800">Danh sách Lái thử</h2>
                 <Link
                     href="/dealer/test-drive/new"
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
                 >
-                    <Plus className="w-5 h-5" />
-                    <span>Tạo mới</span>
+                    <Plus className="w-4 h-4" />
+                    Tạo lịch hẹn
                 </Link>
             </div>
 
-            <table className="min-w-full divide-y text-black">
-                <thead style={{ backgroundColor: "#1D6BFF" }}>
-                    <tr>
-                        <SortableHeader label="Khách hàng" sortBy="customer.lastName" />
-                        <th className="p-3 text-white font-semibold">Email KH</th>
-                        <SortableHeader label="Xe" sortBy="vehicle.model" />
-                        <th className="p-3 text-white font-semibold">Ảnh</th>
-                        <SortableHeader label="Nhân viên" sortBy="staff.lastName" />
-                        <th className="p-3 text-white font-semibold">Đại lý</th>
-                        <SortableHeader label="Ngày hẹn" sortBy="scheduledDate" />
-                        <th className="p-3 text-white font-semibold">Trạng thái</th>
-                        <th className="p-3 text-white font-semibold">Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {testDrives.map((d) => (
-                        <tr key={d.id} className="whitespace-normal break-words">
-                            <td className="p-3">{d.customer.firstName} {d.customer.lastName}</td>
-                            <td className="p-3">{d.customer.email}</td>
-                            <td className="p-3">{d.vehicle.manufacturer.name} {d.vehicle.model}</td>
-                            <td className="p-3">
-                                {d.vehicle.images?.[0]?.url && (
-                                    <img src={d.vehicle.images[0].url} alt="Xe" className="h-10 rounded" />
-                                )}
-                            </td>
-                            <td className="p-3">{d.staff.firstName} {d.staff.lastName}</td>
-                            <td className="p-3">{d.staff.dealer?.name}</td>
-                            <td className="p-3">
-                                {format(new Date(d.scheduledDate), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                            </td>
-                            <td className="p-3">{translateStatus(d.status)}</td>
-                            <td className="p-3">
-                                <div className="flex gap-4">
-                                    <Link
-                                        href={`/dealer/test-drive/${d.id}`}
-                                        className="text-blue-600 hover:text-blue-800 relative group"
-                                    >
-                                        <Eye className="w-5 h-5" />
-                                        <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 
-                                            bg-black text-white text-xs rounded px-2 py-1 opacity-0 
-                                            group-hover:opacity-100 transition whitespace-nowrap">
-                                            Xem chi tiết
-                                        </span>
-                                    </Link>
-                                    <Link
-                                        href={`/dealer/test-drive/${d.id}/edit`}
-                                        className="text-green-600 hover:text-green-800 relative group"
-                                    >
-                                        <Pencil className="w-5 h-5" />
-                                        <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 
-                                            bg-black text-white text-xs rounded px-2 py-1 opacity-0 
-                                            group-hover:opacity-100 transition whitespace-nowrap">
-                                            Chỉnh sửa
-                                        </span>
-                                    </Link>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-black">
+
+                <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {filteredTestDrives.length === 0 && (
+                        <div className="p-6 text-center text-gray-500 bg-white rounded-lg shadow">
+                            Không có lịch lái thử nào {selectedDate ? `ngày ${format(selectedDate, 'dd/MM/yyyy')}` : ''}.
+                        </div>
+                    )}
+
+                    {filteredTestDrives.map((d) => (
+                        <div key={d.id} className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <Car className="w-6 h-6 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold">{d.customer.firstName} {d.customer.lastName}</p>
+                                        <p className="text-sm text-gray-600">{d.vehicle.manufacturer.name} {d.vehicle.model}</p>
+                                    </div>
                                 </div>
-                            </td>
-                        </tr>
+                                <span className={`px-3 py-1 text-xs font-medium rounded-full 
+                                    ${d.status === 'CONFIRMED'
+                                        ? 'bg-green-100 text-green-700'
+                                        : d.status === 'SCHEDULED'
+                                            ? 'bg-yellow-100 text-yellow-700'
+                                            : d.status === 'COMPLETED'
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'bg-red-100 text-red-700'}`}>
+                                    {translateStatus(d.status)}
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                                <span className="flex items-center gap-1">
+                                    <Clock className="w-4 h-4" />
+                                    {format(new Date(d.scheduledDate), 'dd/MM/yyyy HH:mm', { locale: vi })}
+                                </span>
+                                {d.staff.dealer?.name && (
+                                    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded">
+                                        {d.staff.dealer.name}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2">
+                                <Link
+                                    href={`/dealer/test-drive/${d.id}`}
+                                    className="flex-1 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 text-center"
+                                >
+                                    <div className="flex items-center justify-center gap-1">
+                                        <Eye className="w-4 h-4" /> Xem chi tiết
+                                    </div>
+                                </Link>
+                                <Link
+                                    href={`/dealer/test-drive/${d.id}/edit`}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-1"
+                                >
+                                    <Pencil className="w-4 h-4" /> Chỉnh sửa
+                                </Link>
+                            </div>
+                        </div>
                     ))}
-                </tbody>
-            </table>
+
+
+
+
+
+                </div>
+
+                {/* lịch */}
+                <div className="bg-white rounded-xl shadow-md p-6 self-start">
+                    <div className="flex justify-between items-center mb-4">
+                        <button
+                            onClick={handlePrevMonth}
+                            className="px-2 py-1 text-sm border rounded hover:bg-gray-100"
+                        >
+                            ←
+                        </button>
+                        <h3 className="font-semibold text-lg">
+                            Tháng {currentMonth + 1} / {currentYear}
+                        </h3>
+                        <button
+                            onClick={handleNextMonth}
+                            className="px-2 py-1 text-sm border rounded hover:bg-gray-100"
+                        >
+                            →
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-2 text-center text-sm mb-2">
+                        {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map(day => (
+                            <div key={day} className="font-semibold text-gray-600">{day}</div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-2 text-center text-sm">
+                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+                            const thisDate = new Date(currentYear, currentMonth, day);
+                            const hasEvent = testDrives.some(d =>
+                                isSameDay(new Date(d.scheduledDate), thisDate)
+                            );
+                            const isSelected = selectedDate && isSameDay(thisDate, selectedDate);
+
+                            return (
+                                <div
+                                    key={day}
+                                    onClick={() => {
+                                        setSelectedDate(thisDate);
+                                        onPageChange(1);
+                                    }}
+                                    className={`p-2 rounded-lg cursor-pointer transition
+                                        ${isSelected
+                                            ? 'bg-blue-600 text-white font-bold'
+                                            : hasEvent
+                                                ? 'bg-blue-100 text-blue-700 font-semibold'
+                                                : 'hover:bg-gray-100'}
+                                    `}
+                                >
+                                    {day}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {selectedDate && (
+                        <button
+                            onClick={() => {
+                                setSelectedDate(null);
+                                onPageChange(1);
+                            }}
+                            className="mt-4 text-sm text-blue-600 hover:underline"
+                        >
+                            Bỏ lọc ngày
+                        </button>
+                    )}
+                </div>
+
+
+
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-black">
+                {filteredTestDrives.length > 0 && (
+                    <div className="flex justify-between items-center p-3 bg-white rounded shadow">
+                        <span className="text-sm text-gray-600">
+                            Trang {pagination.page} / {pagination.totalPages} (Tổng {pagination.total} lịch lái thử)
+                        </span>
+                        <div className="flex gap-1">
+                            <button
+                                disabled={pagination.page <= 1}
+                                onClick={() => onPageChange(pagination.page - 1)}
+                                className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+                            >
+                                Trước
+                            </button>
+                            <button
+                                disabled={pagination.page >= pagination.totalPages}
+                                onClick={() => onPageChange(pagination.page + 1)}
+                                className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+                            >
+                                Sau
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

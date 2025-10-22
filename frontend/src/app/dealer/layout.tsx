@@ -63,12 +63,6 @@ export default function DealerLayout({
       role: ["DEALER_STAFF", "DEALER_MANAGER"],
     },
     {
-      id: "appointments",
-      icon: Calendar,
-      label: "Lịch hẹn",
-      role: ["DEALER_STAFF", "DEALER_MANAGER"],
-    },
-    {
       id: "promotions",
       icon: Percent,
       label: "Mã khuyến mãi",
@@ -80,7 +74,7 @@ export default function DealerLayout({
       label: "Báo cáo",
       role: ["DEALER_MANAGER"],
     },
-    //thêm mục lái thử
+    //thêm mục lái thử ở đaaay
     {
       id: "test-drive",
       icon: Calendar,

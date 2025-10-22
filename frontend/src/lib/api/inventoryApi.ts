@@ -153,11 +153,11 @@ export interface InventorySummary {
 export const inventoryApi = {
   getEVMInventory: (filters?: InventoryFilters, pagination?: PaginationParams) => {
     const params = new URLSearchParams();
-    
+
     if (filters?.vehicleId) params.append('vehicleId', filters.vehicleId);
     if (filters?.lowStock !== undefined) params.append('lowStock', String(filters.lowStock));
     if (filters?.minQuantity !== undefined) params.append('minQuantity', String(filters.minQuantity));
-    
+
     if (pagination?.page) params.append('page', String(pagination.page));
     if (pagination?.limit) params.append('limit', String(pagination.limit));
     if (pagination?.sortBy) params.append('sortBy', pagination.sortBy);
@@ -166,20 +166,20 @@ export const inventoryApi = {
     return axiosClient.get<{ data: EVMInventory[] }>(`/inventory/evm?${params.toString()}`);
   },
 
-  getEVMInventoryByVehicle: (vehicleId: string) => 
+  getEVMInventoryByVehicle: (vehicleId: string) =>
     axiosClient.get<{ data: EVMInventory }>(`/inventory/evm/vehicle/${vehicleId}`),
 
-  updateEVMInventory: (vehicleId: string, data: UpdateEVMInventoryInput) => 
+  updateEVMInventory: (vehicleId: string, data: UpdateEVMInventoryInput) =>
     axiosClient.put<{ data: EVMInventory }>(`/inventory/evm/${vehicleId}`, data),
 
   getAllDealerInventories: (filters?: InventoryFilters, pagination?: PaginationParams) => {
     const params = new URLSearchParams();
-    
+
     if (filters?.vehicleId) params.append('vehicleId', filters.vehicleId);
     if (filters?.dealerId) params.append('dealerId', filters.dealerId);
     if (filters?.lowStock !== undefined) params.append('lowStock', String(filters.lowStock));
     if (filters?.minQuantity !== undefined) params.append('minQuantity', String(filters.minQuantity));
-    
+
     if (pagination?.page) params.append('page', String(pagination.page));
     if (pagination?.limit) params.append('limit', String(pagination.limit));
     if (pagination?.sortBy) params.append('sortBy', pagination.sortBy);
@@ -190,40 +190,40 @@ export const inventoryApi = {
 
   getDealerInventory: (dealerId: string, filters?: InventoryFilters) => {
     const params = new URLSearchParams();
-    
+
     if (filters?.vehicleId) params.append('vehicleId', filters.vehicleId);
     if (filters?.lowStock !== undefined) params.append('lowStock', String(filters.lowStock));
 
     return axiosClient.get<{ data: DealerInventory[] }>(`/inventory/dealers/${dealerId}?${params.toString()}`);
   },
 
-  getDealerInventoryItem: (dealerId: string, vehicleId: string) => 
+  getDealerInventoryItem: (dealerId: string, vehicleId: string) =>
     axiosClient.get<{ data: DealerInventory }>(`/inventory/dealers/${dealerId}/vehicle/${vehicleId}`),
 
-  updateDealerInventory: (dealerId: string, vehicleId: string, data: UpdateDealerInventoryInput) => 
+  updateDealerInventory: (dealerId: string, vehicleId: string, data: UpdateDealerInventoryInput) =>
     axiosClient.put<{ data: DealerInventory }>(`/inventory/dealers/${dealerId}/${vehicleId}`, data),
 
-  transferInventory: (data: TransferInventoryInput) => 
+  transferInventory: (data: TransferInventoryInput) =>
     axiosClient.post<{ data: TransferInventoryResponse }>(`/inventory/transfer`, data),
 
-  reserveInventory: (dealerId: string, vehicleId: string, data: ReserveInventoryInput) => 
+  reserveInventory: (dealerId: string, vehicleId: string, data: ReserveInventoryInput) =>
     axiosClient.post<{ data: DealerInventory }>(`/inventory/dealers/${dealerId}/${vehicleId}/reserve`, data),
 
-  completeSale: (dealerId: string, vehicleId: string, data: CompleteSaleInput) => 
+  completeSale: (dealerId: string, vehicleId: string, data: CompleteSaleInput) =>
     axiosClient.post<{ data: DealerInventory }>(`/inventory/dealers/${dealerId}/${vehicleId}/complete-sale`, data),
 
-  cancelReservation: (dealerId: string, vehicleId: string, data: CancelReservationInput) => 
+  cancelReservation: (dealerId: string, vehicleId: string, data: CancelReservationInput) =>
     axiosClient.post<{ data: DealerInventory }>(`/inventory/dealers/${dealerId}/${vehicleId}/cancel-reservation`, data),
 
   getLowStockAlerts: (threshold?: number) => {
     const params = new URLSearchParams();
-    
+
     if (threshold !== undefined) params.append('threshold', String(threshold));
 
     return axiosClient.get<{ data: LowStockAlerts }>(`/inventory/low-stock?${params.toString()}`);
   },
 
-  getInventorySummary: () => 
+  getInventorySummary: () =>
     axiosClient.get<{ data: InventorySummary }>(`/inventory/summary`),
 };
 

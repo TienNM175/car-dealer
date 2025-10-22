@@ -30,29 +30,48 @@ const formatDate = (dateStr?: string) => {
 export const TestDriveDetail: React.FC<TestDriveDetailProps> = ({ testDrive }) => {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-black">
-            <Card>
-                <CardHeader><CardTitle>Khách hàng</CardTitle></CardHeader>
-                <CardContent className="space-y-2 text-black">
-                    <p><b>Họ tên:</b> {testDrive.customer?.firstName} {testDrive.customer?.lastName}</p>
-                    <p><b>Email:</b> {testDrive.customer?.email || 'Không có'}</p>
-                    <p><b>SĐT:</b> {testDrive.customer?.phone || 'Không có'}</p>
-                    <p><b>Địa chỉ:</b> {testDrive.customer?.address || 'Không rõ'} - {testDrive.customer?.city || ''}</p>
-                    <p><b>Trạng thái:</b> {testDrive.customer?.status || 'Không rõ'}</p>
+            <Card className="border-[#F3F4F6] bg-[#F3F4F6]">
+                <Card className="border border-[#1D6BFF] bg-white">
+                    <CardHeader><CardTitle>Khách hàng</CardTitle></CardHeader>
+                    <CardContent className="space-y-2 text-black">
+                        <p><b>Họ tên:</b> {testDrive.customer?.firstName} {testDrive.customer?.lastName}</p>
+                        <p><b>Email:</b> {testDrive.customer?.email || 'Không có'}</p>
+                        <p><b>SĐT:</b> {testDrive.customer?.phone || 'Không có'}</p>
+                        <p><b>Địa chỉ:</b> {testDrive.customer?.address || 'Không rõ'} - {testDrive.customer?.city || ''}</p>
+                        <p><b>Trạng thái:</b> {testDrive.customer?.status || 'Không rõ'}</p>
 
-                    {testDrive.customer?._count && (
-                        <p>
-                            <b>Lịch sử:</b>{" "}
-                            {testDrive.customer._count.testDrives} lái thử,{" "}
-                            {testDrive.customer._count.quotations} báo giá,{" "}
-                            {testDrive.customer._count.contracts} hợp đồng
-                        </p>
-                    )}
-                </CardContent>
+                        {testDrive.customer?._count && (
+                            <p>
+                                <b>Lịch sử:</b>{" "}
+                                {testDrive.customer._count.testDrives} lái thử,{" "}
+                                {testDrive.customer._count.quotations} báo giá,{" "}
+                                {testDrive.customer._count.contracts} hợp đồng
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+                <Card className="border border-[#1D6BFF] bg-white mt-6">
+                    <CardHeader><CardTitle>Nhân viên</CardTitle></CardHeader>
+                    <CardContent className="space-y-2">
+                        <p><b>Họ tên:</b> {testDrive.staff?.firstName ?? ''} {testDrive.staff?.lastName ?? ''}</p>
+                        <p><b>Email:</b> {testDrive.staff?.email ?? 'Không có'}</p>
+                        <p><b>SĐT:</b> {testDrive.staff?.phone ?? 'Không có'}</p>
+                        <p><b>Đại lý:</b> {testDrive.staff?.dealer?.name ?? 'Không rõ'} ({testDrive.staff?.dealer?.city ?? ''})</p>
+                        <p><b>Liên hệ:</b> {testDrive.staff?.dealer?.phone ?? ''} - {testDrive.staff?.dealer?.email ?? ''}</p>
+                    </CardContent>
+                </Card>
             </Card>
 
 
 
-            <Card>
+            <Card className="border border-[#1D6BFF] bg-white">
+                <CardHeader><CardTitle>Thông tin buổi lái thử</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                    <p><b>Ngày hẹn:</b> {formatDate(testDrive.scheduledDate)}</p>
+                    <p><b>Trạng thái:</b> {translateStatus(testDrive.status)}</p>
+                    <p><b>Ghi chú:</b> {testDrive.notes || 'Không có'}</p>
+                    <p><b>Phản hồi:</b> {testDrive.feedback || 'Chưa có'}</p>
+                </CardContent>
                 <CardHeader><CardTitle>Xe</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                     <p><b>Hãng:</b> {testDrive.vehicle?.manufacturer?.name ?? 'Không rõ'}</p>
@@ -68,7 +87,7 @@ export const TestDriveDetail: React.FC<TestDriveDetailProps> = ({ testDrive }) =
                 </CardContent>
             </Card>
 
-            <Card>
+            {/* <Card className="border border-[#1D6BFF] bg-white">
                 <CardHeader><CardTitle>Nhân viên</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                     <p><b>Họ tên:</b> {testDrive.staff?.firstName ?? ''} {testDrive.staff?.lastName ?? ''}</p>
@@ -77,9 +96,9 @@ export const TestDriveDetail: React.FC<TestDriveDetailProps> = ({ testDrive }) =
                     <p><b>Đại lý:</b> {testDrive.staff?.dealer?.name ?? 'Không rõ'} ({testDrive.staff?.dealer?.city ?? ''})</p>
                     <p><b>Liên hệ:</b> {testDrive.staff?.dealer?.phone ?? ''} - {testDrive.staff?.dealer?.email ?? ''}</p>
                 </CardContent>
-            </Card>
+            </Card> */}
 
-            <Card>
+            {/* <Card className="border border-[#1D6BFF] bg-white">
                 <CardHeader><CardTitle>Thông tin buổi lái thử</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                     <p><b>Ngày hẹn:</b> {formatDate(testDrive.scheduledDate)}</p>
@@ -87,7 +106,7 @@ export const TestDriveDetail: React.FC<TestDriveDetailProps> = ({ testDrive }) =
                     <p><b>Ghi chú:</b> {testDrive.notes || 'Không có'}</p>
                     <p><b>Phản hồi:</b> {testDrive.feedback || 'Chưa có'}</p>
                 </CardContent>
-            </Card>
+            </Card> */}
         </div>
     );
 };
