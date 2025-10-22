@@ -14,6 +14,7 @@ import { Toaster, toast } from 'react-hot-toast';
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import axiosClient from "@/lib/utils/axiosClient";
 
 export default function OrdersPage() {
   const { user } = useAuth();
@@ -41,11 +42,28 @@ export default function OrdersPage() {
   const [viewingOrder, setViewingOrder] = useState<DealerOrder | null>(null);
 
   // Redirect nếu không phải Manager
-  useEffect(() => {
-    if (userRole !== 'DEALER_MANAGER' && userRole !== 'ADMIN') {
-      router.push('/dealer/dashboard');
-    }
-  }, [userRole, router]);
+  // Redirect nếu không phải Manager, EVM Staff hoặc Admin
+useEffect(() => {
+  const allowedRoles = ['DEALER_MANAGER', 'EVM_STAFF', 'ADMIN'];
+  if (!allowedRoles.includes(userRole || '')) {
+    router.push('/dealer/dashboard');
+  }
+}, [userRole, router]);
+
+// Và trong phần hiển thị access denied
+if (!['DEALER_MANAGER', 'EVM_STAFF', 'ADMIN'].includes(userRole || '')) {
+  return (
+    <div className="p-6">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <h2 className="text-xl font-semibold text-red-800 mb-2">Truy cập bị từ chối</h2>
+        <p className="text-red-600">
+          Bạn không có quyền truy cập trang Quản lý Đơn hàng. 
+          Chỉ DEALER_MANAGER, EVM_STAFF và ADMIN mới có quyền truy cập trang này.
+        </p>
+      </div>
+    </div>
+  );
+}
 
   const fetchOrders = async () => {
     try {
@@ -119,76 +137,92 @@ export default function OrdersPage() {
   };
 
   const handleDelete = async (order: DealerOrder) => {
-    // Thay thế confirm bằng toast confirmation
-    const confirmDelete = () => {
-      toast.custom((t) => (
-        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
-          <div className="flex-1 w-0 p-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0 pt-0.5">
-                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900">
-                  Xác nhận hủy đơn hàng
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Bạn có chắc muốn hủy đơn hàng {order.orderNumber}? Hành động này không thể hoàn tác.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex border-l border-gray-200">
-            <button
-              onClick={async () => {
-                await performDelete(order);
-                toast.dismiss(t.id);
-              }}
-              className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              Xóa
-            </button>
-            <button
-              onClick={() => toast.dismiss(t.id)}
-              className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-gray-600 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
-            >
-              Hủy
-            </button>
-          </div>
-        </div>
-      ), {
-        duration: Infinity, // Không tự động đóng
-      });
-    };
+  // Kiểm tra quyền hủy
+  if (userRole === 'DEALER_MANAGER') {
+    // Manager chỉ được hủy đơn PENDING
+    if (order.status !== 'PENDING') {
+      const statusLabels = {
+        PENDING: 'Chờ xác nhận',
+        CONFIRMED: 'Đã xác nhận', 
+        PROCESSING: 'Đang xử lý',
+        SHIPPED: 'Đang giao',
+        DELIVERED: 'Đã giao',
+        CANCELLED: 'Đã hủy'
+      };
+      toast.error(`Bạn chỉ có thể hủy đơn hàng ở trạng thái "Chờ xác nhận". Đơn hàng này đang ở trạng thái "${statusLabels[order.status] || order.status}"`);
+      return;
+    }
+  }
 
-    confirmDelete();
-  };
+  if (!confirm(`Bạn có chắc muốn hủy đơn hàng ${order.orderNumber}?`)) {
+    return;
+  }
+
+  try {
+    const loadingToast = toast.loading('Đang hủy đơn hàng...');
+    
+    await dealerOrderApi.cancelDealerOrder(order.id, `Hủy bởi ${userRole}`);
+    
+    toast.dismiss(loadingToast);
+    toast.success(`Đã hủy đơn hàng ${order.orderNumber} thành công!`);
+    
+    // Refresh data
+    if (orders.length === 1 && page > 1) {
+      setPage(page - 1);
+    } else {
+      fetchOrders();
+      fetchStatistics();
+    }
+  } catch (err: any) {
+    console.error("❌ Error cancelling order:", err);
+    
+    const errorMessage = err.response?.data?.message || 
+                        "Có lỗi xảy ra khi hủy đơn hàng";
+    
+    toast.error(`Lỗi: ${errorMessage}`);
+  }
+};
+
+// Xóa hàm testCancelEndpoint không cần thiết
 
   const performDelete = async (order: DealerOrder) => {
-    try {
-      const loadingToast = toast.loading('Đang hủy đơn hàng...');
-      
-      await dealerOrderApi.cancelDealerOrder(order.id, "Hủy bởi Manager");
-      
-      toast.dismiss(loadingToast);
-      toast.success(`Đã hủy đơn hàng ${order.orderNumber} thành công!`);
-      
-      if (orders.length === 1 && page > 1) {
-        setPage(page - 1);
-      } else {
-        fetchOrders();
-        fetchStatistics();
-      }
-    } catch (err: any) {
-      console.error("Error cancelling order:", err);
-      const errorMessage = err.response?.data?.message || "Có lỗi xảy ra khi hủy đơn hàng";
-      toast.error(`Lỗi: ${errorMessage}`);
+  try {
+    const loadingToast = toast.loading('Đang hủy đơn hàng...');
+    
+    console.log("🔄 Cancelling order:", {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      currentStatus: order.status
+    });
+    
+    const response = await dealerOrderApi.cancelDealerOrder(order.id, "Hủy bởi Manager");
+    
+    console.log("✅ Cancel response:", response.data);
+    
+    toast.dismiss(loadingToast);
+    toast.success(`Đã hủy đơn hàng ${order.orderNumber} thành công!`);
+    
+    if (orders.length === 1 && page > 1) {
+      setPage(page - 1);
+    } else {
+      fetchOrders();
+      fetchStatistics();
     }
-  };
+  } catch (err: any) {
+    console.error("❌ Error cancelling order:", {
+      status: err.response?.status,
+      data: err.response?.data,
+      message: err.response?.data?.message,
+      stack: err.response?.data?.stack
+    });
+    
+    const errorMessage = err.response?.data?.message || 
+                        err.response?.data?.error || 
+                        "Có lỗi xảy ra khi hủy đơn hàng";
+    
+    toast.error(`Lỗi: ${errorMessage}`);
+  }
+};
 
   const handleCreate = () => {
     setEditingOrder(null);
@@ -201,28 +235,29 @@ export default function OrdersPage() {
   };
 
   const handleStatusChange = async (orderId: string, newStatus: DealerOrder["status"]) => {
-    // Manager chỉ có thể cancel, không thể update status khác
-    if (newStatus !== 'CANCELLED') {
-      toast.error('Manager chỉ có thể hủy đơn hàng, không thể thay đổi trạng thái khác');
-      return;
-    }
+  // Manager chỉ có thể cancel, không thể update status khác
+  if (userRole === 'DEALER_MANAGER' && newStatus !== 'CANCELLED') {
+    toast.error('Manager chỉ có thể hủy đơn hàng, không thể thay đổi trạng thái khác');
+    return;
+  }
 
-    try {
-      const loadingToast = toast.loading('Đang hủy đơn hàng...');
-      
-      await dealerOrderApi.cancelDealerOrder(orderId, "Hủy bởi Manager");
-      
-      toast.dismiss(loadingToast);
-      toast.success('Đã hủy đơn hàng thành công!');
-      
-      fetchOrders();
-      fetchStatistics();
-    } catch (err: any) {
-      console.error("Error cancelling order:", err);
-      const errorMessage = err.response?.data?.message || "Có lỗi xảy ra khi hủy đơn hàng";
-      toast.error(`Lỗi: ${errorMessage}`);
-    }
-  };
+  try {
+    const loadingToast = toast.loading('Đang cập nhật trạng thái...');
+    
+    // EVM Staff và Admin có thể update status
+    await dealerOrderApi.updateDealerOrderStatus(orderId, newStatus);
+    
+    toast.dismiss(loadingToast);
+    toast.success('Đã cập nhật trạng thái đơn hàng thành công!');
+    
+    fetchOrders();
+    fetchStatistics();
+  } catch (err: any) {
+    console.error("Error updating order status:", err);
+    const errorMessage = err.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái";
+    toast.error(`Lỗi: ${errorMessage}`);
+  }
+};
 
   const handleExport = () => {
     try {

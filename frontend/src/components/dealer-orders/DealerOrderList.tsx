@@ -88,8 +88,18 @@ export default function DealerOrderList({
   };
 
   const canCancel = (order: DealerOrder) => {
+  // DEALER_MANAGER chỉ có thể hủy đơn PENDING
+  if (userRole === 'DEALER_MANAGER') {
+    return order.status === 'PENDING';
+  }
+  
+  // EVM_STAFF và ADMIN có thể hủy nhiều trạng thái hơn
+  if (userRole === 'EVM_STAFF' || userRole === 'ADMIN') {
     return order.status !== 'DELIVERED' && order.status !== 'CANCELLED';
-  };
+  }
+  
+  return false;
+};
 
   // Kiểm tra xem user có phải EVM Staff không
   const isEVMStaff = userRole === 'EVM_STAFF';

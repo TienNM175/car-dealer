@@ -65,9 +65,11 @@ export default function DealerOrderDetailModal({
   const nextStatus = getNextStatus(order.status);
   
   // EV Staff có thể update status trừ khi là CANCELLED
-  const canUpdateStatus = userRole === 'EVM_STAFF' && nextStatus && order.status !== 'CANCELLED';
+const canUpdateStatus = (userRole === 'EVM_STAFF' || userRole === 'ADMIN') && 
+  nextStatus && 
+  order.status !== 'CANCELLED';
   // Manager chỉ có thể cancel
-  const canCancel = userRole === 'DEALER_MANAGER' && order.status !== 'CANCELLED';
+const canCancel = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
 
   const StatusIcon = statusConfig[order.status].icon;
   const statusColorClass = statusConfig[order.status].color;
