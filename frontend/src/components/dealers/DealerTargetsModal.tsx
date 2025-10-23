@@ -316,9 +316,11 @@ export default function DealerTargetsModal({ dealer, onClose, onSuccess }: Deale
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-        <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-          {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl">
+        
+        {/* Thay đổi chính: Thêm flex-col và loại bỏ overflow-y-auto từ container ngoài */}
+        <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+          {/* Header - cố định */}
+          <div className="flex-shrink-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -338,8 +340,8 @@ export default function DealerTargetsModal({ dealer, onClose, onSuccess }: Deale
             </div>
           </div>
 
-          {/* Content */}
-          <div className="p-6">
+          {/* Content - scrollable */}
+          <div className="flex-1 overflow-y-auto p-6">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
                 <p className="text-red-700 text-sm">{error}</p>
@@ -468,16 +470,7 @@ export default function DealerTargetsModal({ dealer, onClose, onSuccess }: Deale
               )}
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 rounded-b-2xl">
-            <button
-              onClick={onClose}
-              className="w-full px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-            >
-              Đóng
-            </button>
-          </div>
+          <div className="w-full max-w-4xl p-3"></div>
         </div>
       </div>
 

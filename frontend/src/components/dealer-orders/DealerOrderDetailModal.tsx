@@ -8,7 +8,7 @@ interface DealerOrderDetailModalProps {
   onClose: () => void;
   order: DealerOrder | null;
   onStatusChange: (orderId: string, status: DealerOrder['status']) => void;
-  onEditClick?: (order: DealerOrder) => void; // Thêm dấu ? để thành optional
+  onEditClick?: (order: DealerOrder) => void;
   userRole: string;
 }
 
@@ -64,21 +64,21 @@ export default function DealerOrderDetailModal({
   const canEdit = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
   const nextStatus = getNextStatus(order.status);
   
-  // EV Staff có thể update status trừ khi là CANCELLED
-const canUpdateStatus = (userRole === 'EVM_STAFF' || userRole === 'ADMIN') && 
-  nextStatus && 
-  order.status !== 'CANCELLED';
-  // Manager chỉ có thể cancel
-const canCancel = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
+  const canUpdateStatus = (userRole === 'EVM_STAFF' || userRole === 'ADMIN') && 
+    nextStatus && 
+    order.status !== 'CANCELLED';
+  
+  const canCancel = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
 
   const StatusIcon = statusConfig[order.status].icon;
   const statusColorClass = statusConfig[order.status].color;
 
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      {/* Thay đổi chính: Thêm flex-col và max-h cho container ngoài */}
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+        {/* Header - cố định */}
+        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <StatusIcon className={`w-6 h-6 ${statusColorClass.replace('bg-', 'text-').split(' ')[0]}`} />
             <div>
@@ -107,7 +107,8 @@ const canCancel = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        {/* Content - scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 pt-6">
           {/* Status Badge */}
           <div className="flex items-center justify-between">
             <span
@@ -295,6 +296,7 @@ const canCancel = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
             </div>
           )}
         </div>
+        <div className="w-full max-w-4xl p-2"></div>
       </div>
     </div>
   );

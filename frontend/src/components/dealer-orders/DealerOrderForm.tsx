@@ -169,9 +169,10 @@ export default function DealerOrderForm({
 
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      {/* Thay đổi chính: Thêm flex-col và loại bỏ overflow-y-auto từ container ngoài */}
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col mx-4">
+        {/* Header - cố định */}
+        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800">
             {order ? 'Chỉnh sửa đơn hàng' : 'Tạo đơn đặt xe mới'}
           </h2>
@@ -183,8 +184,8 @@ export default function DealerOrderForm({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* Form - scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Dealer Info */}
           <div className="bg-blue-50 p-4 rounded-lg">
             <h3 className="font-medium text-blue-900 mb-2">Thông tin đại lý</h3>
@@ -330,9 +331,11 @@ export default function DealerOrderForm({
               <p className="text-red-700 text-sm">{errors.submit}</p>
             </div>
           )}
+        </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+        {/* Actions - cố định ở dưới */}
+        <div className="flex-shrink-0 p-6 border-t border-gray-200">
+          <div className="flex gap-3 justify-end">
             <button
               type="button"
               onClick={onClose}
@@ -343,6 +346,7 @@ export default function DealerOrderForm({
             </button>
             <button
               type="submit"
+              onClick={handleSubmit}
               disabled={loading}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
@@ -354,7 +358,7 @@ export default function DealerOrderForm({
               {order ? 'Cập nhật' : 'Tạo đơn hàng'}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
