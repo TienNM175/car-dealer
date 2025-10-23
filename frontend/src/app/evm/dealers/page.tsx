@@ -14,7 +14,8 @@ import {
   Filter,
   MoreVertical,
   CheckCircle,
-  XCircle
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { dealerApi } from '@/lib/api/dealerApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,19 +27,30 @@ import DealerTargetsModal from '@/components/dealers/DealerTargetsModal';
 import type { Dealer, Region, DealerFilters } from '@/components/dealers/types';
 
 // Toast Component
-function Toast({ message, isVisible, onClose }: { message: string; isVisible: boolean; onClose: () => void }) {
+function Toast({ message, isVisible, onClose, type = 'success' }: { 
+  message: string; 
+  isVisible: boolean; 
+  onClose: () => void;
+  type?: 'success' | 'error' | 'warning';
+}) {
   useEffect(() => {
     if (isVisible) {
-      const timer = setTimeout(onClose, 3000);
+      const timer = setTimeout(onClose, 4000);
       return () => clearTimeout(timer);
     }
   }, [isVisible, onClose]);
 
   if (!isVisible) return null;
 
+  const bgColor = {
+    success: 'bg-green-600',
+    error: 'bg-red-600',
+    warning: 'bg-yellow-600'
+  }[type];
+
   return (
     <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top duration-300">
-      <div className="bg-green-600 text-white px-6 py-4 rounded-xl shadow-xl flex items-center space-x-3">
+      <div className={`${bgColor} text-white px-6 py-4 rounded-xl shadow-xl flex items-center space-x-3`}>
         <CheckCircle className="w-5 h-5" />
         <span className="font-semibold">{message}</span>
       </div>
@@ -46,19 +58,23 @@ function Toast({ message, isVisible, onClose }: { message: string; isVisible: bo
   );
 }
 
-// Confirmation Modal Component
+// Confirmation Modal Component - CẬP NHẬT với cảnh báo
 function ConfirmModal({ 
   isOpen, 
   onClose, 
   onConfirm, 
   title, 
-  message 
+  message,
+  isDeleting = false,
+  hasTargets = false
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   onConfirm: () => void; 
   title: string; 
-  message: string; 
+  message: string;
+  isDeleting?: boolean;
+  hasTargets?: boolean;
 }) {
   if (!isOpen) return null;
 
@@ -68,29 +84,62 @@ function ConfirmModal({
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
         <div className="flex items-start space-x-4">
           <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-            <XCircle className="w-6 h-6 text-red-600" />
+            {isDeleting ? (
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-red-600 border-t-transparent"></div>
+            ) : (
+              <XCircle className="w-6 h-6 text-red-600" />
+            )}
           </div>
           <div className="flex-1">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
-            <p className="text-sm text-gray-600">{message}</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              {isDeleting ? 'Đang xóa...' : title}
+            </h3>
+            <p className="text-sm text-gray-600">
+              {isDeleting ? 'Vui lòng chờ trong giây lát...' : message}
+            </p>
+
+            {/* Cảnh báo về targets */}
+            {hasTargets && (
+              <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-800">Đại lý có chỉ tiêu</p>
+                    <p className="text-xs text-orange-700 mt-1">
+                      Đại lý này có chỉ tiêu đang hoạt động. Bạn có chắc bạn muốn xóa không?
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}        
           </div>
         </div>
 
         <div className="flex space-x-3 mt-6">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
+            disabled={isDeleting}
+            className="flex-1 px-4 py-2.5 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Hủy
           </button>
           <button
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-            className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-semibold shadow-md hover:shadow-lg"
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className={`flex-1 px-4 py-2.5 rounded-xl transition-all font-semibold shadow-md hover:shadow-lg ${
+              isDeleting
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                : 'bg-red-600 text-white hover:bg-red-700'
+            }`}
           >
-            Xóa
+            {isDeleting ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                Đang xóa...
+              </div>
+            ) : (
+              'Xóa đại lý'
+            )}
           </button>
         </div>
       </div>
@@ -123,13 +172,20 @@ export default function DealersPage() {
   const [toast, setToast] = useState({
     isVisible: false,
     message: '',
+    type: 'success' as 'success' | 'error' | 'warning'
   });
 
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     dealer: null as Dealer | null,
+    hasTargets: false
   });
+
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // State để lưu các dealer đã xóa tạm thời
+  const [deletedDealers, setDeletedDealers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadDealers();
@@ -148,14 +204,16 @@ export default function DealersPage() {
       const pagination = { page, limit: 9 };
       const response = await dealerApi.getAllDealers(filters, pagination);
       
-      console.log('Dealers API Response:', response); // Debug
+      console.log('Dealers API Response:', response);
       
       if (response.success) {
-        // API trả về data trực tiếp là mảng dealers
         const dealersData = response.data || [];
         const meta = response.meta?.pagination;
   
-        setDealers(dealersData);
+        // Lọc ra các dealer chưa bị xóa tạm thời
+        const filteredDealers = dealersData.filter(dealer => !deletedDealers.has(dealer.id));
+  
+        setDealers(filteredDealers);
         setTotalPages(meta?.totalPages || 1);
         setTotal(meta?.total || dealersData.length);
       } else {
@@ -163,7 +221,7 @@ export default function DealersPage() {
       }
     } catch (error: any) {
       console.error('Failed to load dealers:', error);
-      showToast(error.message || 'Không thể tải danh sách đại lý');
+      showToast(error.message || 'Không thể tải danh sách đại lý', 'error');
     } finally {
       setLoading(false);
     }
@@ -180,29 +238,80 @@ export default function DealersPage() {
     }
   };
 
-  const showToast = (message: string) => {
-    setToast({ isVisible: true, message });
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    setToast({ isVisible: true, message, type });
+  };
+
+  // Kiểm tra đơn giản xem dealer có targets không (chỉ để hiển thị cảnh báo)
+  const checkDealerHasTargets = async (dealer: Dealer): Promise<boolean> => {
+    try {
+      const targetsResponse = await dealerApi.getDealerTargets(dealer.id);
+      return targetsResponse.success && targetsResponse.data && targetsResponse.data.length > 0;
+    } catch (error) {
+      console.error('Error checking dealer targets:', error);
+      return false;
+    }
   };
 
   const handleDelete = async (dealer: Dealer) => {
-    setConfirmModal({ isOpen: true, dealer });
+    // Kiểm tra nhanh xem có targets không để hiển thị cảnh báo
+    const hasTargets = await checkDealerHasTargets(dealer);
+    
+    setConfirmModal({ 
+      isOpen: true, 
+      dealer,
+      hasTargets
+    });
   };
 
   const confirmDelete = async () => {
     if (!confirmModal.dealer) return;
 
+    setIsDeleting(true);
+
     try {
-      const response = await dealerApi.deleteDealer(confirmModal.dealer.id);
-      if (response.success) {
-        showToast(response.message || 'Đại lý đã được xóa thành công');
-        loadDealers();
-      } else {
-        throw new Error(response.message);
+      console.log('🚀 Attempting to delete dealer:', {
+        id: confirmModal.dealer.id,
+        name: confirmModal.dealer.name,
+        code: confirmModal.dealer.code,
+        hasTargets: confirmModal.hasTargets
+      });
+      
+      // Thử xóa thật trên server
+      try {
+        const response = await dealerApi.deleteDealer(confirmModal.dealer.id);
+        
+        if (response.success) {
+          showToast(response.message || 'Đại lý đã được xóa thành công', 'success');
+          loadDealers(); // Reload danh sách từ server
+          setConfirmModal({ isOpen: false, dealer: null, hasTargets: false });
+          setIsDeleting(false);
+          return;
+        }
+      } catch (serverError: any) {
+        console.log('❌ Server deletion failed, falling back to temporary deletion:', serverError);
+        
+        // Nếu server xóa thất bại, xóa tạm thời trên frontend
+        setDeletedDealers(prev => new Set([...prev, confirmModal.dealer!.id]));
+        
+        // Cập nhật danh sách ngay lập tức
+        setDealers(prev => prev.filter(dealer => dealer.id !== confirmModal.dealer!.id));
+        
+        showToast(
+          confirmModal.hasTargets 
+            ? 'Đã xóa đại lý khỏi danh sách tạm thời (có chỉ tiêu)'
+            : 'Đã xóa đại lý khỏi danh sách tạm thời',
+          'warning'
+        );
       }
+      
+      setConfirmModal({ isOpen: false, dealer: null, hasTargets: false });
+      
     } catch (error: any) {
-      showToast(error.message || 'Có lỗi xảy ra khi xóa đại lý');
+      console.error('❌ Delete error details:', error);
+      showToast('Có lỗi xảy ra khi xóa đại lý', 'error');
     } finally {
-      setConfirmModal({ isOpen: false, dealer: null });
+      setIsDeleting(false);
     }
   };
 
@@ -216,15 +325,17 @@ export default function DealersPage() {
     return region?.name || 'Không xác định';
   };
 
-const getStatusColor = (isActive: boolean) => {
-  return isActive 
-    ? 'bg-green-100 text-green-700 border-green-200' 
-    : 'bg-red-100 text-red-700 border-red-200';
-};
+  const getStatusColor = (isActive: boolean) => {
+    return isActive 
+      ? 'bg-green-100 text-green-700 border-green-200' 
+      : 'bg-red-100 text-red-700 border-red-200';
+  };
 
+  // Stats for dashboard
   const stats = {
     total: dealers.length,
     active: dealers.filter(d => d.isActive).length,
+    inactive: dealers.filter(d => !d.isActive).length,
     byRegion: regions.map(region => ({
       region: region.name,
       count: dealers.filter(d => d.regionId === region.id).length
@@ -234,14 +345,44 @@ const getStatusColor = (isActive: boolean) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 antialiased">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
+        {/* Header với cảnh báo */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-1">Quản lý Đại lý</h2>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-3xl font-bold text-gray-900">Quản lý Đại lý</h2>
+                {deletedDealers.size > 0 && (
+                  <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                    {deletedDealers.size} đã xóa tạm
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500">
-                Quản lý hệ thống đại lý toàn quốc
+                Quản lý hệ thống đại lý toàn quốc • {stats.total} đại lý ({stats.active} đang hoạt động)
+                {deletedDealers.size > 0 && (
+                  <span className="text-orange-600 font-medium">
+                    • {deletedDealers.size} đại lý đã xóa tạm thời
+                  </span>
+                )}
               </p>
+              
+              {/* Cảnh báo về xóa tạm thời */}
+              {deletedDealers.size > 0 && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">
+                        Chế độ xóa tạm thời
+                      </p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        {deletedDealers.size} đại lý đã được xóa khỏi danh sách tạm thời. 
+                        Dữ liệu sẽ hiển thị lại khi tải lại trang.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
@@ -295,25 +436,25 @@ const getStatusColor = (isActive: boolean) => {
               </select>
             </div>
 
-           {/* Status Filter */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              <CheckCircle className="w-4 h-4 inline mr-1.5 text-green-600" />
-              Trạng thái
-            </label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value as 'all' | 'active' | 'inactive');
-                setPage(1);
-              }}
-              className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none font-medium text-gray-900 bg-white"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="active">Đang hoạt động</option>
-              <option value="inactive">Ngừng hoạt động</option>
-            </select>
-          </div>
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <CheckCircle className="w-4 h-4 inline mr-1.5 text-green-600" />
+                Trạng thái
+              </label>
+              <select
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value as 'all' | 'active' | 'inactive');
+                  setPage(1);
+                }}
+                className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none font-medium text-gray-900 bg-white"
+              >
+                <option value="all">Tất cả trạng thái</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="inactive">Ngừng hoạt động</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex justify-end mt-4">
@@ -355,9 +496,9 @@ const getStatusColor = (isActive: boolean) => {
                       <Building2 className="w-6 h-6 text-blue-600" />
                     </div>
                     <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 border rounded-full text-xs font-semibold ${getStatusColor(dealer.isActive)}`}>
-                      {dealer.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
-                    </span>
+                      <span className={`px-3 py-1 border rounded-full text-xs font-semibold ${getStatusColor(dealer.isActive)}`}>
+                        {dealer.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
+                      </span>
                       <div className="relative">
                         <button
                           onClick={() => setOpenMenuId(openMenuId === dealer.id ? null : dealer.id)}
@@ -505,7 +646,7 @@ const getStatusColor = (isActive: boolean) => {
             onSuccess={(message?: string) => {
               setShowCreateModal(false);
               loadDealers();
-              if (message) showToast(message);
+              if (message) showToast(message, 'success');
             }}
           />
         )}
@@ -521,7 +662,7 @@ const getStatusColor = (isActive: boolean) => {
               setShowEditModal(false);
               setSelectedDealer(null);
               loadDealers();
-              if (message) showToast(message);
+              if (message) showToast(message, 'success');
             }}
           />
         )}
@@ -543,7 +684,6 @@ const getStatusColor = (isActive: boolean) => {
               setShowStaffModal(false);
               setSelectedDealer(null);
             }}
-            
           />
         )}
 
@@ -555,24 +695,28 @@ const getStatusColor = (isActive: boolean) => {
               setSelectedDealer(null);
             }}
             onSuccess={(message?: string) => {
-              if (message) showToast(message);
+              if (message) showToast(message, 'success');
             }}
           />
         )}
 
-          <ConfirmModal
-            isOpen={confirmModal.isOpen}
-            onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-            onConfirm={confirmDelete}
-            title="Xóa Đại lý"
-            message={`Bạn có chắc muốn xóa đại lý ${confirmModal.dealer?.name}? Hành động này không thể hoàn tác.`}
-          />
+        {/* Confirm Modal với cảnh báo */}
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal({ isOpen: false, dealer: null, hasTargets: false })}
+          onConfirm={confirmDelete}
+          title="Xóa Đại lý"
+          message={`Bạn có chắc muốn xóa đại lý "${confirmModal.dealer?.name}"?`}
+          isDeleting={isDeleting}
+          hasTargets={confirmModal.hasTargets}
+        />
 
         {/* Toast Notification */}
         <Toast
           message={toast.message}
           isVisible={toast.isVisible}
           onClose={() => setToast({ ...toast, isVisible: false })}
+          type={toast.type}
         />
       </div>
     </div>

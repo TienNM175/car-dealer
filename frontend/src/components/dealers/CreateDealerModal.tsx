@@ -24,7 +24,7 @@ export default function CreateDealerModal({ onClose, onSuccess }: CreateDealerMo
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof CreateDealerInput, string>>>({});
-  const [submitError, setSubmitError] = useState<string>(''); // Thay thế errors.submit
+  const [submitError, setSubmitError] = useState<string>('');
 
   useEffect(() => {
     loadRegions();
@@ -43,7 +43,6 @@ export default function CreateDealerModal({ onClose, onSuccess }: CreateDealerMo
 
   const handleChange = (field: keyof CreateDealerInput, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -109,7 +108,7 @@ export default function CreateDealerModal({ onClose, onSuccess }: CreateDealerMo
       }
     } catch (error: any) {
       console.error('💥 Create error:', error);
-      const errorMessage = error.message || 'Có lỗi xảy ra khi tạo đại lý';
+      const errorMessage = error.message || 'Có lệ xảy ra khi tạo đại lý';
       setSubmitError(errorMessage);
     } finally {
       setLoading(false);
@@ -119,9 +118,11 @@ export default function CreateDealerModal({ onClose, onSuccess }: CreateDealerMo
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl">
+      
+      {/* Thay đổi chính: Thêm flex-col và max-h cho container ngoài */}
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+        {/* Header - cố định */}
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -141,9 +142,9 @@ export default function CreateDealerModal({ onClose, onSuccess }: CreateDealerMo
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {submitError && ( // Hiển thị submitError
+        {/* Form - scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {submitError && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
               <p className="text-red-700 text-sm font-medium">{submitError}</p>
             </div>
@@ -281,9 +282,11 @@ export default function CreateDealerModal({ onClose, onSuccess }: CreateDealerMo
               />
             </div>
           </div>
+        </div>
 
-          {/* Actions */}
-          <div className="flex space-x-3 pt-6 border-t border-gray-200">
+        {/* Actions - cố định ở dưới */}
+        <div className="flex-shrink-0 p-6 border-t border-gray-200">
+          <div className="flex space-x-3">
             <button
               type="button"
               onClick={onClose}
@@ -293,13 +296,14 @@ export default function CreateDealerModal({ onClose, onSuccess }: CreateDealerMo
             </button>
             <button
               type="submit"
+              onClick={handleSubmit}
               disabled={loading}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all font-semibold shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Đang tạo...' : 'Tạo Đại lý'}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

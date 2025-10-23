@@ -21,6 +21,7 @@ export interface Dealer {
     users: number;
     dealerOrders: number;
     inventories: number;
+    dealerTargets?: number;
   };
 }
 
@@ -111,8 +112,37 @@ class DealerApi {
   }
 
   async deleteDealer(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await api.delete(`/dealers/${id}`);
-    return response.data;
+    try {
+      console.log(`🗑️ [dealerApi] Deleting dealer: ${id}`);
+      
+      const response = await api.delete(`/dealers/${id}`);
+      
+      console.log('✅ [dealerApi] Delete successful:', response.data);
+      return response.data;
+      
+    } catch (error: any) {
+      console.error('❌ [dealerApi] Delete error details:', {
+        url: `/dealers/${id}`,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers,
+        message: error.message
+      });
+      
+      // Log chi tiết response từ server nếu có
+      if (error.response?.data) {
+        console.error('📡 [dealerApi] Server response data:', {
+          message: error.response.data.message,
+          error: error.response.data.error,
+          details: error.response.data.details,
+          constraints: error.response.data.constraints,
+          code: error.response.data.code
+        });
+      }
+      
+      throw error;
+    }
   }
 
   // Regions
@@ -185,6 +215,48 @@ class DealerApi {
       targetAmount,
     });
     return response.data;
+  }
+
+  async deleteDealerTarget(targetId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log(`🗑️ [dealerApi] Deleting dealer target: ${targetId}`);
+      
+      // Thử endpoint chính
+      const response = await api.delete(`/dealers/targets/${targetId}`);
+      return response.data;
+      
+    } catch (error: any) {
+      console.error('❌ [dealerApi] Failed to delete dealer target:', error);
+      
+      // Nếu endpoint chính không tồn tại, thử endpoint khác
+      if (error.response?.status === 404) {
+        console.log('🔄 Trying alternative endpoint...');
+        try {
+          // Thử endpoint thay thế
+          const altResponse = await api.delete(`/dealer-targets/${targetId}`);
+          return altResponse.data;
+        } catch (altError) {
+          console.error('❌ Alternative endpoint also failed:', altError);
+          throw altError;
+        }
+      }
+      
+      throw error;
+    }
+  }
+
+  // Hoặc nếu backend không có API xóa, có thể dùng API cập nhật để "vô hiệu hóa" target
+  async deactivateDealerTarget(targetId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log(`🔴 [dealerApi] Deactivating dealer target: ${targetId}`);
+      const response = await api.put(`/dealers/targets/${targetId}`, {
+        isActive: false
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [dealerApi] Failed to deactivate dealer target:', error);
+      throw error;
+    }
   }
 }
 
