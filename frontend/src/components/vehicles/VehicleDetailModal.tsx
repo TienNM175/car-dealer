@@ -415,7 +415,7 @@ export default function VehicleDetailModal({
               </div>
               <div className="bg-white p-4 rounded-lg text-center border border-indigo-200">
                 <p className="text-3xl font-bold text-indigo-600">
-                  {vehicle._count?.evmInventories || 0}
+                  {vehicle.evmInventories?.quantity || 0}
                 </p>
                 <p className="text-sm text-gray-600 mt-1">Tồn kho EVM</p>
               </div>

@@ -321,19 +321,27 @@ export class ContractService {
       throw new Error("Customer not found");
     }
 
+    // Get staff info to determine dealerId
+    const staff = await prisma.user.findUnique({
+      where: { id: data.staffId },
+      include: { dealer: true },
+    });
+
+    if (!staff) {
+      throw new Error("Staff not found");
+    }
+
+    if (!staff.dealerId) {
+      throw new Error("Staff must be assigned to a dealer");
+    }
+
     // Verify vehicle exists and is available
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: data.vehicleId },
       include: {
         dealerInventories: {
           where: {
-            dealer: {
-              users: {
-                some: {
-                  id: data.staffId,
-                },
-              },
-            },
+            dealerId: staff.dealerId, // Direct filter by dealerId
           },
         },
       },
@@ -437,12 +445,12 @@ export class ContractService {
               dealer: true,
             },
           },
-          quotation: true,
-          promotion: true,
+          // quotation: true, // Removed - quotation relation doesn't exist
+          // promotion: true, // Removed - promotion relation doesn't exist
         },
       });
 
-      // Reserve inventory and reduce quantity
+      // Reserve inventory (don't reduce quantity, just reserve)
       await tx.inventory.update({
         where: {
           dealerId_vehicleId: {
@@ -451,7 +459,6 @@ export class ContractService {
           },
         },
         data: {
-          quantity: { decrement: 1 }, // Giảm tổng số lượng
           reserved: { increment: 1 }, // Tăng số đã đặt
           available: { decrement: 1 }, // Giảm số có sẵn
         },
@@ -630,7 +637,7 @@ export class ContractService {
           data: {
             reserved: { decrement: 1 },
             sold: { increment: 1 },
-            quantity: { decrement: 1 },
+            quantity: { decrement: 1 }, // Giảm quantity khi bán thành công
           },
         });
       }
@@ -645,7 +652,6 @@ export class ContractService {
             },
           },
           data: {
-            quantity: { increment: 1 }, // Tăng lại tổng số lượng
             reserved: { decrement: 1 }, // Giảm số đã đặt
             available: { increment: 1 }, // Tăng số có sẵn
           },

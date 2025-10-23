@@ -37,7 +37,7 @@ router.get(
 router.get(
   "/by-status",
   AuthMiddleware.authenticate,
-  RoleMiddleware.requireDealerManager, // EVM_STAFF and ADMIN are higher than DEALER_MANAGER
+  RoleMiddleware.requireDealerManager, // ADMIN, EVM_STAFF, DEALER_MANAGER
   contractController.getContractsByStatus
 );
 

@@ -36,12 +36,12 @@ export default function DealerInventoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<DealerInventory | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  // const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   // const [showReserveModal, setShowReserveModal] = useState(false);
   // const [showCompleteSaleModal, setShowCompleteSaleModal] = useState(false);
   // const [showCancelReserveModal, setShowCancelReserveModal] = useState(false);
 
-  // const [editForm, setEditForm] = useState<UpdateDealerInventoryInput>({});
+  const [editForm, setEditForm] = useState<UpdateDealerInventoryInput>({});
   // const [reserveForm, setReserveForm] = useState<ReserveInventoryInput>({ quantity: 0 });
   // const [saleForm, setSaleForm] = useState<CompleteSaleInput>({ quantity: 0 });
   // const [cancelForm, setCancelForm] = useState<CancelReservationInput>({ quantity: 0 });
@@ -180,20 +180,20 @@ export default function DealerInventoryPage() {
   };
 
   // Mở edit modal
-  // const handleEdit = (item: DealerInventory) => {
-  //   setSelectedItem(item);
-  //   setEditForm({
-  //     quantity: item.quantity,
-  //     reserved: item.reserved,
-  //     sold: item.sold,
-  //     location: item.location,
-  //   });
-  //   setShowEditModal(true);
-  // };
+  const handleEdit = (item: DealerInventory) => {
+    setSelectedItem(item);
+    setEditForm({
+      quantity: item.quantity,
+      reserved: item.reserved,
+      sold: item.sold,
+      location: item.location,
+    });
+    setShowEditModal(true);
+  };
 
   // Cập nhật tồn kho (API 3: updateDealerInventory)
-  // const handleUpdateInventory = async () => {
-  //   if (!selectedItem) return;
+  const handleUpdateInventory = async () => {
+    if (!selectedItem) return;
 
   //   if (editForm.quantity !== undefined && editForm.quantity < 0) {
   //     toast.error("Số lượng không hợp lệ!");
@@ -807,4 +807,4 @@ export default function DealerInventoryPage() {
       )} */}
     </div>
   );
-}
+}}
