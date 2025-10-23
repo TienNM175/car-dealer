@@ -10,9 +10,11 @@ import dealerOrderApi, {
 } from "@/lib/api/dealerOrderApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { Toaster, toast } from 'react-hot-toast';
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import axiosClient from "@/lib/utils/axiosClient";
 
 export default function OrdersPage() {
   const { user } = useAuth();
@@ -21,6 +23,7 @@ export default function OrdersPage() {
   const userRole = user?.role?.toUpperCase() as
     | "DEALER_STAFF"
     | "DEALER_MANAGER"
+    | "EVM_STAFF"
     | "ADMIN"
     | undefined;
 
@@ -39,11 +42,28 @@ export default function OrdersPage() {
   const [viewingOrder, setViewingOrder] = useState<DealerOrder | null>(null);
 
   // Redirect nếu không phải Manager
-  useEffect(() => {
-    if (userRole !== 'DEALER_MANAGER' && userRole !== 'ADMIN') {
-      router.push('/dealer/dashboard');
-    }
-  }, [userRole, router]);
+  // Redirect nếu không phải Manager, EVM Staff hoặc Admin
+useEffect(() => {
+  const allowedRoles = ['DEALER_MANAGER', 'EVM_STAFF', 'ADMIN'];
+  if (!allowedRoles.includes(userRole || '')) {
+    router.push('/dealer/dashboard');
+  }
+}, [userRole, router]);
+
+// Và trong phần hiển thị access denied
+if (!['DEALER_MANAGER', 'EVM_STAFF', 'ADMIN'].includes(userRole || '')) {
+  return (
+    <div className="p-6">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <h2 className="text-xl font-semibold text-red-800 mb-2">Truy cập bị từ chối</h2>
+        <p className="text-red-600">
+          Bạn không có quyền truy cập trang Quản lý Đơn hàng. 
+          Chỉ DEALER_MANAGER, EVM_STAFF và ADMIN mới có quyền truy cập trang này.
+        </p>
+      </div>
+    </div>
+  );
+}
 
   const fetchOrders = async () => {
     try {
@@ -68,6 +88,7 @@ export default function OrdersPage() {
       console.error("Error fetching orders:", err);
       setOrders([]);
       setTotal(0);
+      toast.error('Có lỗi xảy ra khi tải danh sách đơn hàng');
     } finally {
       setLoading(false);
     }
@@ -116,27 +137,92 @@ export default function OrdersPage() {
   };
 
   const handleDelete = async (order: DealerOrder) => {
-    if (!confirm(`Bạn có chắc muốn hủy đơn hàng ${order.orderNumber}?`)) {
+  // Kiểm tra quyền hủy
+  if (userRole === 'DEALER_MANAGER') {
+    // Manager chỉ được hủy đơn PENDING
+    if (order.status !== 'PENDING') {
+      const statusLabels = {
+        PENDING: 'Chờ xác nhận',
+        CONFIRMED: 'Đã xác nhận', 
+        PROCESSING: 'Đang xử lý',
+        SHIPPED: 'Đang giao',
+        DELIVERED: 'Đã giao',
+        CANCELLED: 'Đã hủy'
+      };
+      toast.error(`Bạn chỉ có thể hủy đơn hàng ở trạng thái "Chờ xác nhận". Đơn hàng này đang ở trạng thái "${statusLabels[order.status] || order.status}"`);
       return;
     }
+  }
 
-    try {
-      await dealerOrderApi.cancelDealerOrder(order.id, "Hủy bởi người dùng");
-      
-      if (orders.length === 1 && page > 1) {
-        setPage(page - 1);
-      } else {
-        fetchOrders();
-        fetchStatistics();
-      }
-      
-      alert("Đã hủy đơn hàng thành công!");
-    } catch (err: any) {
-      console.error("Error cancelling order:", err);
-      const errorMessage = err.response?.data?.message || "Có lỗi xảy ra khi hủy đơn hàng";
-      alert(errorMessage);
+  if (!confirm(`Bạn có chắc muốn hủy đơn hàng ${order.orderNumber}?`)) {
+    return;
+  }
+
+  try {
+    const loadingToast = toast.loading('Đang hủy đơn hàng...');
+    
+    await dealerOrderApi.cancelDealerOrder(order.id, `Hủy bởi ${userRole}`);
+    
+    toast.dismiss(loadingToast);
+    toast.success(`Đã hủy đơn hàng ${order.orderNumber} thành công!`);
+    
+    // Refresh data
+    if (orders.length === 1 && page > 1) {
+      setPage(page - 1);
+    } else {
+      fetchOrders();
+      fetchStatistics();
     }
-  };
+  } catch (err: any) {
+    console.error("❌ Error cancelling order:", err);
+    
+    const errorMessage = err.response?.data?.message || 
+                        "Có lỗi xảy ra khi hủy đơn hàng";
+    
+    toast.error(`Lỗi: ${errorMessage}`);
+  }
+};
+
+// Xóa hàm testCancelEndpoint không cần thiết
+
+  const performDelete = async (order: DealerOrder) => {
+  try {
+    const loadingToast = toast.loading('Đang hủy đơn hàng...');
+    
+    console.log("🔄 Cancelling order:", {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      currentStatus: order.status
+    });
+    
+    const response = await dealerOrderApi.cancelDealerOrder(order.id, "Hủy bởi Manager");
+    
+    console.log("✅ Cancel response:", response.data);
+    
+    toast.dismiss(loadingToast);
+    toast.success(`Đã hủy đơn hàng ${order.orderNumber} thành công!`);
+    
+    if (orders.length === 1 && page > 1) {
+      setPage(page - 1);
+    } else {
+      fetchOrders();
+      fetchStatistics();
+    }
+  } catch (err: any) {
+    console.error("❌ Error cancelling order:", {
+      status: err.response?.status,
+      data: err.response?.data,
+      message: err.response?.data?.message,
+      stack: err.response?.data?.stack
+    });
+    
+    const errorMessage = err.response?.data?.message || 
+                        err.response?.data?.error || 
+                        "Có lỗi xảy ra khi hủy đơn hàng";
+    
+    toast.error(`Lỗi: ${errorMessage}`);
+  }
+};
 
   const handleCreate = () => {
     setEditingOrder(null);
@@ -149,44 +235,61 @@ export default function OrdersPage() {
   };
 
   const handleStatusChange = async (orderId: string, newStatus: DealerOrder["status"]) => {
-    try {
-      await dealerOrderApi.updateDealerOrderStatus(orderId, newStatus);
-      
-      fetchOrders();
-      fetchStatistics();
-      
-      alert(`Đã cập nhật trạng thái đơn hàng thành công!`);
-    } catch (err: any) {
-      console.error("Error updating order status:", err);
-      const errorMessage = err.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái";
-      alert(`Lỗi: ${errorMessage}`);
-    }
-  };
+  // Manager chỉ có thể cancel, không thể update status khác
+  if (userRole === 'DEALER_MANAGER' && newStatus !== 'CANCELLED') {
+    toast.error('Manager chỉ có thể hủy đơn hàng, không thể thay đổi trạng thái khác');
+    return;
+  }
+
+  try {
+    const loadingToast = toast.loading('Đang cập nhật trạng thái...');
+    
+    // EVM Staff và Admin có thể update status
+    await dealerOrderApi.updateDealerOrderStatus(orderId, newStatus);
+    
+    toast.dismiss(loadingToast);
+    toast.success('Đã cập nhật trạng thái đơn hàng thành công!');
+    
+    fetchOrders();
+    fetchStatistics();
+  } catch (err: any) {
+    console.error("Error updating order status:", err);
+    const errorMessage = err.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái";
+    toast.error(`Lỗi: ${errorMessage}`);
+  }
+};
 
   const handleExport = () => {
-    const worksheet = XLSX.utils.json_to_sheet(
-      orders.map((o) => ({
-        "Số đơn": o.orderNumber,
-        "Đại lý": o.dealer?.name || "N/A",
-        "Xe": `${o.vehicle?.manufacturer?.name} ${o.vehicle?.model}`,
-        "Số lượng": o.quantity,
-        "Đơn giá": o.unitPrice,
-        "Tổng tiền": o.totalAmount,
-        "Trạng thái": o.status,
-        "Ngày đặt": o.orderedAt ? new Date(o.orderedAt).toLocaleDateString() : "",
-        "Người tạo": `${o.staff?.firstName} ${o.staff?.lastName}`,
-        "Ngày tạo": new Date(o.createdAt).toLocaleDateString(),
-      }))
-    );
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Đơn đặt hàng");
+    try {
+      const worksheet = XLSX.utils.json_to_sheet(
+        orders.map((o) => ({
+          "Số đơn": o.orderNumber,
+          "Đại lý": o.dealer?.name || "N/A",
+          "Xe": `${o.vehicle?.manufacturer?.name} ${o.vehicle?.model}`,
+          "Số lượng": o.quantity,
+          "Đơn giá": o.unitPrice,
+          "Tổng tiền": o.totalAmount,
+          "Trạng thái": o.status,
+          "Ngày đặt": o.orderedAt ? new Date(o.orderedAt).toLocaleDateString() : "",
+          "Người tạo": `${o.staff?.firstName} ${o.staff?.lastName}`,
+          "Ngày tạo": new Date(o.createdAt).toLocaleDateString(),
+        }))
+      );
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Đơn đặt hàng");
 
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
-    const data = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(data, `dealer-orders_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+      const data = new Blob([excelBuffer], { type: "application/octet-stream" });
+      saveAs(data, `dealer-orders_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      
+      toast.success('Xuất file Excel thành công!');
+    } catch (error) {
+      console.error("Error exporting orders:", error);
+      toast.error('Có lỗi xảy ra khi xuất file Excel');
+    }
   };
 
   const handlePageChange = (newPage: number) => {
@@ -210,74 +313,109 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="p-6">
-      <DealerOrderList
-        orders={orders}
-        loading={loading}
-        searchTerm={searchTerm}
-        filterStatus={filterStatus}
-        onSearchChange={(value) => {
-          setSearchTerm(value);
-          setPage(1);
+    <>
+      {/* Toast Container */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#10B981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 5000,
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: '#fff',
+            },
+          },
+          loading: {
+            duration: Infinity,
+            iconTheme: {
+              primary: '#3B82F6',
+              secondary: '#fff',
+            },
+          },
         }}
-        onFilterChange={(value) => {
-          setFilterStatus(value);
-          setPage(1);
-        }}
-        onCreateClick={handleCreate}
-        onViewClick={handleView}
-        onEditClick={handleEdit}
-        onDeleteClick={handleDelete}
-        onExportClick={handleExport}
-        userRole={userRole || "DEALER_MANAGER"}
-        pagination={{
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        }}
-        onPageChange={handlePageChange}
-        statistics={statistics}
-        onStatusChange={handleStatusChange}
       />
-
-      {showForm && (
-        <DealerOrderForm
-          isOpen={showForm}
-          onClose={() => {
-            setShowForm(false);
-            setEditingOrder(null);
+      
+      <div className="p-6">
+        <DealerOrderList
+          orders={orders}
+          loading={loading}
+          searchTerm={searchTerm}
+          filterStatus={filterStatus}
+          onSearchChange={(value) => {
+            setSearchTerm(value);
+            setPage(1);
           }}
-          onSuccess={handleSave}
-          order={editingOrder}
-          dealerId={(user as any)?.dealerId}
-          userId={(user as any)?.id}
-          dealerInfo={{
-            name: (user as any)?.dealer?.name || "N/A",
-            address: (user as any)?.dealer?.address,
-            phone: (user as any)?.dealer?.phone,
-            email: (user as any)?.dealer?.email,
+          onFilterChange={(value) => {
+            setFilterStatus(value);
+            setPage(1);
           }}
-          staffInfo={{
-            firstName: (user as any)?.firstName || "",
-            lastName: (user as any)?.lastName || "",
-          }}
-        />
-      )}
-
-      {showDetailModal && (
-        <DealerOrderDetailModal
-          isOpen={showDetailModal}
-          onClose={() => {
-            setShowDetailModal(false);
-            setViewingOrder(null);
-          }}
-          order={viewingOrder}
-          onStatusChange={handleStatusChange}
+          onCreateClick={handleCreate}
+          onViewClick={handleView}
           onEditClick={handleEdit}
+          onDeleteClick={handleDelete}
+          onExportClick={handleExport}
           userRole={userRole || "DEALER_MANAGER"}
+          pagination={{
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          }}
+          onPageChange={handlePageChange}
+          statistics={statistics}
+          onStatusChange={handleStatusChange}
         />
-      )}
-    </div>
+
+        {showForm && (
+          <DealerOrderForm
+            isOpen={showForm}
+            onClose={() => {
+              setShowForm(false);
+              setEditingOrder(null);
+            }}
+            onSuccess={handleSave}
+            order={editingOrder}
+            dealerId={(user as any)?.dealerId}
+            userId={(user as any)?.id}
+            dealerInfo={{
+              name: (user as any)?.dealer?.name || "N/A",
+              address: (user as any)?.dealer?.address,
+              phone: (user as any)?.dealer?.phone,
+              email: (user as any)?.dealer?.email,
+            }}
+            staffInfo={{
+              firstName: (user as any)?.firstName || "",
+              lastName: (user as any)?.lastName || "",
+            }}
+          />
+        )}
+
+        {showDetailModal && (
+          <DealerOrderDetailModal
+            isOpen={showDetailModal}
+            onClose={() => {
+              setShowDetailModal(false);
+              setViewingOrder(null);
+            }}
+            order={viewingOrder}
+            onStatusChange={handleStatusChange}
+            onEditClick={handleEdit}
+            userRole={userRole || "DEALER_MANAGER"}
+          />
+        )}
+      </div>
+    </>
   );
 }

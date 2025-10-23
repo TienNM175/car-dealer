@@ -16,7 +16,9 @@ import {
   LogOut,
   Tag,
   Sparkles,
-  UserCog  
+  UserCog,
+  ShoppingCart,
+  ClipboardList
 } from 'lucide-react';
 
 export default function EVMLayout({ children }: { children: React.ReactNode }) {
@@ -33,6 +35,7 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
     { id: 'ai-insights', icon: Sparkles, label: 'AI Insights', role: ['ADMIN'] }, 
     { id: 'products', icon: Car, label: 'Quản lý sản phẩm', role: ['EVM_STAFF', 'ADMIN'] },
     { id: 'inventory', icon: Package, label: 'Tồn kho', role: ['EVM_STAFF', 'ADMIN'] },
+    { id: 'orders', icon: ShoppingCart, label: 'Đơn hàng', role: ['EVM_STAFF', 'ADMIN'] }, // Thêm menu đơn hàng
     { id: 'dealers', icon: Users, label: 'Quản lý đại lý', role: ['ADMIN'] },
     { id: 'users', icon: UserCog, label: 'Quản lý Users', role: ['ADMIN'] }, 
     { id: 'promotions', icon: Tag, label: 'Quản lý Khuyến mãi', role: ['ADMIN', 'EVM_STAFF'] },

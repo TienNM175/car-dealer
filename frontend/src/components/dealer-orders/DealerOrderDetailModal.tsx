@@ -8,7 +8,7 @@ interface DealerOrderDetailModalProps {
   onClose: () => void;
   order: DealerOrder | null;
   onStatusChange: (orderId: string, status: DealerOrder['status']) => void;
-  onEditClick: (order: DealerOrder) => void;
+  onEditClick?: (order: DealerOrder) => void;
   userRole: string;
 }
 
@@ -63,16 +63,22 @@ export default function DealerOrderDetailModal({
 
   const canEdit = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
   const nextStatus = getNextStatus(order.status);
-  const canUpdateStatus = userRole === 'DEALER_MANAGER' && nextStatus && order.status !== 'CANCELLED';
+  
+  const canUpdateStatus = (userRole === 'EVM_STAFF' || userRole === 'ADMIN') && 
+    nextStatus && 
+    order.status !== 'CANCELLED';
+  
+  const canCancel = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
 
   const StatusIcon = statusConfig[order.status].icon;
   const statusColorClass = statusConfig[order.status].color;
 
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      {/* Thay đổi chính: Thêm flex-col và max-h cho container ngoài */}
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+        {/* Header - cố định */}
+        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <StatusIcon className={`w-6 h-6 ${statusColorClass.replace('bg-', 'text-').split(' ')[0]}`} />
             <div>
@@ -83,13 +89,10 @@ export default function DealerOrderDetailModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {canEdit && (
+            {onEditClick && canEdit && (
               <button
-                onClick={() => {
-                  onEditClick(order);
-                  onClose();
-                }}
-                className="flex items-center gap-2 px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                onClick={() => onEditClick(order)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Edit className="w-4 h-4" />
                 Chỉnh sửa
@@ -104,7 +107,8 @@ export default function DealerOrderDetailModal({
           </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        {/* Content - scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 pt-6">
           {/* Status Badge */}
           <div className="flex items-center justify-between">
             <span
@@ -114,15 +118,29 @@ export default function DealerOrderDetailModal({
               {statusConfig[order.status].label}
             </span>
             
-            {canUpdateStatus && nextStatus && (
-              <button
-                onClick={() => onStatusChange(order.id, nextStatus)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Chuyển sang {statusConfig[nextStatus].label}
-              </button>
-            )}
+            <div className="flex gap-2">
+              {/* EV Staff - Update status */}
+              {canUpdateStatus && nextStatus && (
+                <button
+                  onClick={() => onStatusChange(order.id, nextStatus)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Chuyển sang {statusConfig[nextStatus].label}
+                </button>
+              )}
+              
+              {/* Manager - Cancel order */}
+              {canCancel && (
+                <button
+                  onClick={() => onStatusChange(order.id, 'CANCELLED')}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Ban className="w-4 h-4" />
+                  Hủy đơn hàng
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Order Timeline */}
@@ -278,6 +296,7 @@ export default function DealerOrderDetailModal({
             </div>
           )}
         </div>
+        <div className="w-full max-w-4xl p-2"></div>
       </div>
     </div>
   );
