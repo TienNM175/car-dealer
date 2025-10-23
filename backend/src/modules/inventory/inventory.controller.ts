@@ -146,4 +146,21 @@ export class InventoryController {
       return next(error);
     }
   }
+
+  async transferInventory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await inventoryService.transferInventory(req.body);
+      return ResponseUtil.success(
+        res,
+        data,
+        "Inventory transferred successfully"
+      );
+    } catch (error: any) {
+      if (error.message.includes("not found"))
+        return ResponseUtil.notFound(res, error.message);
+      if (error.message.includes("insufficient"))
+        return ResponseUtil.badRequest(res, error.message);
+      return next(error);
+    }
+  }
 }

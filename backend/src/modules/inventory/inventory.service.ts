@@ -314,4 +314,84 @@ export class InventoryService {
 
     return updated;
   }
+
+  /**
+   * Transfer inventory from EVM to dealer
+   */
+  async transferInventory(data: any) {
+    const { vehicleId, toDealerId, quantity, notes } = data;
+
+    // Validate EVM inventory exists and has enough quantity
+    const evmInventory = await prisma.eVMInventory.findUnique({
+      where: { vehicleId },
+    });
+
+    if (!evmInventory) {
+      throw new Error("EVM inventory not found");
+    }
+
+    if (evmInventory.available < quantity) {
+      throw new Error(
+        `Insufficient EVM inventory. Available: ${evmInventory.available}, Requested: ${quantity}`
+      );
+    }
+
+    // Use transaction to ensure data consistency
+    return await prisma.$transaction(async (tx) => {
+      // Decrease EVM inventory
+      await tx.eVMInventory.update({
+        where: { vehicleId },
+        data: {
+          quantity: { decrement: quantity },
+          available: { decrement: quantity },
+        },
+      });
+
+      // Check if dealer inventory exists
+      const existingDealerInventory = await tx.inventory.findUnique({
+        where: {
+          dealerId_vehicleId: {
+            dealerId: toDealerId,
+            vehicleId: vehicleId,
+          },
+        },
+      });
+
+      if (existingDealerInventory) {
+        // Update existing dealer inventory
+        await tx.inventory.update({
+          where: {
+            dealerId_vehicleId: {
+              dealerId: toDealerId,
+              vehicleId: vehicleId,
+            },
+          },
+          data: {
+            quantity: { increment: quantity },
+            available: { increment: quantity },
+          },
+        });
+      } else {
+        // Create new dealer inventory
+        await tx.inventory.create({
+          data: {
+            dealerId: toDealerId,
+            vehicleId: vehicleId,
+            quantity: quantity,
+            available: quantity,
+            reserved: 0,
+            sold: 0,
+            location: notes || "Transferred from EVM",
+          },
+        });
+      }
+
+      return {
+        message: `Successfully transferred ${quantity} units to dealer`,
+        vehicleId,
+        toDealerId,
+        quantity,
+      };
+    });
+  }
 }

@@ -6,6 +6,7 @@ import { ValidationMiddleware } from "../../middlewares/validation.middleware";
 import {
   updateEVMInventoryValidation,
   updateDealerInventoryValidation,
+  transferInventoryValidation,
 } from "./inventory.validation";
 
 const router = Router();
@@ -132,6 +133,20 @@ router.get(
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   inventoryController.getInventorySummary
+);
+
+/**
+ * @route   POST /api/v1/inventory/transfer
+ * @desc    Transfer inventory from EVM to dealer
+ * @access  Private - EVM Staff, Admin
+ */
+router.post(
+  "/transfer",
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireEVMStaff,
+  transferInventoryValidation,
+  ValidationMiddleware.validate,
+  inventoryController.transferInventory
 );
 
 export default router;

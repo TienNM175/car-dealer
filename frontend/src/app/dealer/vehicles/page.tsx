@@ -147,6 +147,7 @@ export default function VehiclesPage() {
           setPage(1); // Reset về trang 1 khi filter
         }}
         userRole={"DEALER_STAFF"} // Dealer chỉ được xem, không CRUD
+        user={user} // Pass user để lấy dealerId
         onExportClick={handleExport}
         onCreateContractFromVehicle={handleCreateContractFromVehicle}
         pagination={{

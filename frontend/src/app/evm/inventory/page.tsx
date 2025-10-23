@@ -235,6 +235,18 @@ export default function InventoryPage() {
 
   // Mở modal chuyển giao
   const handleOpenTransferModal = (item: (typeof tableData)[0]) => {
+    // Tìm selectedVehicle từ evmInventory
+    const vehicle = evmInventory.find(
+      (inv) => inv.vehicleId === item.vehicleId
+    );
+    console.log("🔍 Debug Transfer Modal:");
+    console.log("- Item vehicleId:", item.vehicleId);
+    console.log("- EVM Inventory length:", evmInventory.length);
+    console.log("- Found vehicle:", vehicle);
+    console.log("- Vehicle quantity:", vehicle?.quantity);
+
+    setSelectedVehicle(vehicle || null);
+
     setTransferForm({
       ...transferForm,
       vehicleId: item.vehicleId,
@@ -274,8 +286,17 @@ export default function InventoryPage() {
         quantity: 0,
         notes: "",
       });
-      const dealerResponse = await inventoryApi.getAllDealerInventories();
+
+      // Refresh tất cả data
+      const [evmResponse, dealerResponse, summaryResponse] = await Promise.all([
+        inventoryApi.getEVMInventory(),
+        inventoryApi.getAllDealerInventories(),
+        inventoryApi.getInventorySummary(),
+      ]);
+
+      setEvmInventory(evmResponse.data.data);
       setDealerInventories(dealerResponse.data.data);
+      setSummary(summaryResponse.data.data);
     } catch (err) {
       toast.error("Lỗi khi chuyển giao tồn kho.");
       console.error("Transfer error:", err);
