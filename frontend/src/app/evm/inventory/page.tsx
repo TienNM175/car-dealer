@@ -25,11 +25,17 @@ import inventoryApi, {
 export default function InventoryPage() {
   const [summary, setSummary] = useState<InventorySummary | null>(null);
   const [evmInventory, setEvmInventory] = useState<EVMInventory[]>([]);
-  const [dealerInventories, setDealerInventories] = useState<DealerInventory[]>([]);
-  const [lowStockAlerts, setLowStockAlerts] = useState<LowStockAlerts | null>(null);
+  const [dealerInventories, setDealerInventories] = useState<DealerInventory[]>(
+    []
+  );
+  const [lowStockAlerts, setLowStockAlerts] = useState<LowStockAlerts | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedVehicle, setSelectedVehicle] = useState<EVMInventory | null>(null);
+  const [selectedVehicle, setSelectedVehicle] = useState<EVMInventory | null>(
+    null
+  );
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -85,7 +91,13 @@ export default function InventoryPage() {
   // Reset page to 1 when filters or search change
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, filterTotalStock, filterDealerStock, filterAvailable, filterStatus]);
+  }, [
+    searchTerm,
+    filterTotalStock,
+    filterDealerStock,
+    filterAvailable,
+    filterStatus,
+  ]);
 
   // Tính dealerStock cho từng vehicle
   const getDealerStockByVehicle = (vehicleId: string): number => {
@@ -107,33 +119,50 @@ export default function InventoryPage() {
   // Lọc dữ liệu dựa trên search và filters
   const filteredTableData = tableData.filter((item) => {
     // Search theo model
-    const matchesSearch = item.vehicle.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = item.vehicle
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
 
     // Filter theo tổng tồn kho (exact)
     const totalFilter = parseInt(filterTotalStock) || NaN;
-    const matchesTotalStock = !isNaN(totalFilter) ? item.totalStock === totalFilter : true;
+    const matchesTotalStock = !isNaN(totalFilter)
+      ? item.totalStock === totalFilter
+      : true;
 
     // Filter theo tại đại lý (exact)
     const dealerFilter = parseInt(filterDealerStock) || NaN;
-    const matchesDealerStock = !isNaN(dealerFilter) ? item.dealerStock === dealerFilter : true;
+    const matchesDealerStock = !isNaN(dealerFilter)
+      ? item.dealerStock === dealerFilter
+      : true;
 
     // Filter theo khả dụng (exact)
     const availableFilter = parseInt(filterAvailable) || NaN;
-    const matchesAvailable = !isNaN(availableFilter) ? item.available === availableFilter : true;
+    const matchesAvailable = !isNaN(availableFilter)
+      ? item.available === availableFilter
+      : true;
 
     // Filter theo trạng thái
-    let itemStatus = '';
-    if (item.available > 100) itemStatus = 'excess';
-    else if (item.available > 50) itemStatus = 'normal';
-    else itemStatus = 'low';
+    let itemStatus = "";
+    if (item.available > 100) itemStatus = "excess";
+    else if (item.available > 50) itemStatus = "normal";
+    else itemStatus = "low";
     const matchesStatus = !filterStatus || itemStatus === filterStatus;
 
-    return matchesSearch && matchesTotalStock && matchesDealerStock && matchesAvailable && matchesStatus;
+    return (
+      matchesSearch &&
+      matchesTotalStock &&
+      matchesDealerStock &&
+      matchesAvailable &&
+      matchesStatus
+    );
   });
 
   // Pagination logic
   const totalPages = Math.ceil(filteredTableData.length / limit);
-  const paginatedData = filteredTableData.slice((page - 1) * limit, page * limit);
+  const paginatedData = filteredTableData.slice(
+    (page - 1) * limit,
+    page * limit
+  );
 
   // Tính thống kê
   const totalStock = summary?.evm.totalQuantity || 0;
@@ -154,12 +183,15 @@ export default function InventoryPage() {
   };
 
   // Mở modal chỉnh sửa
-  const handleEdit = (item: typeof tableData[0]) => {
-    setSelectedVehicle(evmInventory.find((inv) => inv.vehicleId === item.vehicleId) || null);
+  const handleEdit = (item: (typeof tableData)[0]) => {
+    setSelectedVehicle(
+      evmInventory.find((inv) => inv.vehicleId === item.vehicleId) || null
+    );
     setEditForm({
       quantity: item.totalStock,
       reserved: selectedVehicle?.reserved || 0, // Sử dụng reserved từ API thay vì tính toán
-      location: evmInventory.find((inv) => inv.vehicleId === item.vehicleId)?.location,
+      location: evmInventory.find((inv) => inv.vehicleId === item.vehicleId)
+        ?.location,
     });
     setShowEditModal(true);
   };
@@ -187,7 +219,10 @@ export default function InventoryPage() {
     }
 
     try {
-      await inventoryApi.updateEVMInventory(selectedVehicle.vehicleId, editForm);
+      await inventoryApi.updateEVMInventory(
+        selectedVehicle.vehicleId,
+        editForm
+      );
       toast.success("Cập nhật tồn kho thành công!");
       setShowEditModal(false);
       const evmResponse = await inventoryApi.getEVMInventory();
@@ -199,7 +234,7 @@ export default function InventoryPage() {
   };
 
   // Mở modal chuyển giao
-  const handleOpenTransferModal = (item: typeof tableData[0]) => {
+  const handleOpenTransferModal = (item: (typeof tableData)[0]) => {
     setTransferForm({
       ...transferForm,
       vehicleId: item.vehicleId,
@@ -211,26 +246,20 @@ export default function InventoryPage() {
   // Chuyển giao tồn kho
   const handleTransferInventory = async () => {
     // Validation
-    if (!transferForm.fromDealerId || transferForm.fromDealerId === "") {
-      toast.error("Vui lòng chọn đại lý nguồn!");
-      return;
-    }
     if (!transferForm.toDealerId || transferForm.toDealerId === "") {
       toast.error("Vui lòng chọn đại lý đích!");
-      return;
-    }
-    if (transferForm.fromDealerId === transferForm.toDealerId) {
-      toast.error("Đại lý nguồn và đích không được giống nhau!");
       return;
     }
     if (transferForm.quantity <= 0) {
       toast.error("Số lượng chuyển giao phải lớn hơn 0!");
       return;
     }
-    // Kiểm tra số lượng khả dụng tại đại lý nguồn (giả định cần dữ liệu từ API hoặc state)
-    const dealerStock = getDealerStockByVehicle(transferForm.vehicleId);
-    if (transferForm.quantity > dealerStock) {
-      toast.error("Số lượng chuyển giao vượt quá tồn kho tại đại lý!");
+    // Kiểm tra số lượng khả dụng tại EVM
+    const evmStock = selectedVehicle?.quantity || 0;
+    if (transferForm.quantity > evmStock) {
+      toast.error(
+        `Số lượng chuyển giao vượt quá tồn kho EVM (${evmStock} xe)!`
+      );
       return;
     }
 
@@ -238,7 +267,13 @@ export default function InventoryPage() {
       await inventoryApi.transferInventory(transferForm);
       toast.success("Chuyển giao tồn kho thành công!");
       setShowTransferModal(false);
-      setTransferForm({ vehicleId: "", fromDealerId: "", toDealerId: "", quantity: 0, notes: "" });
+      setTransferForm({
+        vehicleId: "",
+        fromDealerId: "",
+        toDealerId: "",
+        quantity: 0,
+        notes: "",
+      });
       const dealerResponse = await inventoryApi.getAllDealerInventories();
       setDealerInventories(dealerResponse.data.data);
     } catch (err) {
@@ -256,7 +291,11 @@ export default function InventoryPage() {
         item.totalStock,
         item.dealerStock,
         item.available,
-        item.available > 100 ? "Dư thừa" : item.available > 50 ? "Bình thường" : "Cần bổ sung",
+        item.available > 100
+          ? "Dư thừa"
+          : item.available > 50
+          ? "Bình thường"
+          : "Cần bổ sung",
       ]),
     ]
       .map((row) => row.join(","))
@@ -296,7 +335,9 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <Toaster position="top-right" />
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">Quản lý tồn kho - EVM</h2>
+        <h2 className="text-2xl font-bold text-gray-800">
+          Quản lý tồn kho - EVM
+        </h2>
         <button
           onClick={handleExportReport}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
@@ -314,7 +355,9 @@ export default function InventoryPage() {
             </div>
           </div>
           <p className="text-gray-600 text-sm">Tổng tồn kho</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{totalStock.toLocaleString()} xe</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">
+            {totalStock.toLocaleString()} xe
+          </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-6">
@@ -324,7 +367,9 @@ export default function InventoryPage() {
             </div>
           </div>
           <p className="text-gray-600 text-sm">Sẵn sàng giao</p>
-          <p className="text-2xl font-bold text-green-900 mt-1">{readyToDeliver.toLocaleString()} xe</p>
+          <p className="text-2xl font-bold text-green-900 mt-1">
+            {readyToDeliver.toLocaleString()} xe
+          </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-6">
@@ -334,7 +379,9 @@ export default function InventoryPage() {
             </div>
           </div>
           <p className="text-gray-600 text-sm">Đang phân phối</p>
-          <p className="text-2xl font-bold text-yellow-900 mt-1">{inDistribution.toLocaleString()} xe</p>
+          <p className="text-2xl font-bold text-yellow-900 mt-1">
+            {inDistribution.toLocaleString()} xe
+          </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-6">
@@ -344,7 +391,9 @@ export default function InventoryPage() {
             </div>
           </div>
           <p className="text-gray-600 text-sm">Cần bổ sung</p>
-          <p className="text-2xl font-bold text-red-900 mt-1">{needsReplenish} model</p>
+          <p className="text-2xl font-bold text-red-900 mt-1">
+            {needsReplenish} model
+          </p>
         </div>
       </div>
 
@@ -360,21 +409,31 @@ export default function InventoryPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
             />
-            <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
 
           {/* Nút Bộ lọc */}
-         <button
-  onClick={() => setShowFilters(!showFilters)}
-  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 text-gray-700"
->
-  <Filter className="w-4 h-4" />
-  Bộ lọc
-  {showFilters && <span className="text-xs text-red-500">▲</span>}
-  {!showFilters && <span className="text-xs text-red-500">▼</span>}
-</button>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 text-gray-700"
+          >
+            <Filter className="w-4 h-4" />
+            Bộ lọc
+            {showFilters && <span className="text-xs text-red-500">▲</span>}
+            {!showFilters && <span className="text-xs text-red-500">▼</span>}
+          </button>
         </div>
 
         {/* Chi tiết Bộ lọc (xổ xuống) */}
@@ -383,7 +442,9 @@ export default function InventoryPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Filter Tổng tồn kho (exact) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tổng tồn kho</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tổng tồn kho
+                </label>
                 <input
                   type="number"
                   placeholder="Nhập số lượng"
@@ -396,7 +457,9 @@ export default function InventoryPage() {
 
               {/* Filter Tại đại lý (exact) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tại đại lý</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tại đại lý
+                </label>
                 <input
                   type="number"
                   placeholder="Nhập số lượng"
@@ -409,7 +472,9 @@ export default function InventoryPage() {
 
               {/* Filter Khả dụng (exact) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Khả dụng</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Khả dụng
+                </label>
                 <input
                   type="number"
                   placeholder="Nhập số lượng"
@@ -422,7 +487,9 @@ export default function InventoryPage() {
 
               {/* Filter Trạng thái */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Trạng thái
+                </label>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
@@ -453,12 +520,24 @@ export default function InventoryPage() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tổng tồn kho</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tại đại lý</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Khả dụng</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hành động</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Model
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Tổng tồn kho
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Tại đại lý
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Khả dụng
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Trạng thái
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Hành động
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-black">
@@ -468,13 +547,19 @@ export default function InventoryPage() {
                     <span className="font-semibold">{item.vehicle}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="font-bold text-blue-600">{item.totalStock.toLocaleString()}</span>
+                    <span className="font-bold text-blue-600">
+                      {item.totalStock.toLocaleString()}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-gray-900">{item.dealerStock.toLocaleString()}</span>
+                    <span className="text-gray-900">
+                      {item.dealerStock.toLocaleString()}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="font-semibold text-green-600">{item.available.toLocaleString()}</span>
+                    <span className="font-semibold text-green-600">
+                      {item.available.toLocaleString()}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <span
@@ -486,7 +571,11 @@ export default function InventoryPage() {
                           : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {item.available > 100 ? "Dư thừa" : item.available > 50 ? "Bình thường" : "Cần bổ sung"}
+                      {item.available > 100
+                        ? "Dư thừa"
+                        : item.available > 50
+                        ? "Bình thường"
+                        : "Cần bổ sung"}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -516,9 +605,13 @@ export default function InventoryPage() {
                   </td>
                 </tr>
               ))}
-              {(paginatedData.length === 0 && filteredTableData.length > 0) || filteredTableData.length === 0 ? (
+              {(paginatedData.length === 0 && filteredTableData.length > 0) ||
+              filteredTableData.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                  <td
+                    colSpan={6}
+                    className="px-6 py-4 text-center text-gray-500"
+                  >
                     Không tìm thấy dữ liệu phù hợp.
                   </td>
                 </tr>
@@ -549,15 +642,26 @@ export default function InventoryPage() {
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div className="text-sm text-gray-700">
                 <span className="font-medium">
-                  Hiển thị <span className="font-semibold">{(page - 1) * limit + 1}</span> đến{" "}
+                  Hiển thị{" "}
+                  <span className="font-semibold">
+                    {(page - 1) * limit + 1}
+                  </span>{" "}
+                  đến{" "}
                   <span className="font-semibold">
                     {Math.min(page * limit, filteredTableData.length)}
                   </span>{" "}
-                  của <span className="font-semibold">{filteredTableData.length}</span> kết quả
+                  của{" "}
+                  <span className="font-semibold">
+                    {filteredTableData.length}
+                  </span>{" "}
+                  kết quả
                 </span>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <nav
+                  className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                  aria-label="Pagination"
+                >
                   <button
                     onClick={() => handlePageChange(page - 1)}
                     disabled={page === 1}
@@ -586,14 +690,33 @@ export default function InventoryPage() {
       {showDetailModal && selectedVehicle && (
         <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all duration-300 ease-in-out">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Chi tiết tồn kho - {selectedVehicle.vehicle.model}</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-4">
+              Chi tiết tồn kho - {selectedVehicle.vehicle.model}
+            </h3>
             <div className="space-y-3 text-gray-700">
-              <p><strong>Model:</strong> {selectedVehicle.vehicle.model}</p>
-              <p><strong>Nhà sản xuất:</strong> {selectedVehicle.vehicle.manufacturer.name}</p>
-              <p><strong>Tổng tồn kho:</strong> {selectedVehicle.quantity.toLocaleString()}</p>
-              <p><strong>Đã đặt trước:</strong> {selectedVehicle.reserved.toLocaleString()}</p>
-              <p><strong>Khả dụng:</strong> {selectedVehicle.available.toLocaleString()}</p>
-              <p><strong>Vị trí:</strong> {selectedVehicle.location || "Không xác định"}</p>
+              <p>
+                <strong>Model:</strong> {selectedVehicle.vehicle.model}
+              </p>
+              <p>
+                <strong>Nhà sản xuất:</strong>{" "}
+                {selectedVehicle.vehicle.manufacturer.name}
+              </p>
+              <p>
+                <strong>Tổng tồn kho:</strong>{" "}
+                {selectedVehicle.quantity.toLocaleString()}
+              </p>
+              <p>
+                <strong>Đã đặt trước:</strong>{" "}
+                {selectedVehicle.reserved.toLocaleString()}
+              </p>
+              <p>
+                <strong>Khả dụng:</strong>{" "}
+                {selectedVehicle.available.toLocaleString()}
+              </p>
+              <p>
+                <strong>Vị trí:</strong>{" "}
+                {selectedVehicle.location || "Không xác định"}
+              </p>
               {selectedVehicle.vehicle.images.length > 0 && (
                 <img
                   src={selectedVehicle.vehicle.images[0].url}
@@ -618,34 +741,54 @@ export default function InventoryPage() {
       {showEditModal && selectedVehicle && (
         <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all duration-300 ease-in-out">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Chỉnh sửa tồn kho - {selectedVehicle.vehicle.model}</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-4">
+              Chỉnh sửa tồn kho - {selectedVehicle.vehicle.model}
+            </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Số lượng</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Số lượng
+                </label>
                 <input
                   type="number"
                   value={editForm.quantity ?? ""}
-                  onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      quantity: parseInt(e.target.value) || 0,
+                    })
+                  }
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-black"
                   min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Đã đặt trước</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Đã đặt trước
+                </label>
                 <input
                   type="number"
                   value={editForm.reserved ?? ""}
-                  onChange={(e) => setEditForm({ ...editForm, reserved: parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      reserved: parseInt(e.target.value) || 0,
+                    })
+                  }
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-black"
                   min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Vị trí</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Vị trí
+                </label>
                 <input
                   type="text"
                   value={editForm.location ?? ""}
-                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, location: e.target.value })
+                  }
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-black"
                 />
               </div>
@@ -672,53 +815,68 @@ export default function InventoryPage() {
       {showTransferModal && (
         <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all duration-300 ease-in-out">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Chuyển giao tồn kho</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-4">
+              Chuyển giao tồn kho
+            </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Từ đại lý</label>
-                <select
-                  value={transferForm.fromDealerId}
-                  onChange={(e) => setTransferForm({ ...transferForm, fromDealerId: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200 text-black"
-                >
-                  <option value="">Chọn đại lý</option>
-                  {summary?.byDealer.map((d) => (
-                    <option key={d.dealer.id} value={d.dealer.id}>
-                      {d.dealer.name} ({d.dealer.city || "Không xác định"})
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium text-gray-700">
+                  Từ kho EVM
+                </label>
+                <div className="w-full border border-gray-300 rounded-lg p-2 bg-gray-100 text-gray-600">
+                  EVM Inventory - {selectedVehicle?.quantity || 0} xe có sẵn
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Đến đại lý</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Đến đại lý
+                </label>
                 <select
                   value={transferForm.toDealerId}
-                  onChange={(e) => setTransferForm({ ...transferForm, toDealerId: e.target.value })}
+                  onChange={(e) =>
+                    setTransferForm({
+                      ...transferForm,
+                      toDealerId: e.target.value,
+                    })
+                  }
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200 text-black"
                 >
                   <option value="">Chọn đại lý</option>
-                  {summary?.byDealer.map((d) => (
-                    <option key={d.dealer.id} value={d.dealer.id}>
-                      {d.dealer.name} ({d.dealer.city || "Không xác định"})
-                    </option>
-                  ))}
+                  {summary?.byDealer
+                    ?.filter((d) => d.dealer.name !== "Cà Mau")
+                    .map((d) => (
+                      <option key={d.dealer.id} value={d.dealer.id}>
+                        {d.dealer.name} ({d.dealer.city || "Không xác định"})
+                      </option>
+                    )) || []}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Số lượng</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Số lượng
+                </label>
                 <input
                   type="number"
                   value={transferForm.quantity}
-                  onChange={(e) => setTransferForm({ ...transferForm, quantity: parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setTransferForm({
+                      ...transferForm,
+                      quantity: parseInt(e.target.value) || 0,
+                    })
+                  }
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200 text-black"
                   min="1"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Ghi chú</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Ghi chú
+                </label>
                 <textarea
                   value={transferForm.notes}
-                  onChange={(e) => setTransferForm({ ...transferForm, notes: e.target.value })}
+                  onChange={(e) =>
+                    setTransferForm({ ...transferForm, notes: e.target.value })
+                  }
                   className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-200 h-20 resize-none text-black"
                 />
               </div>

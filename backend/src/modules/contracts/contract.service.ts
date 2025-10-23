@@ -321,19 +321,27 @@ export class ContractService {
       throw new Error("Customer not found");
     }
 
+    // Get staff info to determine dealerId
+    const staff = await prisma.user.findUnique({
+      where: { id: data.staffId },
+      include: { dealer: true },
+    });
+
+    if (!staff) {
+      throw new Error("Staff not found");
+    }
+
+    if (!staff.dealerId) {
+      throw new Error("Staff must be assigned to a dealer");
+    }
+
     // Verify vehicle exists and is available
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: data.vehicleId },
       include: {
         dealerInventories: {
           where: {
-            dealer: {
-              users: {
-                some: {
-                  id: data.staffId,
-                },
-              },
-            },
+            dealerId: staff.dealerId, // Direct filter by dealerId
           },
         },
       },

@@ -33,6 +33,20 @@ export interface Vehicle {
     logo?: string;
   };
   images?: VehicleImage[];
+  evmInventories?: Array<{
+    quantity: number;
+    reserved: number;
+    available: number;
+  }>;
+  dealerInventories?: Array<{
+    quantity: number;
+    reserved: number;
+    available: number;
+    dealer: {
+      name: string;
+      city: string;
+    };
+  }>;
   _count?: {
     evmInventories: number;
     dealerInventories: number;

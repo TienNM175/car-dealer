@@ -81,6 +81,19 @@ export class VehicleService {
             available: true,
           },
         },
+        dealerInventories: {
+          select: {
+            quantity: true,
+            reserved: true,
+            available: true,
+            dealer: {
+              select: {
+                name: true,
+                city: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
             evmInventories: true,
