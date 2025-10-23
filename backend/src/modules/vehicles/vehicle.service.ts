@@ -81,9 +81,22 @@ export class VehicleService {
             available: true,
           },
         },
+        dealerInventories: {
+          select: {
+            quantity: true,
+            reserved: true,
+            available: true,
+            dealer: {
+              select: {
+                name: true,
+                city: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
-            evmInventories: true,
+            // evmInventories: true, // Removed - not a count relation (1-1 relation)
             dealerInventories: true,
             dealerOrders: true,
             quotations: true,
@@ -174,7 +187,7 @@ export class VehicleService {
         },
         _count: {
           select: {
-            evmInventories: true,
+            // evmInventories: true, // Removed - not a count relation (1-1 relation)
             dealerInventories: true,
             dealerOrders: true,
             quotations: true,
@@ -272,7 +285,7 @@ export class VehicleService {
     const activeContracts = await prisma.contract.count({
       where: {
         vehicleId: id,
-        status: { in: ["PENDING", "SIGNED", "DELIVERING"] },
+        status: { in: ["PENDING", "SIGNED"] },
       },
     });
 

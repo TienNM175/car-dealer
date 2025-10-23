@@ -1,5 +1,5 @@
-import prisma from '../../config/database';
-import { Prisma } from '@prisma/client';
+import prisma from "../../config/database";
+import { Prisma } from "@prisma/client";
 
 interface InventoryFilters {
   vehicleId?: string;
@@ -29,7 +29,7 @@ export class InventoryService {
           },
         },
       },
-      orderBy: { available: 'asc' },
+      orderBy: { available: "asc" },
     });
   }
 
@@ -49,7 +49,7 @@ export class InventoryService {
       },
     });
 
-    if (!inventory) throw new Error('EVM inventory not found for this vehicle');
+    if (!inventory) throw new Error("EVM inventory not found for this vehicle");
     return inventory;
   }
 
@@ -60,14 +60,16 @@ export class InventoryService {
     vehicleId: string,
     data: { quantity?: number; reserved?: number; location?: string }
   ) {
-    const existing = await prisma.eVMInventory.findUnique({ where: { vehicleId } });
-    if (!existing) throw new Error('EVM inventory not found');
+    const existing = await prisma.eVMInventory.findUnique({
+      where: { vehicleId },
+    });
+    if (!existing) throw new Error("EVM inventory not found");
 
     const quantity = data.quantity ?? existing.quantity;
     const reserved = data.reserved ?? existing.reserved;
     const available = quantity - reserved;
 
-    if (available < 0) throw new Error('Available quantity cannot be negative');
+    if (available < 0) throw new Error("Available quantity cannot be negative");
 
     return await prisma.eVMInventory.update({
       where: { vehicleId },
@@ -97,7 +99,15 @@ export class InventoryService {
     return await prisma.inventory.findMany({
       where,
       include: {
-        dealer: { select: { id: true, name: true, code: true, city: true, regionId: true } },
+        dealer: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            city: true,
+            regionId: true,
+          },
+        },
         vehicle: {
           include: {
             manufacturer: { select: { id: true, name: true, code: true } },
@@ -105,7 +115,7 @@ export class InventoryService {
           },
         },
       },
-      orderBy: [{ dealerId: 'asc' }, { available: 'asc' }],
+      orderBy: [{ dealerId: "asc" }, { available: "asc" }],
     });
   }
 
@@ -114,7 +124,7 @@ export class InventoryService {
    */
   async getDealerInventory(dealerId: string, filters: InventoryFilters = {}) {
     const dealer = await prisma.dealer.findUnique({ where: { id: dealerId } });
-    if (!dealer) throw new Error('Dealer not found');
+    if (!dealer) throw new Error("Dealer not found");
 
     const where: Prisma.InventoryWhereInput = {
       dealerId,
@@ -132,7 +142,7 @@ export class InventoryService {
           },
         },
       },
-      orderBy: { available: 'asc' },
+      orderBy: { available: "asc" },
     });
   }
 
@@ -153,7 +163,7 @@ export class InventoryService {
       },
     });
 
-    if (!inventory) throw new Error('Inventory item not found');
+    if (!inventory) throw new Error("Inventory item not found");
     return inventory;
   }
 
@@ -164,18 +174,26 @@ export class InventoryService {
     const evmLowStock = await prisma.eVMInventory.findMany({
       where: { available: { lte: threshold } },
       include: {
-        vehicle: { include: { manufacturer: { select: { id: true, name: true, code: true } } } },
+        vehicle: {
+          include: {
+            manufacturer: { select: { id: true, name: true, code: true } },
+          },
+        },
       },
-      orderBy: { available: 'asc' },
+      orderBy: { available: "asc" },
     });
 
     const dealerLowStock = await prisma.inventory.findMany({
       where: { available: { lte: threshold } },
       include: {
         dealer: { select: { id: true, name: true, code: true, city: true } },
-        vehicle: { include: { manufacturer: { select: { id: true, name: true, code: true } } } },
+        vehicle: {
+          include: {
+            manufacturer: { select: { id: true, name: true, code: true } },
+          },
+        },
       },
-      orderBy: [{ dealerId: 'asc' }, { available: 'asc' }],
+      orderBy: [{ dealerId: "asc" }, { available: "asc" }],
     });
 
     return {
@@ -203,6 +221,16 @@ export class InventoryService {
       _count: true,
     });
 
+    // Get dealers list for transfer dropdown
+    const dealers = await prisma.dealer.findMany({
+      select: {
+        id: true,
+        name: true,
+        city: true,
+      },
+      orderBy: { name: "asc" },
+    });
+
     return {
       evm: {
         totalQuantity: evmTotal._sum.quantity || 0,
@@ -217,6 +245,153 @@ export class InventoryService {
         totalAvailable: dealerTotal._sum.available || 0,
         vehicleTypes: dealerTotal._count,
       },
+      byDealer: dealers.map((dealer) => ({ dealer })),
     };
+  }
+
+  /**
+   * Update dealer inventory
+   */
+  async updateDealerInventory(dealerId: string, vehicleId: string, data: any) {
+    // Validate inventory exists
+    const existing = await prisma.inventory.findUnique({
+      where: {
+        dealerId_vehicleId: {
+          dealerId,
+          vehicleId,
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new Error("Dealer inventory not found");
+    }
+
+    // Validate quantities
+    if (data.quantity !== undefined && data.quantity < 0) {
+      throw new Error("Quantity cannot be negative");
+    }
+    if (data.reserved !== undefined && data.reserved < 0) {
+      throw new Error("Reserved cannot be negative");
+    }
+    if (data.sold !== undefined && data.sold < 0) {
+      throw new Error("Sold cannot be negative");
+    }
+
+    // Update inventory
+    const updated = await prisma.inventory.update({
+      where: {
+        dealerId_vehicleId: {
+          dealerId,
+          vehicleId,
+        },
+      },
+      data: {
+        ...(data.quantity !== undefined && { quantity: data.quantity }),
+        ...(data.reserved !== undefined && { reserved: data.reserved }),
+        ...(data.sold !== undefined && { sold: data.sold }),
+        ...(data.location !== undefined && { location: data.location }),
+        // Recalculate available
+        available:
+          data.quantity !== undefined
+            ? data.quantity -
+              (data.reserved !== undefined
+                ? data.reserved
+                : existing.reserved) -
+              (data.sold !== undefined ? data.sold : existing.sold)
+            : undefined,
+      },
+      include: {
+        vehicle: {
+          include: {
+            manufacturer: { select: { id: true, name: true, code: true } },
+            images: { where: { isMain: true }, take: 1 },
+          },
+        },
+        dealer: { select: { id: true, name: true, code: true } },
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Transfer inventory from EVM to dealer
+   */
+  async transferInventory(data: any) {
+    const { vehicleId, toDealerId, quantity, notes } = data;
+
+    // Validate EVM inventory exists and has enough quantity
+    const evmInventory = await prisma.eVMInventory.findUnique({
+      where: { vehicleId },
+    });
+
+    if (!evmInventory) {
+      throw new Error("EVM inventory not found");
+    }
+
+    if (evmInventory.available < quantity) {
+      throw new Error(
+        `Insufficient EVM inventory. Available: ${evmInventory.available}, Requested: ${quantity}`
+      );
+    }
+
+    // Use transaction to ensure data consistency
+    return await prisma.$transaction(async (tx) => {
+      // Decrease EVM inventory
+      await tx.eVMInventory.update({
+        where: { vehicleId },
+        data: {
+          quantity: { decrement: quantity },
+          available: { decrement: quantity },
+        },
+      });
+
+      // Check if dealer inventory exists
+      const existingDealerInventory = await tx.inventory.findUnique({
+        where: {
+          dealerId_vehicleId: {
+            dealerId: toDealerId,
+            vehicleId: vehicleId,
+          },
+        },
+      });
+
+      if (existingDealerInventory) {
+        // Update existing dealer inventory
+        await tx.inventory.update({
+          where: {
+            dealerId_vehicleId: {
+              dealerId: toDealerId,
+              vehicleId: vehicleId,
+            },
+          },
+          data: {
+            quantity: { increment: quantity },
+            available: { increment: quantity },
+          },
+        });
+      } else {
+        // Create new dealer inventory
+        await tx.inventory.create({
+          data: {
+            dealerId: toDealerId,
+            vehicleId: vehicleId,
+            quantity: quantity,
+            available: quantity,
+            reserved: 0,
+            sold: 0,
+            location: notes || "Transferred from EVM",
+          },
+        });
+      }
+
+      return {
+        message: `Successfully transferred ${quantity} units to dealer`,
+        vehicleId,
+        toDealerId,
+        quantity,
+      };
+    });
   }
 }

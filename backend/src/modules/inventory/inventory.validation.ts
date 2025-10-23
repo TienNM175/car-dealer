@@ -1,155 +1,143 @@
-import { body, param } from 'express-validator';
+import { body, param } from "express-validator";
 
 export const updateEVMInventoryValidation = [
-  param('vehicleId')
+  param("vehicleId")
     .isString()
-    .withMessage('Vehicle ID must be a string')
+    .withMessage("Vehicle ID must be a string")
     .notEmpty()
-    .withMessage('Vehicle ID is required'),
+    .withMessage("Vehicle ID is required"),
 
-  body('quantity')
+  body("quantity")
     .optional()
     .isInt({ min: 0 })
-    .withMessage('Quantity must be a non-negative integer'),
+    .withMessage("Quantity must be a non-negative integer"),
 
-  body('reserved')
+  body("reserved")
     .optional()
     .isInt({ min: 0 })
-    .withMessage('Reserved must be a non-negative integer'),
+    .withMessage("Reserved must be a non-negative integer"),
 
-  body('location')
+  body("location")
     .optional()
     .isString()
-    .withMessage('Location must be a string')
+    .withMessage("Location must be a string")
     .trim(),
 ];
 
 export const updateDealerInventoryValidation = [
-  param('dealerId')
+  param("dealerId")
     .isString()
-    .withMessage('Dealer ID must be a string')
+    .withMessage("Dealer ID must be a string")
     .notEmpty()
-    .withMessage('Dealer ID is required'),
+    .withMessage("Dealer ID is required"),
 
-  param('vehicleId')
+  param("vehicleId")
     .isString()
-    .withMessage('Vehicle ID must be a string')
+    .withMessage("Vehicle ID must be a string")
     .notEmpty()
-    .withMessage('Vehicle ID is required'),
+    .withMessage("Vehicle ID is required"),
 
-  body('quantity')
+  body("quantity")
     .optional()
     .isInt({ min: 0 })
-    .withMessage('Quantity must be a non-negative integer'),
+    .withMessage("Quantity must be a non-negative integer"),
 
-  body('reserved')
+  body("reserved")
     .optional()
     .isInt({ min: 0 })
-    .withMessage('Reserved must be a non-negative integer'),
+    .withMessage("Reserved must be a non-negative integer"),
 
-  body('sold')
+  body("sold")
     .optional()
     .isInt({ min: 0 })
-    .withMessage('Sold must be a non-negative integer'),
+    .withMessage("Sold must be a non-negative integer"),
 
-  body('location')
+  body("location")
     .optional()
     .isString()
-    .withMessage('Location must be a string')
+    .withMessage("Location must be a string")
     .trim(),
 ];
 
 export const transferInventoryValidation = [
-  body('vehicleId')
+  body("vehicleId")
     .notEmpty()
-    .withMessage('Vehicle ID is required')
+    .withMessage("Vehicle ID is required")
     .isString()
-    .withMessage('Vehicle ID must be a string'),
+    .withMessage("Vehicle ID must be a string"),
 
-  body('fromDealerId')
+  body("toDealerId")
     .notEmpty()
-    .withMessage('From Dealer ID is required')
+    .withMessage("To Dealer ID is required")
     .isString()
-    .withMessage('From Dealer ID must be a string'),
+    .withMessage("To Dealer ID must be a string"),
 
-  body('toDealerId')
+  body("quantity")
     .notEmpty()
-    .withMessage('To Dealer ID is required')
-    .isString()
-    .withMessage('To Dealer ID must be a string')
-    .custom((value, { req }) => {
-      if (value === req.body.fromDealerId) {
-        throw new Error('Cannot transfer to the same dealer');
-      }
-      return true;
-    }),
-
-  body('quantity')
-    .notEmpty()
-    .withMessage('Quantity is required')
+    .withMessage("Quantity is required")
     .isInt({ min: 1 })
-    .withMessage('Quantity must be a positive integer'),
+    .withMessage("Quantity must be a positive integer"),
 
-  body('notes')
+  body("notes")
     .optional()
     .isString()
-    .withMessage('Notes must be a string')
+    .withMessage("Notes must be a string")
     .trim(),
 ];
 
 export const reserveInventoryValidation = [
-  param('dealerId')
+  param("dealerId")
     .isString()
-    .withMessage('Dealer ID must be a string')
+    .withMessage("Dealer ID must be a string")
     .notEmpty()
-    .withMessage('Dealer ID is required'),
+    .withMessage("Dealer ID is required"),
 
-  param('vehicleId')
+  param("vehicleId")
     .isString()
-    .withMessage('Vehicle ID must be a string')
+    .withMessage("Vehicle ID must be a string")
     .notEmpty()
-    .withMessage('Vehicle ID is required'),
+    .withMessage("Vehicle ID is required"),
 
-  body('quantity')
+  body("quantity")
     .optional()
     .isInt({ min: 1 })
-    .withMessage('Quantity must be a positive integer'),
+    .withMessage("Quantity must be a positive integer"),
 ];
 
 export const completeSaleValidation = [
-  param('dealerId')
+  param("dealerId")
     .isString()
-    .withMessage('Dealer ID must be a string')
+    .withMessage("Dealer ID must be a string")
     .notEmpty()
-    .withMessage('Dealer ID is required'),
+    .withMessage("Dealer ID is required"),
 
-  param('vehicleId')
+  param("vehicleId")
     .isString()
-    .withMessage('Vehicle ID must be a string')
+    .withMessage("Vehicle ID must be a string")
     .notEmpty()
-    .withMessage('Vehicle ID is required'),
+    .withMessage("Vehicle ID is required"),
 
-  body('quantity')
+  body("quantity")
     .optional()
     .isInt({ min: 1 })
-    .withMessage('Quantity must be a positive integer'),
+    .withMessage("Quantity must be a positive integer"),
 ];
 
 export const cancelReservationValidation = [
-  param('dealerId')
+  param("dealerId")
     .isString()
-    .withMessage('Dealer ID must be a string')
+    .withMessage("Dealer ID must be a string")
     .notEmpty()
-    .withMessage('Dealer ID is required'),
+    .withMessage("Dealer ID is required"),
 
-  param('vehicleId')
+  param("vehicleId")
     .isString()
-    .withMessage('Vehicle ID must be a string')
+    .withMessage("Vehicle ID must be a string")
     .notEmpty()
-    .withMessage('Vehicle ID is required'),
+    .withMessage("Vehicle ID is required"),
 
-  body('quantity')
+  body("quantity")
     .optional()
     .isInt({ min: 1 })
-    .withMessage('Quantity must be a positive integer'),
+    .withMessage("Quantity must be a positive integer"),
 ];
