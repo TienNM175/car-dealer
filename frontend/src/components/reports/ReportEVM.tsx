@@ -77,7 +77,6 @@ export default function ReportEVM({
 
     const vf = makeValueFormatter(data?.unit ?? undefined);
 
-    // --- GIỮ NGUYÊN HÀM renderInventory ---
     // const renderInventory = (d: ReportPayload) => {
     //     console.log("Inventory payload:", d);
 
@@ -249,10 +248,9 @@ export default function ReportEVM({
     const renderInventory = (d: ReportPayload) => {
         console.log("Inventory payload:", d);
 
-        // Lấy trực tiếp dealerSummary từ payload
         const dealerSummary: ChartData[] = Array.isArray(d.dealerSummary)
             ? (d.dealerSummary as URec[]).map((r) => ({
-                dealer: toStr((r as URec).dealer), // { name: "..."} sẽ thành chuỗi
+                dealer: toStr((r as URec).dealer),
                 available: toNum((r as URec).available),
                 reserved: toNum((r as URec).reserved),
                 sold: toNum((r as URec).sold),
@@ -278,7 +276,6 @@ export default function ReportEVM({
             lowStockFromApi.length ? lowStockFromApi : lowStockFallback;
         console.log("lowStock >>>", lowStock);
 
-        // Nếu chỉ muốn thống kê lại theo dealerSummary (thay vì dealersRaw cũ)
         const vehicleStats: ChartData[] = dealerSummary.map((r) => ({
             vehicle: toStr(r.dealer),
             totalStock: toNum(r.available) + toNum(r.reserved) + toNum(r.sold),
@@ -328,8 +325,80 @@ export default function ReportEVM({
     };
 
 
+    const renderDealerPerformance = (d: ReportPayload) => {
+        const dealers = Array.isArray(d.dealerSummary) ? d.dealerSummary : [];
 
-    // --- GIỮ NGUYÊN HÀM renderExecutiveSummary ---
+        const salesChart = dealers.map((r) => ({
+            dealer: r.dealer,
+            salesRevenue: r.salesRevenue,
+            salesCount: r.salesCount,
+        }));
+
+        const inventoryChart = dealers.map((r) => ({
+            dealer: r.dealer,
+            total: r.inventoryTotal,
+            sold: r.inventorySold,
+        }));
+
+        const testDriveChart = dealers.map((r) => ({
+            dealer: r.dealer,
+            testDrives: r.testDrives,
+        }));
+
+        const targetChart = dealers.map((r) => ({
+            dealer: r.dealer,
+            achievementRate: r.achievementRate,
+        }));
+
+        return (
+            <div className="grid grid-cols-1 gap-8">
+                <ChartCard title="Doanh thu theo đại lý">
+                    <BarChartComponent
+                        data={salesChart}
+                        xKey="dealer"
+                        bars={[
+                            { key: "salesRevenue", color: COLORS[0] },
+                            { key: "salesCount", color: COLORS[1] },
+                        ]}
+                        valueFormatter={vf}
+                    />
+                </ChartCard>
+
+                <ChartCard title="Tồn kho & bán theo đại lý">
+                    <BarChartComponent
+                        data={inventoryChart}
+                        xKey="dealer"
+                        bars={[
+                            { key: "total", color: COLORS[2] },
+                            { key: "sold", color: COLORS[3] },
+                        ]}
+                        valueFormatter={vf}
+                    />
+                </ChartCard>
+
+                <ChartCard title="Lái thử theo đại lý">
+                    <BarChartComponent
+                        data={testDriveChart}
+                        xKey="dealer"
+                        bars={[{ key: "testDrives", color: COLORS[4] }]}
+                        valueFormatter={vf}
+                    />
+                </ChartCard>
+
+                <ChartCard title="Tỉ lệ hoàn thành mục tiêu (%)">
+                    <BarChartComponent
+                        data={targetChart}
+                        xKey="dealer"
+                        bars={[{ key: "achievementRate", color: COLORS[5] }]}
+                        valueFormatter={(v) => `${v.toFixed(1)}%`}
+                    />
+                </ChartCard>
+            </div>
+        );
+    };
+
+
+
     const renderExecutiveSummary = (d: ReportPayload) => {
         return (
             <div className="space-y-10">
@@ -366,6 +435,10 @@ export default function ReportEVM({
                 {data?.unit && <p className="text-sm text-black mt-1">Đơn vị: {data.unit}</p>}
             </div>
             {loading ? (<LoadingState />) : err ? (<ErrorState message={err} />) : (<> {activeReport === "dealer-performance" && data && renderExecutiveSummary(data)} {activeReport === "inventory" && data && renderInventory(data)} </>)}
+
+            {activeReport === "dealer-performance" && data && renderDealerPerformance(data)}
+
+
         </div>
     );
 }

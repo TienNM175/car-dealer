@@ -1,3 +1,79 @@
+"use client";
+
+import React from "react";
+import ReportDealer from "./ReportDealer";
+import ReportEVM from "./ReportEVM";
+
+
+export default function Reports({
+    userRole,
+}: {
+    userRole: string;
+}) {
+    const role = userRole?.toLowerCase() ?? "";
+
+    // Dealer
+    if (role === "dealer_staff" || role === "dealer_manager") {
+        return (
+            <div className="space-y-8">
+                <h1 className="text-2xl font-bold text-black">Báo cáo Đại lý</h1>
+                <p className="text-gray-600">
+                    Xem báo cáo doanh số nhân viên và công nợ khách hàng.
+                </p>
+                <ReportDealer userRole={role} />
+            </div>
+        );
+    }
+
+    // EVM
+    if (role === "evm_staff" || role === "evm_admin") {
+        return (
+            <div className="space-y-8">
+                <h1 className="text-2xl font-bold text-black">Báo cáo Hãng xe</h1>
+                <p className="text-gray-600">
+                    Xem báo cáo doanh số theo khu vực, đại lý và tồn kho tổng.
+                </p>
+                <ReportEVM userRole={role} />
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-6 bg-white rounded-xl shadow text-center">
+            <h2 className="text-xl font-semibold text-red-600 mb-2">
+                Bạn không có quyền truy cập báo cáo
+            </h2>
+            <p className="text-gray-600">
+                Vui lòng đăng nhập bằng tài khoản đại lý hoặc hãng xe hợp lệ để xem dữ liệu.
+            </p>
+        </div>
+    );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // "use client";
 
 // import React, { useEffect, useMemo, useState } from "react";

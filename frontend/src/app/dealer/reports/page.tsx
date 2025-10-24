@@ -12,11 +12,14 @@
 
 import ReportDealer from "@/components/reports/ReportDealer";
 import { useAuth } from "@/contexts/AuthContext";
+import Reports from "@/components/reports/Reports";
 
 const mapUserRole = (role: string | null | undefined) => {
   if (!role) return "dealer_staff";
   switch (role) {
     case "DEALER_MANAGER": return "dealer_manager";
+    case "EVM_ADMIN": return "evm_admin";
+    case "EVM_STAFF": return "evm_staff";
     default: return "dealer_staff";
   }
 };
@@ -28,5 +31,9 @@ export default function DealerReportsPage() {
 
   const userRole = mapUserRole(user.role);
 
-  return <ReportDealer userRole={userRole} />;
+  return (
+    <main className="p-8 bg-gray-50 min-h-screen">
+      <Reports userRole={userRole} />
+    </main>
+  );
 }

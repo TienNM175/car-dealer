@@ -75,42 +75,203 @@ export default function ReportDealer({
 
     const vf = makeValueFormatter(data?.unit ?? undefined);
 
+    // const renderSales = (d: ReportPayload) => {
+    //     const byStatus: ChartData[] = Array.isArray(d.byStatus) ? (d.byStatus as URec[]).map((r) => ({ status: toStr((r as URec).status), count: toNum((r as URec).count), revenue: toNum((r as URec).revenue), })) : [];
+    //     const byPayment: ChartData[] = Array.isArray(d.byPaymentType) ? (d.byPaymentType as URec[]).map((r) => ({ type: toStr((r as URec).type), count: toNum((r as URec).count), revenue: toNum((r as URec).revenue), })) : [];
+    //     const topVehicles: ChartData[] = Array.isArray(d.topVehicles) ? (d.topVehicles as URec[]).map((r) => ({ vehicle: vehicleLabel((r as URec).vehicle), count: toNum((r as URec).count), revenue: toNum((r as URec).revenue), })) : [];
+    //     // const staffPerf: ChartData[] = Array.isArray(d.staffPerformance) ? (d.staffPerformance as URec[]).map((r) => ({ staff: toStr((r as URec).staff) || toStr(((r as URec).staff as URec | undefined)?.email), totalRevenue: toNum((r as URec).totalRevenue), salesCount: toNum((r as URec).salesCount), })) : [];
+    //     const staffPerf: ChartData[] = Array.isArray(d.staffPerformance)
+    //         ? (d.staffPerformance as URec[]).map((r) => {
+    //             const staff = r.staff as URec;
+    //             return {
+    //                 staff: staff ? `${staff.firstName ?? ""} ${staff.lastName ?? ""}`.trim() : "",
+    //                 email: staff?.email ?? "",
+    //                 id: staff?.id ?? "",
+    //                 totalRevenue: toNum(r.totalRevenue),
+    //                 salesCount: toNum(r.salesCount),
+    //             };
+    //         })
+    //         : [];
+
+
+    //     return (
+    //         <div className="grid grid-cols-1 gap-8">
+    //             <ChartCard title="Doanh số theo trạng thái">
+    //                 <PieChartComponent data={byStatus} dataKey="count" nameKey="status" valueFormatter={vf} />
+    //             </ChartCard>
+    //             <ChartCard title="Theo hình thức thanh toán">
+    //                 <PieChartComponent data={byPayment} dataKey="count" nameKey="type" valueFormatter={vf} />
+    //             </ChartCard>
+    //             <ChartCard title="Top xe bán chạy">
+    //                 <BarChartComponent data={topVehicles} xKey="vehicle" bars={[{ key: "count", color: COLORS[0] }, { key: "revenue", color: COLORS[1] }]} valueFormatter={vf} />
+    //             </ChartCard>
+    //             <ChartCard title="Hiệu suất nhân viên">
+    //                 <BarChartComponent layout="vertical" data={staffPerf} xKey="staff" bars={[{ key: "totalRevenue", color: COLORS[2] }]} valueFormatter={vf} />
+    //             </ChartCard>
+    //         </div>
+    //     );
+    // };
+
+
     const renderSales = (d: ReportPayload) => {
-        const byStatus: ChartData[] = Array.isArray(d.byStatus) ? (d.byStatus as URec[]).map((r) => ({ status: toStr((r as URec).status), count: toNum((r as URec).count), revenue: toNum((r as URec).revenue), })) : [];
-        const byPayment: ChartData[] = Array.isArray(d.byPaymentType) ? (d.byPaymentType as URec[]).map((r) => ({ type: toStr((r as URec).type), count: toNum((r as URec).count), revenue: toNum((r as URec).revenue), })) : [];
-        const topVehicles: ChartData[] = Array.isArray(d.topVehicles) ? (d.topVehicles as URec[]).map((r) => ({ vehicle: vehicleLabel((r as URec).vehicle), count: toNum((r as URec).count), revenue: toNum((r as URec).revenue), })) : [];
-        // const staffPerf: ChartData[] = Array.isArray(d.staffPerformance) ? (d.staffPerformance as URec[]).map((r) => ({ staff: toStr((r as URec).staff) || toStr(((r as URec).staff as URec | undefined)?.email), totalRevenue: toNum((r as URec).totalRevenue), salesCount: toNum((r as URec).salesCount), })) : [];
+        const byStatus: ChartData[] = Array.isArray(d.byStatus)
+            ? (d.byStatus as URec[]).map((r) => ({
+                status: toStr((r as URec).status),
+                count: toNum((r as URec).count),
+                revenue: toNum((r as URec).revenue),
+            }))
+            : [];
+
+        const byPayment: ChartData[] = Array.isArray(d.byPaymentType)
+            ? (d.byPaymentType as URec[]).map((r) => ({
+                type: toStr((r as URec).type),
+                count: toNum((r as URec).count),
+                revenue: toNum((r as URec).revenue),
+            }))
+            : [];
+
+        const topVehicles: ChartData[] = Array.isArray(d.topVehicles)
+            ? (d.topVehicles as URec[]).map((r) => ({
+                vehicle: vehicleLabel((r as URec).vehicle),
+                count: toNum((r as URec).count),
+                revenue: toNum((r as URec).revenue),
+            }))
+            : [];
+
+        // --- Tạo dataset nhân viên, có dealer info ---
         const staffPerf: ChartData[] = Array.isArray(d.staffPerformance)
             ? (d.staffPerformance as URec[]).map((r) => {
                 const staff = r.staff as URec;
+                const dealer = (staff as any)?.dealer as URec | undefined;
                 return {
-                    staff: staff ? `${staff.firstName ?? ""} ${staff.lastName ?? ""}`.trim() : "",
+                    staff: staff
+                        ? `${staff.firstName ?? ""} ${staff.lastName ?? ""}`.trim() ||
+                        staff.email ||
+                        ""
+                        : "",
                     email: staff?.email ?? "",
                     id: staff?.id ?? "",
-                    totalRevenue: toNum(r.totalRevenue),
-                    salesCount: toNum(r.salesCount),
+                    dealerId: (staff as any)?.dealerId ?? "",
+                    dealerName: dealer?.name ?? "Đại lý không xác định",
+                    totalRevenue: toNum((r as any).totalRevenue),
+                    salesCount: toNum((r as any).salesCount),
                 };
             })
             : [];
+        console.log("[DEBUG] Staff performance data:", staffPerf);
 
+
+        // --- Nhóm theo dealerId ---
+        const grouped: Record<string, ChartData[]> = {};
+        for (const s of staffPerf) {
+            const key = (s.dealerId as string) || "unknown";
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(s);
+        }
+
+        // --- Quyền: nếu là Dealer hoặc Manager -> chỉ hiển thị đại lý của họ ---
+        const role = (userRole || "").toUpperCase();
+        let charts: React.ReactNode[] = [];
+
+        if (role.includes("ADMIN") || role.includes("EVM")) {
+            charts = Object.entries(grouped).map(([dealerId, list]) => (
+                <ChartCard
+                    key={dealerId}
+                    title={`Hiệu suất nhân viên - ${list[0]?.dealerName ?? "Đại lý không xác định"}`}
+                >
+                    <BarChartComponent
+                        layout="vertical"
+                        data={list}
+                        xKey="staff"
+                        bars={[{ key: "totalRevenue", color: COLORS[2] }]}
+                        valueFormatter={vf}
+                    />
+                </ChartCard>
+            ));
+        } else if (role.includes("DEALER") || role.includes("MANAGER")) {
+            let currentDealerId: string | null = null;
+            if (typeof window !== "undefined") {
+                currentDealerId = localStorage.getItem("dealerId");
+            }
+            if (!currentDealerId) {
+                const uniqueDealerIds = Array.from(
+                    new Set(staffPerf.map((s) => s.dealerId).filter(Boolean))
+                );
+                if (uniqueDealerIds.length === 1) currentDealerId = uniqueDealerIds[0] as string;
+            }
+            const list = staffPerf.filter((s) => s.dealerId === currentDealerId);
+            charts =
+                list.length > 0
+                    ? [
+                        <ChartCard
+                            key={currentDealerId}
+                            title={`Hiệu suất nhân viên - ${list[0]?.dealerName ?? "Đại lý của bạn"}`}
+                        >
+                            <BarChartComponent
+                                layout="vertical"
+                                data={list}
+                                xKey="staff"
+                                bars={[{ key: "totalRevenue", color: COLORS[2] }]}
+                                valueFormatter={vf}
+                            />
+                        </ChartCard>,
+                    ]
+                    : [
+                        <ChartCard key="no-data" title="Hiệu suất nhân viên">
+                            <p className="text-center text-gray-500 italic">
+                                Không có dữ liệu cho đại lý của bạn.
+                            </p>
+                        </ChartCard>,
+                    ];
+        }
 
         return (
             <div className="grid grid-cols-1 gap-8">
                 <ChartCard title="Doanh số theo trạng thái">
-                    <PieChartComponent data={byStatus} dataKey="count" nameKey="status" valueFormatter={vf} />
+                    <PieChartComponent
+                        data={byStatus}
+                        dataKey="count"
+                        nameKey="status"
+                        valueFormatter={vf}
+                    />
                 </ChartCard>
+
                 <ChartCard title="Theo hình thức thanh toán">
-                    <PieChartComponent data={byPayment} dataKey="count" nameKey="type" valueFormatter={vf} />
+                    <PieChartComponent
+                        data={byPayment}
+                        dataKey="count"
+                        nameKey="type"
+                        valueFormatter={vf}
+                    />
                 </ChartCard>
+
                 <ChartCard title="Top xe bán chạy">
-                    <BarChartComponent data={topVehicles} xKey="vehicle" bars={[{ key: "count", color: COLORS[0] }, { key: "revenue", color: COLORS[1] }]} valueFormatter={vf} />
+                    <BarChartComponent
+                        data={topVehicles}
+                        xKey="vehicle"
+                        bars={[
+                            { key: "count", color: COLORS[0] },
+                            { key: "revenue", color: COLORS[1] },
+                        ]}
+                        valueFormatter={vf}
+                    />
                 </ChartCard>
-                <ChartCard title="Hiệu suất nhân viên">
-                    <BarChartComponent layout="vertical" data={staffPerf} xKey="staff" bars={[{ key: "totalRevenue", color: COLORS[2] }]} valueFormatter={vf} />
-                </ChartCard>
+
+                {charts.length > 0 ? (
+                    charts
+                ) : (
+                    <ChartCard title="Hiệu suất nhân viên">
+                        <p className="text-center text-gray-500 italic">
+                            Không có dữ liệu hoặc bạn không có quyền xem phần này.
+                        </p>
+                    </ChartCard>
+                )}
             </div>
         );
     };
+
+
+
 
     const renderCustomers = (d: ReportPayload) => {
         const byStatus: ChartData[] = Array.isArray(d.byStatus) ? (d.byStatus as URec[]).map((r) => ({ status: toStr((r as URec).status), count: toNum((r as URec).count), })) : [];
