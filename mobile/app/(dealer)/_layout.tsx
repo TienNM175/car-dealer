@@ -1,11 +1,13 @@
+// app/(dealer)/_layout.tsx
 import { Tabs } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { View, Text, StyleSheet } from 'react-native';
 import { useEffect } from 'react';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function DealerLayout() {
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -21,11 +23,14 @@ export default function DealerLayout() {
     );
   }
 
+  const userRole = user?.role?.toUpperCase() || 'DEALER_STAFF';
+  const isManager = userRole === 'DEALER_MANAGER';
+
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#2563eb',
-        tabBarInactiveTintColor: '#6b7280',
+        tabBarInactiveTintColor: '#9ca3af',
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 1,
@@ -34,56 +39,88 @@ export default function DealerLayout() {
           paddingBottom: 8,
           paddingTop: 8,
         },
-        headerStyle: {
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
+        headerStyle: { 
           backgroundColor: '#2563eb',
+          elevation: 0,
+          shadowOpacity: 0,
         },
         headerTintColor: '#fff',
-        headerTitleStyle: {
+        headerTitleStyle: { 
           fontWeight: 'bold',
+          fontSize: 18,
         },
-        headerRight: () => (
-          <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Đăng xuất</Text>
-          </TouchableOpacity>
-        ),
       }}
     >
+      {/* Tab 1: Dashboard - Tổng quan */}
       <Tabs.Screen
         name="dashboard"
         options={{
           title: 'Tổng quan',
+          headerTitle: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size, color }}>📊</Text>
+            <Ionicons name="stats-chart" size={size} color={color} />
           ),
         }}
       />
+
+      {/* Tab 2: Vehicles - Danh mục xe */}
       <Tabs.Screen
         name="vehicles"
         options={{
-          title: 'Xe',
+          title: 'Danh mục',
+          headerTitle: 'Danh mục xe',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size, color }}>🚗</Text>
+            <Ionicons name="car-sport" size={size} color={color} />
           ),
         }}
       />
+
+      {/* Tab 3: Orders - Đơn hàng */}
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: 'Đơn hàng',
+          headerTitle: 'Quản lý đơn hàng',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cart" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Tab 4: Customers - Khách hàng */}
       <Tabs.Screen
         name="customers"
         options={{
           title: 'Khách hàng',
+          headerTitle: 'Danh sách khách hàng',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size, color }}>👥</Text>
+            <Ionicons name="people" size={size} color={color} />
           ),
         }}
       />
+
+      {/* Tab 5: More - Menu khác */}
       <Tabs.Screen
-        name="contracts"
+        name="more"
         options={{
-          title: 'Hợp đồng',
+          title: 'Thêm',
+          headerTitle: 'Menu',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size, color }}>📄</Text>
+            <Ionicons name="menu" size={size} color={color} />
           ),
         }}
       />
+
+      {/* Hidden screens - không hiển thị trên tab bar */}
+      <Tabs.Screen name="contracts" options={{ href: null }} />
+      <Tabs.Screen name="appointments" options={{ href: null }} />
+      <Tabs.Screen name="promotions" options={{ href: null }} />
+      <Tabs.Screen name="inventory" options={{ href: null }} />
+      <Tabs.Screen name="reports" options={{ href: null }} />
     </Tabs>
   );
 }
@@ -93,14 +130,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  logoutButton: {
-    marginRight: 16,
-    padding: 8,
-  },
-  logoutText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    backgroundColor: '#fff',
   },
 });

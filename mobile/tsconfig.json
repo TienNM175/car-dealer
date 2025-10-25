@@ -3,7 +3,11 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
-    "jsx": "react-jsx",
+    "jsx": "react-native",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
     "paths": {
       "@/*": ["src/*"]
     }
