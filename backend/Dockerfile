@@ -1,39 +1,22 @@
-# ==============================
-# Stage 1: Build TypeScript
-# ==============================
-FROM node:18 AS builder
+# Sử dụng Node.js 18
+FROM node:18
 
-WORKDIR /app
+# Đặt thư mục làm việc bên trong container
+WORKDIR /usr/src/app
 
-# Copy package files
-COPY package*.json tsconfig.json ./
-
-# Cài đặt dependencies
-RUN npm install
-
-# Copy source code
-COPY . .
-
-# Build TypeScript -> JavaScript
-RUN npm run build
-
-# ==============================
-# Stage 2: Run production
-# ==============================
-FROM node:18-slim
-
-WORKDIR /app
-
-# Copy package files để cài prod deps
+# Sao chép file cấu hình và cài đặt dependencies
 COPY package*.json ./
 
-RUN npm install --production
+RUN npm install
 
-# Copy file build từ stage builder
-COPY --from=builder /app/dist ./dist
+# Sao chép toàn bộ code vào container
+COPY . .
 
-# Expose port (Back4App sẽ set PORT env)
+# Build TypeScript
+RUN npm run build
+
+# Expose cổng (phải trùng với PORT bạn dùng trong code, ví dụ 3000)
 EXPOSE 3000
 
-# Lệnh khởi chạy server
-CMD ["node", "dist/index.js"]
+# Chạy file build (đường dẫn dist/src)
+CMD ["node", "dist/src/index.js"]
