@@ -44,7 +44,7 @@ export default function DealerMoreScreen() {
       id: 'promotions',
       title: 'Mã khuyến mãi',
       icon: 'pricetag-outline',
-      route: '/(dealer)/promotions',
+      route: '/(dealer)/promotion',
       description: 'Chương trình ưu đãi hiện có',
       roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
     },
