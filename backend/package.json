@@ -12,7 +12,7 @@
     "prisma:migrate": "prisma migrate dev",
     "dev": "nodemon",
     "format": "prettier --write \"src/**/*.ts\"",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "build": "tsc"
   },
   "keywords": [],

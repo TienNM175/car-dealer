@@ -5,8 +5,7 @@
     "lib": ["ES2020"],
     "outDir": "./dist",
     "rootDir": "./",
-    "strict": false,
-    "noImplicitAny": false,
+    "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -19,8 +18,7 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["node"],
-    
+    "types": ["node"]
   },
   "include": ["src/**/*", "prisma/**/*"],
   "exclude": ["node_modules", "dist"]
