@@ -1,22 +1,23 @@
-# Sử dụng Node.js 18
+# 1️⃣ Sử dụng Node.js 18 làm base image
 FROM node:18
 
-# Đặt thư mục làm việc bên trong container
+# 2️⃣ Đặt thư mục làm việc trong container
 WORKDIR /usr/src/app
 
-# Sao chép file cấu hình và cài đặt dependencies
+# 3️⃣ Copy file cấu hình package
 COPY package*.json ./
 
+# 4️⃣ Cài đặt dependencies
 RUN npm install
 
-# Sao chép toàn bộ code vào container
+# 5️⃣ Copy toàn bộ mã nguồn
 COPY . .
 
-# Build TypeScript
+# 6️⃣ Build TypeScript sang JavaScript
 RUN npm run build
 
-# Expose cổng (phải trùng với PORT bạn dùng trong code, ví dụ 3000)
-EXPOSE 3000
+# 7️⃣ Mở cổng 500 (phải trùng với cổng server của bạn)
+EXPOSE 5000
 
-# Chạy file build (đường dẫn dist/src)
-CMD ["node", "dist/src/index.js"]
+# 8️⃣ Chạy server sau khi build
+CMD ["node", "dist/src/server.js"]
