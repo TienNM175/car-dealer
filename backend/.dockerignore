@@ -1,8 +1,11 @@
 node_modules
 dist
-Dockerfile
-.dockerignore
+.env
+.env.local
+npm-debug.log
+.log
 .git
 .gitignore
-.env
-npm-debug.log
+
+!prisma/schema.prisma
+!prisma/schema

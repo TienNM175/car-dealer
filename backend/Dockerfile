@@ -1,23 +1,27 @@
-# 1️⃣ Sử dụng Node.js 18 làm base image
+# 1️⃣ Base image
 FROM node:18
 
-# 2️⃣ Đặt thư mục làm việc trong container
+# 2️⃣ Set working directory
 WORKDIR /usr/src/app
 
-# 3️⃣ Copy file cấu hình package
+# 3️⃣ Copy package files
 COPY package*.json ./
+COPY prisma ./prisma/
 
-# 4️⃣ Cài đặt dependencies
+# 4️⃣ Install dependencies
 RUN npm install
 
-# 5️⃣ Copy toàn bộ mã nguồn
+# 5️⃣ Generate Prisma Client
+RUN npx prisma generate
+
+# 6️⃣ Copy source code
 COPY . .
 
-# 6️⃣ Build TypeScript sang JavaScript
+# 7️⃣ Build TypeScript
 RUN npm run build
 
-# 7️⃣ Mở cổng 500 (phải trùng với cổng server của bạn)
+# 8️⃣ Expose port
 EXPOSE 5000
 
-# 8️⃣ Chạy server sau khi build
+# 9️⃣ Start server
 CMD ["node", "dist/src/server.js"]
