@@ -1,0 +1,8 @@
+version: 1
+application:
+  name: EVM
+  type: node
+  start: npm start
+  build:
+    - npm install
+    - npm run build

@@ -12,7 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "dev": "nodemon",
     "format": "prettier --write \"src/**/*.ts\"",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
