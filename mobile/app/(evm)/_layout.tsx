@@ -29,6 +29,7 @@ export default function EVMLayout() {
   return (
     <Tabs
       screenOptions={{
+        
         tabBarActiveTintColor: '#2563eb',
         tabBarInactiveTintColor: '#9ca3af',
         tabBarStyle: {
@@ -120,7 +121,7 @@ export default function EVMLayout() {
       {/* Hidden screens - không hiển thị trên tab bar */}
       <Tabs.Screen name="inventory" options={{ href: null }} />
       <Tabs.Screen name="dealers" options={{ href: null }} />
-      <Tabs.Screen name="users" options={{ href: null }} />
+      <Tabs.Screen name="users" options={{ headerTitle: 'Quản lý Người dùng', href: null }} />
       <Tabs.Screen name="promotions" options={{ href: null }} />
       <Tabs.Screen name="pricing" options={{ href: null }} />
       <Tabs.Screen name="ai-insights" options={{ href: null }} />
