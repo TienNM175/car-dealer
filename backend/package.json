@@ -11,7 +11,8 @@
     "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:migrate": "prisma migrate dev",
     "dev": "nodemon",
-    "format": "prettier --write \"src/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\"",
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": "",
