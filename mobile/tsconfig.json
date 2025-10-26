@@ -10,12 +10,14 @@
     "resolveJsonModule": true,
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "typeRoots": ["./node_modules/@types", "./"]
   },
   "include": [
     "app/**/*",
     "src/**/*",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "env.d.ts"
   ]
 }
