@@ -116,6 +116,15 @@ export const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 6,
     },
+    dateInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+},
     dateText: {
         marginLeft: 4,
         fontSize: 12,
@@ -439,4 +448,5 @@ export const styles = StyleSheet.create({
     alertTextError: {
         color: '#991b1b',
     },
+    
 });

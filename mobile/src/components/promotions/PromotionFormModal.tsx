@@ -11,11 +11,13 @@ import {
     Platform,
     Switch,
     ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Promotion, CreatePromotionDTO, UpdatePromotionDTO } from '@/lib/types/promotion.types';
-import { styles } from './styles';
+import { styles } from './styles';  
 
 interface PromotionFormModalProps {
     visible: boolean;
@@ -35,6 +37,8 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
     dealers = [],
 }) => {
     const [loading, setLoading] = useState(false);
+    const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+    const [showEndDatePicker, setShowEndDatePicker] = useState(false);
     const [formData, setFormData] = useState({
         dealerId: dealerId || '',
         name: '',
@@ -42,13 +46,15 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
         discountType: 'PERCENTAGE' as 'PERCENTAGE' | 'FIXED',
         discountValue: '',
         minPurchase: '',
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: '',
+        startDate: new Date(),
+        endDate: new Date(),
         isActive: true,
     });
 
     useEffect(() => {
         if (promotion) {
+            const startDate = promotion.startDate ? new Date(promotion.startDate) : new Date();
+            const endDate = promotion.endDate ? new Date(promotion.endDate) : new Date();
             setFormData({
                 dealerId: promotion.dealerId,
                 name: promotion.name,
@@ -56,10 +62,8 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
                 discountType: promotion.discountType,
                 discountValue: String(promotion.discountValue),
                 minPurchase: promotion.minPurchase ? String(promotion.minPurchase) : '',
-                startDate: new Date(promotion.startDate).toISOString().split('T')[0],
-                endDate: promotion.endDate
-                    ? new Date(promotion.endDate).toISOString().split('T')[0]
-                    : '',
+                startDate,
+                endDate,
                 isActive: promotion.isActive,
             });
         } else {
@@ -71,55 +75,166 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
                 discountType: 'PERCENTAGE',
                 discountValue: '',
                 minPurchase: '',
-                startDate: new Date().toISOString().split('T')[0],
-                endDate: '',
+                startDate: new Date(),
+                endDate: new Date(),
                 isActive: true,
             });
         }
     }, [promotion, visible, dealerId]);
 
+    const formatDateForDisplay = (date: Date) => {
+        return date.toISOString().split('T')[0];
+    };
+
+    const formatVNDForDisplay = (value: string) => {
+        const num = parseFloat(value.replace(/\./g, ''));
+        if (isNaN(num)) return value;
+        return num.toLocaleString('vi-VN');
+    };
+
+    const parseVNDInput = (value: string) => {
+        return value.replace(/\./g, '');
+    };
+
+    const handleVNDCurrencyChange = (text: string, field: 'discountValue' | 'minPurchase') => {
+        const cleaned = text.replace(/\./g, '');
+        if (/^\d*$/.test(cleaned)) {
+            if (cleaned === '') {
+                setFormData({ ...formData, [field]: '' });
+            } else {
+                const num = parseInt(cleaned);
+                const formatted = num.toLocaleString('vi-VN');
+                setFormData({ ...formData, [field]: formatted });
+            }
+        }
+    };
+
+    const validateForm = () => {
+        // Validate dealer
+        if (!formData.dealerId) {
+            Alert.alert('Lỗi', 'Phải chọn đại lý');
+            return false;
+        }
+
+        // Validate name
+        if (formData.name.trim().length < 5) {
+            Alert.alert('Lỗi', 'Tên khuyến mãi phải có ít nhất 5 ký tự');
+            return false;
+        }
+
+        // Validate description
+        if (formData.description.trim().length < 5) {
+            Alert.alert('Lỗi', 'Mô tả phải có ít nhất 5 ký tự');
+            return false;
+        }
+
+        // Validate discount value
+        const discountValueClean = formData.discountType === 'FIXED' ? parseVNDInput(formData.discountValue) : formData.discountValue;
+        const discountValueNum = parseFloat(discountValueClean);
+        if (!discountValueNum || discountValueNum <= 0) {
+            Alert.alert('Lỗi', 'Giá trị giảm giá phải lớn hơn 0');
+            return false;
+        }
+
+        if (formData.discountType === 'PERCENTAGE' && discountValueNum > 100) {
+            Alert.alert('Lỗi', 'Giá trị phần trăm không được vượt quá 100%');
+            return false;
+        }
+
+        // Validate minPurchase if FIXED
+        if (formData.discountType === 'FIXED') {
+            if (!formData.minPurchase?.trim()) {
+                Alert.alert('Lỗi', 'Giá trị đơn hàng tối thiểu là bắt buộc khi chọn giảm giá cố định');
+                return false;
+            }
+            const cleanMinPurchase = parseVNDInput(formData.minPurchase).trim();
+            if (!/^\d+$/.test(cleanMinPurchase)) {
+                Alert.alert('Lỗi', 'Giá trị đơn hàng tối thiểu phải là số hợp lệ.');
+                return false;
+            }
+            const minPurchaseNum = parseInt(cleanMinPurchase);
+            if (minPurchaseNum <= 0) {
+                Alert.alert('Lỗi', 'Giá trị đơn hàng tối thiểu phải lớn hơn 0');
+                return false;
+            }
+        }
+
+        // Validate dates
+        if (formData.startDate > formData.endDate) {
+            Alert.alert('Lỗi', 'Ngày bắt đầu không được lớn hơn ngày kết thúc');
+            return false;
+        }
+
+        return true;
+    };
+
     const handleSubmit = async () => {
-        if (!formData.name.trim()) {
-            alert('Vui lòng nhập tên khuyến mãi');
+        if (!validateForm()) {
             return;
         }
 
-        const discountValue = parseFloat(formData.discountValue);
-        if (!discountValue || discountValue <= 0) {
-            alert('Giá trị giảm giá phải lớn hơn 0');
-            return;
-        }
-
-        if (formData.discountType === 'PERCENTAGE' && discountValue > 100) {
-            alert('Giá trị phần trăm không được vượt quá 100%');
-            return;
-        }
+        const discountValueClean = formData.discountType === 'FIXED' ? parseVNDInput(formData.discountValue) : formData.discountValue;
+        const discountValue = parseFloat(discountValueClean);  
 
         try {
             setLoading(true);
             const submitData: any = {
                 name: formData.name.trim(),
-                description: formData.description.trim() || undefined,
+                description: formData.description.trim(),
                 discountType: formData.discountType,
-                discountValue,
-                minPurchase: formData.minPurchase ? parseFloat(formData.minPurchase) : undefined,
-                startDate: formData.startDate,
-                endDate: formData.endDate || undefined,
+                discountValue,  
+                minPurchase: formData.minPurchase 
+                    ? parseFloat(parseVNDInput(formData.minPurchase)) 
+                    : undefined,
+                startDate: formData.startDate.toISOString(),
+                endDate: formData.endDate.toISOString(), 
                 isActive: formData.isActive,
+                dealerId: formData.dealerId,
             };
-
-            // Only include dealerId if it's selected
-            if (formData.dealerId) {
-                submitData.dealerId = formData.dealerId;
-            }
 
             await onSubmit(submitData);
             onClose();
         } catch (error) {
             console.error('Error submitting promotion:', error);
+            Alert.alert('Lỗi', 'Có lỗi xảy ra khi lưu khuyến mãi');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleStartDateChange = (event: any, selectedDate?: Date) => {
+        const currentDate = selectedDate || formData.startDate;
+        setShowStartDatePicker(Platform.OS === 'ios');
+        setFormData({ ...formData, startDate: currentDate });
+    };
+
+    const handleEndDateChange = (event: any, selectedDate?: Date) => {
+        const currentDate = selectedDate || formData.endDate;
+        setShowEndDatePicker(Platform.OS === 'ios');
+        setFormData({ ...formData, endDate: currentDate });
+    };
+
+    const handleDiscountTypeChange = (value: 'PERCENTAGE' | 'FIXED') => {
+        setFormData((prev) => {
+            let newDiscountValue = prev.discountValue;
+            if (value === 'FIXED' && !prev.discountValue.includes('.')) {
+                // Format plain number to VND
+                const num = parseInt(prev.discountValue) || 0;
+                newDiscountValue = num.toLocaleString('vi-VN');
+            } else if (value === 'PERCENTAGE' && prev.discountValue.includes('.')) {
+                // Unformat VND to plain
+                newDiscountValue = prev.discountValue.replace(/\./g, '');
+            }
+            return { ...prev, discountType: value, discountValue: newDiscountValue };
+        });
+    };
+
+    const handleMinPurchaseChange = (text: string) => {
+        handleVNDCurrencyChange(text, 'minPurchase');
+    };
+
+    const handleDiscountValueChange = (text: string) => {
+        handleVNDCurrencyChange(text, 'discountValue');
     };
 
     return (
@@ -146,11 +261,10 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
 
                     {/* Body */}
                     <ScrollView style={styles.modalBody} contentContainerStyle={styles.scrollContent}>
-                        {/* Dealer Selection - Only show if dealers list is provided and not editing */}
-                        {dealers.length > 0 && !promotion && (
+                        {dealers.length > 0 && (
                             <View style={styles.formGroup}>
                                 <Text style={styles.label}>
-                                    Đại lý (Tùy chọn)
+                                    Đại lý <Text style={styles.requiredStar}>*</Text>
                                 </Text>
                                 <View style={styles.pickerContainer}>
                                     <Picker
@@ -158,7 +272,7 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
                                         onValueChange={(value) => setFormData({ ...formData, dealerId: value })}
                                         style={styles.picker}
                                     >
-                                        <Picker.Item label="-- Tất cả đại lý --" value="" />
+                                        <Picker.Item label="-- Chọn đại lý --" value="" />
                                         {dealers.map((dealer) => (
                                             <Picker.Item key={dealer.id} label={dealer.name} value={dealer.id} />
                                         ))}
@@ -176,19 +290,21 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
                                 style={styles.input}
                                 value={formData.name}
                                 onChangeText={(text) => setFormData({ ...formData, name: text })}
-                                placeholder="Nhập tên khuyến mãi"
+                                placeholder="Nhập tên khuyến mãi (tối thiểu 5 ký tự)"
                                 placeholderTextColor="#9ca3af"
                             />
                         </View>
 
                         {/* Description */}
                         <View style={styles.formGroup}>
-                            <Text style={styles.label}>Mô tả</Text>
+                            <Text style={styles.label}>
+                                Mô tả <Text style={styles.requiredStar}>*</Text>
+                            </Text>
                             <TextInput
                                 style={[styles.input, styles.textArea]}
                                 value={formData.description}
                                 onChangeText={(text) => setFormData({ ...formData, description: text })}
-                                placeholder="Nhập mô tả"
+                                placeholder="Nhập mô tả (tối thiểu 5 ký tự)"
                                 placeholderTextColor="#9ca3af"
                                 multiline
                                 numberOfLines={3}
@@ -203,9 +319,7 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
                             <View style={styles.pickerContainer}>
                                 <Picker
                                     selectedValue={formData.discountType}
-                                    onValueChange={(value) =>
-                                        setFormData({ ...formData, discountType: value as 'PERCENTAGE' | 'FIXED' })
-                                    }
+                                    onValueChange={handleDiscountTypeChange}
                                     style={styles.picker}
                                 >
                                     <Picker.Item label="Phần trăm (%)" value="PERCENTAGE" />
@@ -221,10 +335,10 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
                             </Text>
                             <TextInput
                                 style={styles.input}
-                                value={formData.discountValue}
-                                onChangeText={(text) => setFormData({ ...formData, discountValue: text })}
+                                value={formData.discountType === 'FIXED' ? formatVNDForDisplay(formData.discountValue) : formData.discountValue}
+                                onChangeText={formData.discountType === 'FIXED' ? handleDiscountValueChange : (text) => setFormData({ ...formData, discountValue: text })}
                                 placeholder={
-                                    formData.discountType === 'PERCENTAGE' ? 'Nhập % (0-100)' : 'Nhập số tiền'
+                                    formData.discountType === 'PERCENTAGE' ? 'Nhập % (0-100)' : 'Nhập số tiền (ví dụ: 1.000)'
                                 }
                                 placeholderTextColor="#9ca3af"
                                 keyboardType="numeric"
@@ -233,12 +347,14 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
 
                         {/* Min Purchase */}
                         <View style={styles.formGroup}>
-                            <Text style={styles.label}>Giá trị đơn hàng tối thiểu (VND)</Text>
+                            <Text style={styles.label}>
+                                Giá trị đơn hàng tối thiểu (VND){formData.discountType === 'FIXED' && <Text style={styles.requiredStar}>*</Text>}
+                            </Text>
                             <TextInput
                                 style={styles.input}
-                                value={formData.minPurchase}
-                                onChangeText={(text) => setFormData({ ...formData, minPurchase: text })}
-                                placeholder="Nhập số tiền"
+                                value={formData.discountType === 'FIXED' ? formatVNDForDisplay(formData.minPurchase) : formData.minPurchase}
+                                onChangeText={formData.discountType === 'FIXED' ? handleMinPurchaseChange : (text) => setFormData({ ...formData, minPurchase: text })}
+                                placeholder="Nhập số tiền (ví dụ: 1.000)"
                                 placeholderTextColor="#9ca3af"
                                 keyboardType="numeric"
                             />
@@ -249,25 +365,39 @@ export const PromotionFormModal: React.FC<PromotionFormModalProps> = ({
                             <Text style={styles.label}>
                                 Ngày bắt đầu <Text style={styles.requiredStar}>*</Text>
                             </Text>
-                            <TextInput
-                                style={styles.input}
-                                value={formData.startDate}
-                                onChangeText={(text) => setFormData({ ...formData, startDate: text })}
-                                placeholder="YYYY-MM-DD"
-                                placeholderTextColor="#9ca3af"
-                            />
+                            <TouchableOpacity
+                                style={styles.dateInput}  
+                                onPress={() => setShowStartDatePicker(true)}
+                            >
+                                <Text style={styles.dateText}>{formatDateForDisplay(formData.startDate)}</Text> 
+                            </TouchableOpacity>
+                            {showStartDatePicker && (
+                                <DateTimePicker
+                                    value={formData.startDate}
+                                    mode="date"
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                    onChange={handleStartDateChange}
+                                />
+                            )}
                         </View>
 
                         {/* End Date */}
                         <View style={styles.formGroup}>
                             <Text style={styles.label}>Ngày kết thúc</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={formData.endDate}
-                                onChangeText={(text) => setFormData({ ...formData, endDate: text })}
-                                placeholder="YYYY-MM-DD (Tùy chọn)"
-                                placeholderTextColor="#9ca3af"
-                            />
+                            <TouchableOpacity
+                                style={styles.dateInput}  
+                                onPress={() => setShowEndDatePicker(true)}
+                            >
+                                <Text style={styles.dateText}>{formatDateForDisplay(formData.endDate)}</Text>  
+                            </TouchableOpacity>
+                            {showEndDatePicker && (
+                                <DateTimePicker
+                                    value={formData.endDate}
+                                    mode="date"
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                    onChange={handleEndDateChange}
+                                />
+                            )}
                         </View>
 
                         {/* Active Status */}
