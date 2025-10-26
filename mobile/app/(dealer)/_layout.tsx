@@ -118,7 +118,7 @@ export default function DealerLayout() {
       {/* Hidden screens - không hiển thị trên tab bar */}
       <Tabs.Screen name="contracts" options={{ href: null }} />
       <Tabs.Screen name="appointments" options={{ href: null }} />
-      <Tabs.Screen name="promotions" options={{ href: null }} />
+      <Tabs.Screen name="promotion" options={{ href: null }} />
       <Tabs.Screen name="inventory" options={{ href: null }} />
       <Tabs.Screen name="reports" options={{ href: null }} />
     </Tabs>
