@@ -2,17 +2,16 @@
   "name": "be",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "prisma:merge": "node prisma/merge-schema.js",
+  "main": "dist/src/server.js",
+   "scripts": {
+    "start": "node dist/src/server.js",
+    "build": "tsc",
+    "prebuild": "npm run prisma:generate",
+    "postinstall": "npm run prisma:generate",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:migrate": "prisma migrate dev",
-    "dev": "nodemon",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "start": "node dist/server.js"
+    "prisma:migrate": "prisma migrate deploy",
+    "dev": "nodemon"
   },
   "keywords": [],
   "author": "",
