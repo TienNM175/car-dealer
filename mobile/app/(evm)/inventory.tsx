@@ -35,6 +35,11 @@ export default function EVMInventoryScreen() {
     const [searchTerm, setSearchTerm] = useState("");
     const [showFilters, setShowFilters] = useState(false);
 
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+    const [totalPages, setTotalPages] = useState(0);
+
     // Modals
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -94,9 +99,90 @@ export default function EVMInventoryScreen() {
         }
     }, [isAuthenticated]);
 
+    // Reset to page 1 on search
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
+    // Update total pages when inventory or search changes
+    useEffect(() => {
+        const filtered = inventory.filter((item) =>
+            item.vehicle.model.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        const pages = Math.ceil(filtered.length / itemsPerPage);
+        setTotalPages(pages);
+        if (currentPage > pages) {
+            setCurrentPage(pages || 1);
+        }
+    }, [inventory, searchTerm, currentPage]);
+
     const handleRefresh = () => {
         setRefreshing(true);
+        setCurrentPage(1);
         fetchInventory();
+    };
+
+    const handlePrevPage = () => {
+        if (currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+        }
+    };
+
+    const handleNextPage = () => {
+        if (currentPage < totalPages) {
+            setCurrentPage(currentPage + 1);
+        }
+    };
+
+    const filteredInventory = inventory.filter((item) =>
+        item.vehicle.model.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const paginatedData = filteredInventory.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    const PaginationFooter = () => {
+        if (totalPages <= 1) return null;
+
+        return (
+            <View style={styles.paginationContainer}>
+                <TouchableOpacity
+                    style={[
+                        styles.paginationButton,
+                        currentPage === 1 && styles.paginationButtonDisabled
+                    ]}
+                    onPress={handlePrevPage}
+                    disabled={currentPage === 1}
+                >
+                    <Text style={[
+                        styles.paginationButtonText,
+                        currentPage === 1 && styles.paginationButtonTextDisabled
+                    ]}>Trước</Text>
+                </TouchableOpacity>
+
+                <View style={styles.paginationInfo}>
+                    <Text style={styles.paginationInfoText}>
+                        Trang {currentPage} / {totalPages} ({filteredInventory.length} kết quả)
+                    </Text>
+                </View>
+
+                <TouchableOpacity
+                    style={[
+                        styles.paginationButton,
+                        currentPage === totalPages && styles.paginationButtonDisabled
+                    ]}
+                    onPress={handleNextPage}
+                    disabled={currentPage === totalPages}
+                >
+                    <Text style={[
+                        styles.paginationButtonText,
+                        currentPage === totalPages && styles.paginationButtonTextDisabled
+                    ]}>Sau</Text>
+                </TouchableOpacity>
+            </View>
+        );
     };
 
     const handleView = (item: EVMInventory) => {
@@ -187,10 +273,6 @@ export default function EVMInventoryScreen() {
         return dealer ? `${dealer.name} - ${dealer.city || ""}` : "Chọn đại lý";
     };
 
-    const filteredInventory = inventory.filter((item) =>
-        item.vehicle.model.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
     if (authLoading) {
         return (
             <SafeAreaView style={styles.container}>
@@ -256,7 +338,7 @@ export default function EVMInventoryScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Quản lý Tồn kho EVM</Text>
-                <Text style={styles.headerSubtitle}>Tổng: {inventory.length} xe</Text>
+                <Text style={styles.headerSubtitle}>Tổng: {filteredInventory.length} xe</Text>
             </View>
 
             {/* Search */}
@@ -296,11 +378,12 @@ export default function EVMInventoryScreen() {
                 </View>
             ) : (
                 <FlatList
-                    data={filteredInventory}
+                    data={paginatedData}
                     keyExtractor={(item) => item.id}
                     renderItem={renderInventoryCard}
                     contentContainerStyle={styles.listContent}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={["#3b82f6"]} />}
+                    ListFooterComponent={<PaginationFooter />}
                     ListEmptyComponent={
                         <View style={styles.centerContainer}>
                             <Text style={styles.emptyText}>Không có dữ liệu tồn kho</Text>
@@ -1043,5 +1126,42 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#374151",
         flex: 1,
+    },
+    // Pagination Styles
+    paginationContainer: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 16,
+        backgroundColor: "#fff",
+        borderTopWidth: 1,
+        borderTopColor: "#e5e7eb",
+        marginTop: 12,
+    },
+    paginationButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 6,
+        backgroundColor: "#3b82f6",
+    },
+    paginationButtonDisabled: {
+        backgroundColor: "#d1d5db",
+    },
+    paginationButtonText: {
+        color: "#fff",
+        fontWeight: "600",
+    },
+    paginationButtonTextDisabled: {
+        color: "#9ca3af",
+    },
+    paginationInfo: {
+        flex: 1,
+        alignItems: "center",
+    },
+    paginationInfoText: {
+        fontSize: 14,
+        color: "#6b7280",
+        textAlign: "center",
     },
 });

@@ -227,10 +227,8 @@ export default function PromotionsScreen() {
 
     const renderHeader = () => (
         <View style={styles.header}>
-            <View>
-                <Text style={styles.headerTitle}>Quản lý Khuyến mãi</Text>
-                <Text style={styles.headerSubtitle}>Tạo và quản lý các chương trình khuyến mãi</Text>
-            </View>
+            <Text style={styles.headerTitle}>Quản lý Khuyến mãi</Text>
+            <Text style={styles.headerSubtitle}>Tạo và quản lý các chương trình khuyến mãi</Text>
             <TouchableOpacity style={styles.createButton} onPress={openCreateModal}>
                 <Plus size={20} color="white" />
                 <Text style={styles.createButtonText}>Tạo mới</Text>
@@ -509,9 +507,8 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 12,
         margin: 16,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
+        flexDirection: "column",
+        gap: 8,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
@@ -522,7 +519,6 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: "bold",
         color: "#111827",
-        marginBottom: 4,
     },
     headerSubtitle: {
         fontSize: 14,
@@ -536,6 +532,7 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         borderRadius: 8,
         gap: 8,
+        alignSelf: "flex-start",
     },
     createButtonText: {
         color: "white",
