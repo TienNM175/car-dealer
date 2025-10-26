@@ -14,7 +14,7 @@ import {
     Platform,
     Alert,
 } from "react-native";
-import { Package, Search, RefreshCw, Filter, Eye, Edit, ShoppingCart, CheckSquare, X as CloseIcon } from "lucide-react-native";
+import { Package, Search, RefreshCw, Filter, Eye, Edit, ShoppingCart, CheckSquare, X as CloseIcon, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
 import inventoryApi, {
@@ -38,6 +38,10 @@ export default function DealerInventoryScreen() {
 
     // Filters
     const [searchTerm, setSearchTerm] = useState("");
+
+    // Pagination
+    const itemsPerPage = 10;
+    const [currentPage, setCurrentPage] = useState(0);
 
     // Modals
     const [showEditModal, setShowEditModal] = useState(false);
@@ -67,6 +71,7 @@ export default function DealerInventoryScreen() {
             setError(null);
             const response = await inventoryApi.getDealerInventory(user.dealerId);
             setInventory(response.data.data);
+            setCurrentPage(0); // Reset page khi refresh
         } catch (err: any) {
             setError(err.response?.data?.message || "Không thể tải dữ liệu tồn kho");
             console.error("Error fetching inventory:", err);
@@ -81,6 +86,11 @@ export default function DealerInventoryScreen() {
             fetchInventory();
         }
     }, [user?.dealerId]);
+
+    // Reset page khi search
+    useEffect(() => {
+        setCurrentPage(0);
+    }, [searchTerm]);
 
     const handleRefresh = () => {
         setRefreshing(true);
@@ -191,6 +201,24 @@ export default function DealerInventoryScreen() {
         item.vehicle.model.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
+    const paginatedData = filteredInventory.slice(
+        currentPage * itemsPerPage,
+        (currentPage + 1) * itemsPerPage
+    );
+
+    const handlePrevPage = () => {
+        if (currentPage > 0) {
+            setCurrentPage(currentPage - 1);
+        }
+    };
+
+    const handleNextPage = () => {
+        if (currentPage < totalPages - 1) {
+            setCurrentPage(currentPage + 1);
+        }
+    };
+
     if (authLoading || !user?.dealerId) {
         return (
             <SafeAreaView style={styles.container}>
@@ -264,7 +292,9 @@ export default function DealerInventoryScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Tồn kho Đại lý</Text>
-                <Text style={styles.headerSubtitle}>Tổng: {inventory.length} xe</Text>
+                <Text style={styles.headerSubtitle}>
+                    Tổng: {filteredInventory.length} xe | Trang {currentPage + 1} / {totalPages}
+                </Text>
             </View>
 
             {/* Search */}
@@ -300,18 +330,42 @@ export default function DealerInventoryScreen() {
                     <Text style={styles.loadingText}>Đang tải...</Text>
                 </View>
             ) : (
-                <FlatList
-                    data={filteredInventory}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderInventoryCard}
-                    contentContainerStyle={styles.listContent}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={["#3b82f6"]} />}
-                    ListEmptyComponent={
-                        <View style={styles.centerContainer}>
-                            <Text style={styles.emptyText}>Không có dữ liệu tồn kho</Text>
+                <>
+                    <FlatList
+                        data={paginatedData}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderInventoryCard}
+                        contentContainerStyle={styles.listContent}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={["#3b82f6"]} />}
+                        ListEmptyComponent={
+                            <View style={styles.centerContainer}>
+                                <Text style={styles.emptyText}>Không có dữ liệu tồn kho</Text>
+                            </View>
+                        }
+                    />
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <View style={styles.paginationContainer}>
+                            <TouchableOpacity
+                                style={[styles.paginationButton, currentPage === 0 && styles.disabledButton]}
+                                onPress={handlePrevPage}
+                                disabled={currentPage === 0}
+                            >
+                                <ChevronLeft size={20} color={currentPage === 0 ? "#9ca3af" : "#3b82f6"} />
+                                <Text style={[styles.paginationButtonText, currentPage === 0 && styles.disabledText]}>Trước</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.pageInfo}>Trang {currentPage + 1} / {totalPages}</Text>
+                            <TouchableOpacity
+                                style={[styles.paginationButton, currentPage === totalPages - 1 && styles.disabledButton]}
+                                onPress={handleNextPage}
+                                disabled={currentPage === totalPages - 1}
+                            >
+                                <Text style={[styles.paginationButtonText, currentPage === totalPages - 1 && styles.disabledText]}>Sau</Text>
+                                <ChevronRight size={20} color={currentPage === totalPages - 1 ? "#9ca3af" : "#3b82f6"} />
+                            </TouchableOpacity>
                         </View>
-                    }
-                />
+                    )}
+                </>
             )}
 
             {/* Edit Modal */}
@@ -738,5 +792,44 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "600",
         color: "#fff",
+    },
+    // Pagination Styles
+    paginationContainer: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: "#fff",
+        borderTopWidth: 1,
+        borderTopColor: "#e5e7eb",
+    },
+    paginationButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#3b82f6",
+        backgroundColor: "#fff",
+    },
+    disabledButton: {
+        borderColor: "#d1d5db",
+        backgroundColor: "#f9fafb",
+    },
+    paginationButtonText: {
+        marginLeft: 4,
+        fontSize: 14,
+        fontWeight: "600",
+        color: "#3b82f6",
+    },
+    disabledText: {
+        color: "#9ca3af",
+    },
+    pageInfo: {
+        fontSize: 14,
+        color: "#6b7280",
+        fontWeight: "600",
     },
 });

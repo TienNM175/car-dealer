@@ -455,15 +455,7 @@ export default function EVMInventoryScreen() {
 
                                     {/* Timestamps */}
                                     <View style={styles.detailSection}>
-                                        <Text style={styles.detailSectionTitle}>Thông tin khác</Text>
-                                        <View style={styles.detailRow}>
-                                            <Text style={styles.detailLabel}>ID:</Text>
-                                            <Text style={[styles.detailValue, { fontSize: 12 }]}>{selectedItem.id}</Text>
-                                        </View>
-                                        <View style={styles.detailRow}>
-                                            <Text style={styles.detailLabel}>Vehicle ID:</Text>
-                                            <Text style={[styles.detailValue, { fontSize: 12 }]}>{selectedItem.vehicleId}</Text>
-                                        </View>
+                                        <Text style={styles.detailSectionTitle}>Thông tin khác</Text>                                                                 
                                         <View style={styles.detailRow}>
                                             <Text style={styles.detailLabel}>Ngày tạo:</Text>
                                             <Text style={styles.detailValue}>
