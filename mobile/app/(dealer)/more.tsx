@@ -49,6 +49,15 @@ export default function DealerMoreScreen() {
       roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
     },
     {
+      id: 'orders',
+      title: 'Đơn đặt hàng',
+      icon: 'cart-outline',
+      route: '/(dealer)/orders',
+      description: 'Quản lý đơn đặt xe từ EVM',
+      roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
+      badgeColor: '#ef4444',
+    },
+    {
       id: 'inventory',
       title: 'Quản lý kho',
       icon: 'cube-outline',

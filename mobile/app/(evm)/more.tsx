@@ -30,6 +30,14 @@ export default function MoreScreen() {
       roles: ['EVM_STAFF', 'ADMIN'],
     },
     {
+      id: 'orders',
+      title: 'Đơn hàng',
+      icon: 'cart-outline',
+      route: '/(evm)/orders',
+      description: 'Quản lý đơn hàng từ các đại lý',
+      roles: ['EVM_STAFF', 'ADMIN'],
+    },
+    {
       id: 'dealers',
       title: 'Quản lý đại lý',
       icon: 'business-outline',
