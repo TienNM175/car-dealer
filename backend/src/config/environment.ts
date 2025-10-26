@@ -1,6 +1,11 @@
 import dotenv from "dotenv";
+import path from "path";
 
-dotenv.config();
+// Chỉ load .env file nếu environment không phải production
+if (process.env.NODE_ENV !== "production") {
+  const envPath = path.resolve(process.cwd(), ".env");
+  dotenv.config({ path: envPath });
+}
 
 interface EnvironmentConfig {
   NODE_ENV: string;
@@ -14,6 +19,26 @@ interface EnvironmentConfig {
   BCRYPT_ROUNDS: number;
   RATE_LIMIT_WINDOW_MS: number;
   RATE_LIMIT_MAX_REQUESTS: number;
+}
+
+// Validate required environment variables
+const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
+const missingEnvVars = requiredEnvVars.filter(
+  (key) => !process.env[key] || process.env[key]?.trim() === ""
+);
+
+if (missingEnvVars.length > 0) {
+  console.error("❌ Missing required environment variables:");
+  console.error(missingEnvVars.join(", "));
+  console.error("\n📝 Available environment variables:");
+  console.error(Object.keys(process.env)
+    .filter(key => key.includes("DATABASE") || key.includes("JWT") || key.includes("NODE_ENV"))
+    .map(key => `  ${key}=${process.env[key]?.substring(0, 20)}...`)
+    .join("\n"));
+  
+  throw new Error(
+    `Missing required environment variables: ${missingEnvVars.join(", ")}`
+  );
 }
 
 const config: EnvironmentConfig = {
@@ -33,17 +58,10 @@ const config: EnvironmentConfig = {
   RATE_LIMIT_MAX_REQUESTS: parseInt(
     process.env.RATE_LIMIT_MAX_REQUESTS || "1000",
     10
-  ), // Tăng từ 100 lên 1000
+  ),
 };
 
-// Validate required environment variables
-const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
-const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
-
-if (missingEnvVars.length > 0) {
-  throw new Error(
-    `Missing required environment variables: ${missingEnvVars.join(", ")}`
-  );
-}
+console.log(`✅ Environment loaded: ${config.NODE_ENV}`);
+console.log(`✅ Database: ${config.DATABASE_URL?.substring(0, 50)}...`);
 
 export default config;
