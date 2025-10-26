@@ -15,7 +15,7 @@ import {
     Platform,
     Alert,
 } from "react-native";
-import { Package, Search, RefreshCw, Filter, Eye, Edit, Truck, X, AlertCircle } from "lucide-react-native";
+import { Package, Search, RefreshCw, Filter, Eye, Edit, Truck, X, AlertCircle, ChevronDown } from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
 import inventoryApi, { EVMInventory, UpdateEVMInventoryInput, TransferInventoryInput } from "@/lib/api/inventoryApi";
@@ -51,6 +51,10 @@ export default function EVMInventoryScreen() {
         notes: "",
     });
 
+    // Add state for dealers list
+    const [dealers, setDealers] = useState<any[]>([]);
+    const [showDealerPicker, setShowDealerPicker] = useState(false);
+
     // Auth guard
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
@@ -58,12 +62,23 @@ export default function EVMInventoryScreen() {
         }
     }, [isAuthenticated, authLoading]);
 
-    // Fetch inventory
+    // Fetch dealers along with inventory
     const fetchInventory = async () => {
         try {
             setError(null);
-            const response = await inventoryApi.getEVMInventory();
-            setInventory(response.data.data);
+            const [inventoryResponse, summaryResponse] = await Promise.all([
+                inventoryApi.getEVMInventory(),
+                inventoryApi.getInventorySummary()
+            ]);
+            setInventory(inventoryResponse.data.data);
+
+            // Extract dealers from summary (excluding "Cà Mau")
+            if (summaryResponse.data.data.byDealer) {
+                const dealersList = summaryResponse.data.data.byDealer
+                    .filter((d: any) => d.dealer.name !== "Cà Mau")
+                    .map((d: any) => d.dealer);
+                setDealers(dealersList);
+            }
         } catch (err: any) {
             setError(err.response?.data?.message || "Không thể tải dữ liệu tồn kho");
             console.error("Error fetching inventory:", err);
@@ -103,9 +118,9 @@ export default function EVMInventoryScreen() {
         setSelectedItem(item);
         setTransferForm({
             vehicleId: item.vehicleId,
-            fromDealerId: "",
+            fromDealerId: "", // EVM doesn't have a dealer ID
             toDealerId: "",
-            quantity: 0,
+            quantity: 1,
             notes: "",
         });
         setShowTransferModal(true);
@@ -126,8 +141,19 @@ export default function EVMInventoryScreen() {
     };
 
     const submitTransfer = async () => {
-        if (!transferForm.fromDealerId || !transferForm.toDealerId || transferForm.quantity <= 0) {
-            Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin chuyển kho");
+        // Validation
+        if (!transferForm.toDealerId || transferForm.toDealerId === "") {
+            Alert.alert("Lỗi", "Vui lòng chọn đại lý đích!");
+            return;
+        }
+        if (transferForm.quantity <= 0) {
+            Alert.alert("Lỗi", "Số lượng chuyển giao phải lớn hơn 0!");
+            return;
+        }
+        // Kiểm tra số lượng khả dụng tại EVM
+        const evmStock = selectedItem?.quantity || 0;
+        if (transferForm.quantity > evmStock) {
+            Alert.alert("Lỗi", `Số lượng chuyển giao vượt quá tồn kho EVM (${evmStock} xe)!`);
             return;
         }
 
@@ -135,6 +161,13 @@ export default function EVMInventoryScreen() {
             await inventoryApi.transferInventory(transferForm);
             setSuccess("Chuyển kho thành công!");
             setShowTransferModal(false);
+            setTransferForm({
+                vehicleId: "",
+                fromDealerId: "",
+                toDealerId: "",
+                quantity: 0,
+                notes: "",
+            });
             fetchInventory();
             setTimeout(() => setSuccess(null), 3000);
         } catch (err: any) {
@@ -146,6 +179,12 @@ export default function EVMInventoryScreen() {
         if (available > 100) return { label: "Dư thừa", color: "#10b981" };
         if (available > 50) return { label: "Bình thường", color: "#f59e0b" };
         return { label: "Thấp", color: "#ef4444" };
+    };
+
+    const getSelectedDealerName = () => {
+        if (!transferForm.toDealerId) return "Chọn đại lý";
+        const dealer = dealers.find(d => d.id === transferForm.toDealerId);
+        return dealer ? `${dealer.name} - ${dealer.city || ""}` : "Chọn đại lý";
     };
 
     const filteredInventory = inventory.filter((item) =>
@@ -270,7 +309,7 @@ export default function EVMInventoryScreen() {
                 />
             )}
 
-   {/* Detail Modal */}
+            {/* Detail Modal */}
             <Modal visible={showDetailModal} animationType="slide" transparent>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
@@ -450,28 +489,34 @@ export default function EVMInventoryScreen() {
                         </View>
 
                         <ScrollView style={styles.modalBody}>
+                            {/* From EVM Info */}
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>ID Đại lý nguồn</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={transferForm.fromDealerId}
-                                    onChangeText={(text) => setTransferForm({ ...transferForm, fromDealerId: text })}
-                                    placeholder="Nhập ID đại lý nguồn"
-                                    placeholderTextColor="#9ca3af"
-                                />
+                                <Text style={styles.label}>Từ kho EVM</Text>
+                                <View style={styles.infoBox}>
+                                    <Text style={styles.infoText}>
+                                        EVM Inventory - {selectedItem?.quantity || 0} xe có sẵn
+                                    </Text>
+                                </View>
                             </View>
 
+                            {/* To Dealer Select */}
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>ID Đại lý đích</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={transferForm.toDealerId}
-                                    onChangeText={(text) => setTransferForm({ ...transferForm, toDealerId: text })}
-                                    placeholder="Nhập ID đại lý đích"
-                                    placeholderTextColor="#9ca3af"
-                                />
+                                <Text style={styles.label}>Đến đại lý</Text>
+                                <TouchableOpacity
+                                    style={styles.selectButton}
+                                    onPress={() => setShowDealerPicker(true)}
+                                >
+                                    <Text style={[
+                                        styles.selectButtonText,
+                                        !transferForm.toDealerId && styles.selectButtonPlaceholder
+                                    ]}>
+                                        {getSelectedDealerName()}
+                                    </Text>
+                                    <ChevronDown size={20} color="#6b7280" />
+                                </TouchableOpacity>
                             </View>
 
+                            {/* Quantity Input */}
                             <View style={styles.formGroup}>
                                 <Text style={styles.label}>Số lượng</Text>
                                 <TextInput
@@ -482,10 +527,14 @@ export default function EVMInventoryScreen() {
                                     placeholder="Nhập số lượng"
                                     placeholderTextColor="#9ca3af"
                                 />
+                                <Text style={styles.helperText}>
+                                    Tối đa: {selectedItem?.quantity || 0} xe
+                                </Text>
                             </View>
 
+                            {/* Notes */}
                             <View style={styles.formGroup}>
-                                <Text style={styles.label}>Ghi chú</Text>
+                                <Text style={styles.label}>Ghi chú (không bắt buộc)</Text>
                                 <TextInput
                                     style={[styles.input, styles.textArea]}
                                     multiline
@@ -510,7 +559,54 @@ export default function EVMInventoryScreen() {
                 </KeyboardAvoidingView>
             </Modal>
 
-          
+            {/* Dealer Picker Modal */}
+            <Modal visible={showDealerPicker} animationType="slide" transparent>
+                <View style={styles.pickerModalOverlay}>
+                    <View style={styles.pickerModalContent}>
+                        <View style={styles.pickerHeader}>
+                            <Text style={styles.pickerTitle}>Chọn đại lý</Text>
+                            <TouchableOpacity onPress={() => setShowDealerPicker(false)}>
+                                <X size={24} color="#6b7280" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={styles.pickerList}>
+                            {dealers.map((dealer) => (
+                                <TouchableOpacity
+                                    key={dealer.id}
+                                    style={[
+                                        styles.pickerItem,
+                                        transferForm.toDealerId === dealer.id && styles.pickerItemSelected
+                                    ]}
+                                    onPress={() => {
+                                        setTransferForm({ ...transferForm, toDealerId: dealer.id });
+                                        setShowDealerPicker(false);
+                                    }}
+                                >
+                                    <View style={styles.pickerItemContent}>
+                                        <Text style={[
+                                            styles.pickerItemName,
+                                            transferForm.toDealerId === dealer.id && styles.pickerItemTextSelected
+                                        ]}>
+                                            {dealer.name}
+                                        </Text>
+                                        <Text style={[
+                                            styles.pickerItemCity,
+                                            transferForm.toDealerId === dealer.id && styles.pickerItemTextSelected
+                                        ]}>
+                                            {dealer.city || "Không xác định"}
+                                        </Text>
+                                    </View>
+                                    {transferForm.toDealerId === dealer.id && (
+                                        <View style={styles.checkmark}>
+                                            <Text style={styles.checkmarkText}>✓</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -783,5 +879,169 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "600",
         color: "#fff",
+    },
+    infoBox: {
+        backgroundColor: "#f3f4f6",
+        borderWidth: 1,
+        borderColor: "#d1d5db",
+        borderRadius: 8,
+        padding: 12,
+    },
+    infoText: {
+        fontSize: 14,
+        color: "#6b7280",
+    },
+    pickerContainer: {
+        borderWidth: 1,
+        borderColor: "#d1d5db",
+        borderRadius: 8,
+        backgroundColor: "#fff",
+        overflow: "hidden",
+    },
+    picker: {
+        height: 50,
+    },
+    helperText: {
+        fontSize: 12,
+        color: "#6b7280",
+        marginTop: 4,
+    },
+    // Select Button Styles
+    selectButton: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "#d1d5db",
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        backgroundColor: "#fff",
+    },
+    selectButtonText: {
+        fontSize: 14,
+        color: "#111827",
+        flex: 1,
+    },
+    selectButtonPlaceholder: {
+        color: "#9ca3af",
+    },
+
+    // Picker Modal Styles
+    pickerModalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "flex-end",
+    },
+    pickerModalContent: {
+        backgroundColor: "#fff",
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: "70%",
+    },
+    pickerHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: "#e5e7eb",
+    },
+    pickerTitle: {
+        fontSize: 18,
+        fontWeight: "600",
+        color: "#111827",
+    },
+    pickerList: {
+        paddingHorizontal: 20,
+    },
+    pickerItem: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: "#f3f4f6",
+    },
+    pickerItemSelected: {
+        backgroundColor: "#eff6ff",
+        marginHorizontal: -20,
+        paddingHorizontal: 20,
+    },
+    pickerItemContent: {
+        flex: 1,
+    },
+    pickerItemName: {
+        fontSize: 16,
+        fontWeight: "500",
+        color: "#111827",
+        marginBottom: 4,
+    },
+    pickerItemCity: {
+        fontSize: 14,
+        color: "#6b7280",
+    },
+    pickerItemTextSelected: {
+        color: "#3b82f6",
+    },
+    checkmark: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: "#3b82f6",
+        justifyContent: "center",
+        alignItems: "center",
+        marginLeft: 12,
+    },
+    checkmarkText: {
+        color: "#fff",
+        fontSize: 16,
+        fontWeight: "600",
+    },
+    // Detail Modal Styles
+    detailSection: {
+        marginBottom: 20,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: "#f3f4f6",
+    },
+    detailSectionTitle: {
+        fontSize: 16,
+        fontWeight: "600",
+        color: "#111827",
+        marginBottom: 12,
+    },
+    detailRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        marginBottom: 10,
+    },
+    detailLabel: {
+        fontSize: 14,
+        fontWeight: "500",
+        color: "#6b7280",
+        flex: 1,
+    },
+    detailValue: {
+        fontSize: 14,
+        fontWeight: "400",
+        color: "#111827",
+        flex: 2,
+        textAlign: "right",
+    },
+    locationContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#f9fafb",
+        padding: 12,
+        borderRadius: 8,
+        gap: 8,
+    },
+    locationDetailText: {
+        fontSize: 14,
+        color: "#374151",
+        flex: 1,
     },
 });
