@@ -161,10 +161,10 @@ type TickProps = {
 };
 
 const wrapTick = (maxChars: number) => {
-    const Tick: React.FC<TickProps> = ({ x = 0, y = 0, payload }) => {
+    const Tick = ({ x = 0, y = 0, payload }: TickProps) => {
         const raw = String(payload?.value ?? "");
         if (!raw) {
-            return null;
+            return <g transform={`translate(${x},${y})`}></g>;
         }
 
         const words = raw.split(" ");
@@ -208,7 +208,7 @@ const wrapTick = (maxChars: number) => {
         );
     };
 
-    Tick.displayName = `WrapTick${maxChars}`;
+    (Tick as any).displayName = `WrapTick${maxChars}`;
     return Tick;
 };
 
