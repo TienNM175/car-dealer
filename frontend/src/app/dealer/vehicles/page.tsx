@@ -122,7 +122,8 @@ export default function VehiclesPage() {
     console.log("Contract created successfully:", contract);
     setShowContractForm(false);
     setPreselectedVehicle(null);
-    // Optional: Show success message or refresh data
+    // Refresh vehicle list after contract creation
+    fetchVehicles();
   };
 
   return (
@@ -170,7 +171,7 @@ export default function VehiclesPage() {
           onSuccess={handleContractSuccess}
           selectedVehicle={preselectedVehicle || undefined}
           dealerId={(user as any)?.dealerId}
-          userId={(user as any)?.userId}
+          userId={(user as any)?.id}
           dealerInfo={{
             name: (user as any)?.dealer?.name || "N/A",
             address: (user as any)?.dealer?.address,

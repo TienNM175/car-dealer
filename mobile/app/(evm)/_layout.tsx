@@ -123,6 +123,7 @@ export default function EVMLayout() {
       <Tabs.Screen name="dealers" options={{ href: null }} />
       <Tabs.Screen name="users" options={{ headerTitle: 'Quản lý Người dùng', href: null }} />
       <Tabs.Screen name="promotions" options={{ href: null }} />
+
       <Tabs.Screen name="pricing" options={{ href: null }} />
       <Tabs.Screen name="ai-insights" options={{ headerTitle: 'AI Phân tích ',href: null }} />
     </Tabs>

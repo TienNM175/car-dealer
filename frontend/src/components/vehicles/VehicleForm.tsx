@@ -158,10 +158,16 @@ export default function VehicleForm({
       return;
     }
 
+    // Additional protection: disable form for 3 seconds
     submitRef.current = true;
     setIsSubmitting(true);
     setLoading(true);
     setError(null);
+
+    // Disable form for 3 seconds to prevent double submission
+    setTimeout(() => {
+      submitRef.current = false;
+    }, 3000);
 
     // Validate required fields
     if (!formData.description || formData.description.trim() === "") {

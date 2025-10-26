@@ -177,6 +177,13 @@ export class VehicleService {
           where: { isMain: true },
           take: 1,
         },
+        evmInventories: {
+          select: {
+            quantity: true,
+            reserved: true,
+            available: true,
+          },
+        },
         dealerInventories: {
           where: { dealerId },
           select: {

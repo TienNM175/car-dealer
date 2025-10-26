@@ -18,8 +18,8 @@ import {
   Sparkles,
   UserCog,
   ShoppingCart,
-  ClipboardList
-} from 'lucide-react';
+  ClipboardList,
+} from "lucide-react";
 
 export default function EVMLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -31,16 +31,50 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
   const userRole = user?.role?.toUpperCase() || "EVM_STAFF";
 
   const evmMenuItems = [
-    { id: 'dashboard', icon: TrendingUp, label: 'Tổng quan', role: ['EVM_STAFF', 'ADMIN'] },
-    { id: 'ai-insights', icon: Sparkles, label: 'AI Insights', role: ['ADMIN'] }, 
-    { id: 'products', icon: Car, label: 'Quản lý sản phẩm', role: ['EVM_STAFF', 'ADMIN'] },
-    { id: 'inventory', icon: Package, label: 'Tồn kho', role: ['EVM_STAFF', 'ADMIN'] },
-    { id: 'orders', icon: ShoppingCart, label: 'Đơn hàng', role: ['EVM_STAFF', 'ADMIN'] }, // Thêm menu đơn hàng
-    { id: 'dealers', icon: Users, label: 'Quản lý đại lý', role: ['ADMIN'] },
-    { id: 'users', icon: UserCog, label: 'Quản lý Users', role: ['ADMIN'] }, 
-    { id: 'promotions', icon: Tag, label: 'Quản lý Khuyến mãi', role: ['ADMIN', 'EVM_STAFF'] },
-    { id: 'pricing', icon: FileText, label: 'Giá & Chiết khấu', role: ['ADMIN'] },
-    { id: 'reports', icon: BarChart3, label: 'Báo cáo & Phân tích', role: ['EVM_STAFF', 'ADMIN'] },
+    {
+      id: "ai-insights",
+      icon: Sparkles,
+      label: "AI Insights",
+      role: ["ADMIN"],
+    },
+    {
+      id: "products",
+      icon: Car,
+      label: "Quản lý sản phẩm",
+      role: ["EVM_STAFF", "ADMIN"],
+    },
+    {
+      id: "inventory",
+      icon: Package,
+      label: "Tồn kho",
+      role: ["EVM_STAFF", "ADMIN"],
+    },
+    {
+      id: "orders",
+      icon: ShoppingCart,
+      label: "Đơn hàng",
+      role: ["EVM_STAFF", "ADMIN"],
+    }, // Thêm menu đơn hàng
+    { id: "dealers", icon: Users, label: "Quản lý đại lý", role: ["ADMIN"] },
+    { id: "users", icon: UserCog, label: "Quản lý Users", role: ["ADMIN"] },
+    {
+      id: "promotions",
+      icon: Tag,
+      label: "Quản lý Khuyến mãi",
+      role: ["ADMIN", "EVM_STAFF"],
+    },
+    {
+      id: "pricing",
+      icon: FileText,
+      label: "Giá & Chiết khấu",
+      role: ["ADMIN"],
+    },
+    {
+      id: "reports",
+      icon: BarChart3,
+      label: "Báo cáo & Phân tích",
+      role: ["EVM_STAFF", "ADMIN"],
+    },
   ];
 
   const filteredMenuItems = evmMenuItems.filter((item) =>
@@ -48,12 +82,12 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    const currentPath = pathname.split("/").pop() || "dashboard";
+    const currentPath = pathname.split("/").pop() || "products";
     setActiveMenu(currentPath);
   }, [pathname]);
 
   return (
-    <RouteGuard allowedRoles={['EVM_STAFF', 'ADMIN', 'DEALER_MANAGER']}>
+    <RouteGuard allowedRoles={["EVM_STAFF", "ADMIN", "DEALER_MANAGER"]}>
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar */}
         <div

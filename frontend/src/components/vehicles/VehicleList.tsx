@@ -487,7 +487,11 @@ export default function VehicleList({
                           userRole === "DEALER_MANAGER") && (
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
                             <Package className="w-3 h-3" />
-                            {vehicle._count?.dealerInventories || 0} kho
+                            {vehicle.dealerInventories?.reduce(
+                              (sum, inv) => sum + inv.quantity,
+                              0
+                            ) || 0}{" "}
+                            kho
                           </span>
                         )}
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">

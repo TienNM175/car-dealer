@@ -29,8 +29,12 @@ export default function ProductsPage() {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [vehicleToDelete, setVehicleToDelete] = useState<Vehicle | null>(null);
+  const [refreshTimeout, setRefreshTimeout] = useState<NodeJS.Timeout | null>(
+    null
+  );
 
-  const fetchVehicles = async () => {
+  // Debounce fetchVehicles to prevent multiple calls
+  const fetchVehicles = React.useCallback(async () => {
     try {
       setLoading(true);
       const res = await vehicleApi.getAllVehicles(
@@ -51,12 +55,32 @@ export default function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm, filterStatus, page, limit]);
+
+  // Debounced refresh function
+  const debouncedRefresh = React.useCallback(() => {
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout);
+    }
+    const timeout = setTimeout(() => {
+      fetchVehicles();
+    }, 500); // 500ms debounce
+    setRefreshTimeout(timeout);
+  }, [fetchVehicles, refreshTimeout]);
 
   useEffect(() => {
     fetchVehicles();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, searchTerm, filterStatus]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+    };
+  }, [refreshTimeout]);
 
   // Auto-refresh when window gains focus (user returns from another tab)
   useEffect(() => {
@@ -234,7 +258,7 @@ export default function ProductsPage() {
             setEditingVehicle(null);
           }}
           onSave={handleSave}
-          onRefresh={fetchVehicles}
+          onRefresh={debouncedRefresh}
         />
       )}
 
