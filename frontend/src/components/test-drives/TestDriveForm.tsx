@@ -153,7 +153,7 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
                                     </div>
                                 ),
                             }))
-                            : [{ value: '', label: 'Không có dữ liệu', isDisabled: true }]
+                            : ([{ value: '', label: 'Không có dữ liệu', isDisabled: true }] as any)
                     }
                     defaultValue={
                         initialData
@@ -202,7 +202,7 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
                                     </div>
                                 ),
                             }))
-                            : [{ value: '', label: 'Không có dữ liệu', isDisabled: true }]
+                            : ([{ value: '', label: 'Không có dữ liệu', isDisabled: true }] as any)
                     }
                     defaultValue={
                         initialData
@@ -249,7 +249,7 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
                                     </div>
                                 ),
                             }))
-                            : [{ value: '', label: 'Không có dữ liệu', isDisabled: true }]
+                            : ([{ value: '', label: 'Không có dữ liệu', isDisabled: true }] as any)
                     }
                     defaultValue={
                         initialData
