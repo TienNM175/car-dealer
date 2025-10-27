@@ -41,6 +41,26 @@ export interface PaginationParams {
 }
 
 export const vehicleApi = {
+  // Get all vehicles (for EVM)
+  getAllVehicles: (filters?: VehicleFilters, pagination?: PaginationParams) => {
+    const params = new URLSearchParams();
+
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.manufacturer)
+      params.append("manufacturerId", filters.manufacturer);
+    if (filters?.bodyType) params.append("bodyType", filters.bodyType);
+    if (filters?.priceMin) params.append("minPrice", filters.priceMin);
+    if (filters?.priceMax) params.append("maxPrice", filters.priceMax);
+
+    if (pagination?.page) params.append("page", pagination.page.toString());
+    if (pagination?.limit) params.append("limit", pagination.limit.toString());
+
+    return axiosClient.get<{ data: { data: Vehicle[]; meta: any } }>(
+      `/vehicles?${params.toString()}`
+    );
+  },
+
   // Get dealer vehicles
   getDealerVehicles: (
     dealerId: string,

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { contractApi, Contract } from "@/lib/api/contractApi";
+import Header from "@/components/shared/Header";
 import {
   globalStyles,
   colors,
@@ -27,12 +28,14 @@ export default function EVMContractsPage() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(
+    null
+  );
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState("");
 
-  const userRole = user?.role?.toUpperCase() || 'EVM_STAFF';
-  const isAdmin = userRole === 'ADMIN';
+  const userRole = user?.role?.toUpperCase() || "EVM_STAFF";
+  const isAdmin = userRole === "ADMIN";
 
   const fetchContracts = async () => {
     try {
@@ -67,21 +70,31 @@ export default function EVMContractsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PENDING': return colors.warning;
-      case 'SIGNED': return colors.info;
-      case 'COMPLETED': return colors.success;
-      case 'CANCELLED': return colors.danger;
-      default: return colors.gray500;
+      case "PENDING":
+        return colors.warning;
+      case "SIGNED":
+        return colors.info;
+      case "COMPLETED":
+        return colors.success;
+      case "CANCELLED":
+        return colors.danger;
+      default:
+        return colors.gray500;
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'PENDING': return 'Chờ ký';
-      case 'SIGNED': return 'Đã ký';
-      case 'COMPLETED': return 'Hoàn thành';
-      case 'CANCELLED': return 'Đã hủy';
-      default: return status;
+      case "PENDING":
+        return "Chờ ký";
+      case "SIGNED":
+        return "Đã ký";
+      case "COMPLETED":
+        return "Hoàn thành";
+      case "CANCELLED":
+        return "Đã hủy";
+      default:
+        return status;
     }
   };
 
@@ -89,7 +102,9 @@ export default function EVMContractsPage() {
     return (
       <View style={globalStyles.centerContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={globalStyles.loadingText}>Đang tải danh sách hợp đồng...</Text>
+        <Text style={globalStyles.loadingText}>
+          Đang tải danh sách hợp đồng...
+        </Text>
       </View>
     );
   }
@@ -113,7 +128,7 @@ export default function EVMContractsPage() {
         <View
           style={[
             styles.statusBadge,
-            { backgroundColor: getStatusColor(contract.status) }
+            { backgroundColor: getStatusColor(contract.status) },
           ]}
         >
           <Text style={styles.statusText}>
@@ -162,7 +177,7 @@ export default function EVMContractsPage() {
         </View>
 
         <View style={styles.contractActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
               setSelectedContract(contract);
@@ -183,46 +198,72 @@ export default function EVMContractsPage() {
 
   return (
     <View style={globalStyles.container}>
-      {/* Header */}
-      <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Quản lý hợp đồng</Text>
-        <Text style={styles.headerSubtitle}>
-          Tổng cộng: {contracts.length} hợp đồng
-        </Text>
-      </View>
+      <Header title="Quản lý hợp đồng" />
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <TouchableOpacity
-            style={[styles.filterTab, filterStatus === "" && styles.filterTabActive]}
+            style={[
+              styles.filterTab,
+              filterStatus === "" && styles.filterTabActive,
+            ]}
             onPress={() => setFilterStatus("")}
           >
-            <Text style={[styles.filterTabText, filterStatus === "" && styles.filterTabTextActive]}>
+            <Text
+              style={[
+                styles.filterTabText,
+                filterStatus === "" && styles.filterTabTextActive,
+              ]}
+            >
               Tất cả
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.filterTab, filterStatus === "PENDING" && styles.filterTabActive]}
+            style={[
+              styles.filterTab,
+              filterStatus === "PENDING" && styles.filterTabActive,
+            ]}
             onPress={() => setFilterStatus("PENDING")}
           >
-            <Text style={[styles.filterTabText, filterStatus === "PENDING" && styles.filterTabTextActive]}>
+            <Text
+              style={[
+                styles.filterTabText,
+                filterStatus === "PENDING" && styles.filterTabTextActive,
+              ]}
+            >
               Chờ ký
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.filterTab, filterStatus === "SIGNED" && styles.filterTabActive]}
+            style={[
+              styles.filterTab,
+              filterStatus === "SIGNED" && styles.filterTabActive,
+            ]}
             onPress={() => setFilterStatus("SIGNED")}
           >
-            <Text style={[styles.filterTabText, filterStatus === "SIGNED" && styles.filterTabTextActive]}>
+            <Text
+              style={[
+                styles.filterTabText,
+                filterStatus === "SIGNED" && styles.filterTabTextActive,
+              ]}
+            >
               Đã ký
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.filterTab, filterStatus === "COMPLETED" && styles.filterTabActive]}
+            style={[
+              styles.filterTab,
+              filterStatus === "COMPLETED" && styles.filterTabActive,
+            ]}
             onPress={() => setFilterStatus("COMPLETED")}
           >
-            <Text style={[styles.filterTabText, filterStatus === "COMPLETED" && styles.filterTabTextActive]}>
+            <Text
+              style={[
+                styles.filterTabText,
+                filterStatus === "COMPLETED" && styles.filterTabTextActive,
+              ]}
+            >
               Hoàn thành
             </Text>
           </TouchableOpacity>
@@ -310,7 +351,8 @@ export default function EVMContractsPage() {
                     <View style={styles.modalInfoCard}>
                       <Text style={styles.modalInfoLabel}>Họ tên:</Text>
                       <Text style={styles.modalInfoValue}>
-                        {selectedContract.customer.firstName} {selectedContract.customer.lastName}
+                        {selectedContract.customer.firstName}{" "}
+                        {selectedContract.customer.lastName}
                       </Text>
                       <Text style={styles.modalInfoLabel}>Email:</Text>
                       <Text style={styles.modalInfoValue}>
@@ -335,7 +377,8 @@ export default function EVMContractsPage() {
                     <View style={styles.modalInfoCard}>
                       <Text style={styles.modalInfoLabel}>Xe:</Text>
                       <Text style={styles.modalInfoValue}>
-                        {selectedContract.vehicle.manufacturer.name} {selectedContract.vehicle.model}
+                        {selectedContract.vehicle.manufacturer.name}{" "}
+                        {selectedContract.vehicle.model}
                       </Text>
                     </View>
                   </View>
@@ -375,9 +418,7 @@ export default function EVMContractsPage() {
                       <View
                         style={[styles.modalPaymentRow, styles.modalTotalRow]}
                       >
-                        <Text style={styles.modalTotalLabel}>
-                          Thành tiền:
-                        </Text>
+                        <Text style={styles.modalTotalLabel}>Thành tiền:</Text>
                         <Text style={styles.modalTotalValue}>
                           {formatPrice(selectedContract.finalPrice)}
                         </Text>
@@ -391,18 +432,13 @@ export default function EVMContractsPage() {
                     style={styles.secondaryActionButton}
                     onPress={() => setShowDetailModal(false)}
                   >
-                    <Text style={styles.secondaryActionButtonText}>
-                      Đóng
-                    </Text>
+                    <Text style={styles.secondaryActionButtonText}>Đóng</Text>
                   </TouchableOpacity>
                   {isAdmin && selectedContract.status === "PENDING" && (
                     <TouchableOpacity
                       style={styles.primaryActionButton}
                       onPress={() => {
-                        Alert.alert(
-                          "Xem xét",
-                          "Tính năng đang phát triển"
-                        );
+                        Alert.alert("Xem xét", "Tính năng đang phát triển");
                         setShowDetailModal(false);
                       }}
                     >
@@ -747,17 +783,6 @@ const styles = StyleSheet.create({
   secondaryActionButtonText: {
     ...typography.bodyBold,
     color: colors.gray700,
-  },
-  primaryActionButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-  },
-  primaryActionButtonText: {
-    ...typography.bodyBold,
-    color: colors.white,
   },
 
   // Close Button

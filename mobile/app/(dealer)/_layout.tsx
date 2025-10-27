@@ -64,48 +64,60 @@ export default function DealerLayout() {
         },
       }}
     >
-      {/* Tab 1: Dashboard - Tổng quan */}
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: "Tổng quan",
-          headerTitle: "Dashboard",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
-        }}
-      />
-
-      {/* Tab 2: Vehicles - Danh mục xe */}
+      {/* Tab 1: Vehicles - Danh mục xe */}
       <Tabs.Screen
         name="vehicles"
         options={{
           title: "Xe",
-          headerTitle: "Danh mục xe",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="car-sport" size={size} color={color} />
           ),
         }}
       />
 
-      {/* Tab 3: Contracts - Hợp đồng */}
+      {/* Tab 2: Contracts - Hợp đồng */}
       <Tabs.Screen
         name="contracts"
         options={{
           title: "Hợp đồng",
-          headerTitle: "Danh sách hợp đồng",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="document-text" size={size} color={color} />
           ),
         }}
       />
 
-      {/* Tab 4: More - Menu khác */}
+      {/* Tab 3: Customers - Khách hàng */}
+      <Tabs.Screen
+        name="customers"
+        options={{
+          title: "Khách hàng",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Tab 4: Inventory - Kho */}
+      <Tabs.Screen
+        name="inventory"
+        options={{
+          title: "Kho",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cube" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Tab 5: More - Menu khác */}
       <Tabs.Screen
         name="more"
         options={{
           title: "Thêm",
-          headerTitle: "Menu",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="ellipsis-horizontal" size={size} color={color} />
           ),
@@ -117,7 +129,6 @@ export default function DealerLayout() {
       <Tabs.Screen name="orders" options={{ href: null }} />
       <Tabs.Screen name="appointments" options={{ href: null }} />
       <Tabs.Screen name="promotion" options={{ href: null }} />
-      <Tabs.Screen name="inventory" options={{ href: null }} />
       <Tabs.Screen name="reports" options={{ href: null }} />
       <Tabs.Screen name="test-drive" options={{ href: null }} />
       <Tabs.Screen name="quotations" options={{ href: null }} />

@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { contractApi, CreateContractInput } from "@/lib/api/contractApi";
 import { vehicleApi, Vehicle } from "@/lib/api/vehicleApi";
 import { customerApi } from "@/lib/api/customerApi";
+import Header from "@/components/shared/Header";
 import {
   globalStyles,
   colors,
@@ -177,6 +178,8 @@ export default function ContractCreatePage() {
 
   return (
     <View style={globalStyles.container}>
+      <Header title="Tạo hợp đồng mới" showBackButton />
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -450,7 +453,7 @@ export default function ContractCreatePage() {
               {formatPrice(formData.basePrice)}
             </Text>
           </View>
-          {formData.discount > 0 && (
+          {formData.discount && formData.discount > 0 && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Chiết khấu:</Text>
               <Text style={[styles.summaryValue, styles.discountText]}>

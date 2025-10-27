@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { contractApi, Contract } from "@/lib/api/contractApi";
 import { useRouter } from "expo-router";
+import Header from "@/components/shared/Header";
 import {
   globalStyles,
   colors,
@@ -198,15 +199,7 @@ export default function DealerContractsPage() {
 
   return (
     <View style={globalStyles.container}>
-      {/* Header with Create Button */}
-      <View style={styles.headerContainer}>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => router.push("/(dealer)/contract-create")}
-        >
-          <Text style={styles.createButtonText}>+ Tạo hợp đồng</Text>
-        </TouchableOpacity>
-      </View>
+      <Header title="Danh sách hợp đồng" />
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
@@ -802,18 +795,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: "600",
     color: colors.gray700,
-  },
-  primaryActionButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-  },
-  primaryActionButtonText: {
-    ...typography.body,
-    fontWeight: "600",
-    color: colors.white,
   },
 
   // Close Button

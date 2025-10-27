@@ -55,61 +55,68 @@ export default function EVMLayout() {
         },
       }}
     >
-      {/* Tab 1: Dashboard - Tổng quan */}
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: "Tổng quan",
-          headerTitle: "Dashboard",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart" size={size} color={color} />
-          ),
-        }}
-      />
-
-      {/* Tab 2: Products - Sản phẩm */}
+      {/* Tab 1: Products - Sản phẩm */}
       <Tabs.Screen
         name="products"
         options={{
           title: "Sản phẩm",
-          headerTitle: "Quản lý Sản phẩm",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="car-sport" size={size} color={color} />
           ),
         }}
       />
 
-      {/* Tab 3: Contracts - Hợp đồng */}
+      {/* Tab 2: Contracts - Hợp đồng */}
       <Tabs.Screen
         name="contracts"
         options={{
           title: "Hợp đồng",
-          headerTitle: "Quản lý Hợp đồng",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="document-text" size={size} color={color} />
           ),
         }}
       />
 
-      {/* Tab 3: More - Menu khác */}
+      {/* Tab 3: Users - Người dùng */}
+      <Tabs.Screen
+        name="users"
+        options={{
+          title: "Người dùng",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Tab 4: Inventory - Kho */}
+      <Tabs.Screen
+        name="inventory"
+        options={{
+          title: "Kho",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cube" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Tab 5: More - Menu khác */}
       <Tabs.Screen
         name="more"
         options={{
           title: "Thêm",
-          headerTitle: "Menu",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="menu" size={size} color={color} />
+            <Ionicons name="ellipsis-horizontal" size={size} color={color} />
           ),
         }}
       />
 
       {/* Hidden screens - không hiển thị trên tab bar */}
-      <Tabs.Screen name="inventory" options={{ href: null }} />
       <Tabs.Screen name="dealers" options={{ href: null }} />
-      <Tabs.Screen
-        name="users"
-        options={{ headerTitle: "Quản lý Người dùng", href: null }}
-      />
       <Tabs.Screen name="promotions" options={{ href: null }} />
       <Tabs.Screen name="pricing" options={{ href: null }} />
       <Tabs.Screen

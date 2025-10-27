@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { vehicleApi, Vehicle } from "@/lib/api/vehicleApi";
+import Header from "@/components/shared/Header";
 import {
   globalStyles,
   colors,
@@ -33,8 +34,8 @@ export default function EVMProductsPage() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  const userRole = user?.role?.toUpperCase() || 'EVM_STAFF';
-  const isAdmin = userRole === 'ADMIN';
+  const userRole = user?.role?.toUpperCase() || "EVM_STAFF";
+  const isAdmin = userRole === "ADMIN";
 
   const fetchVehicles = async () => {
     try {
@@ -82,22 +83,21 @@ export default function EVMProductsPage() {
   };
 
   const handleEditVehicle = (vehicle: Vehicle) => {
-    Alert.alert("Chỉnh sửa xe", `Chỉnh sửa ${vehicle.model} - Tính năng đang phát triển`);
+    Alert.alert(
+      "Chỉnh sửa xe",
+      `Chỉnh sửa ${vehicle.model} - Tính năng đang phát triển`
+    );
   };
 
   const handleDeleteVehicle = (vehicle: Vehicle) => {
-    Alert.alert(
-      "Xóa xe",
-      `Bạn có chắc chắn muốn xóa ${vehicle.model}?`,
-      [
-        { text: "Hủy", style: "cancel" },
-        { 
-          text: "Xóa", 
-          style: "destructive",
-          onPress: () => Alert.alert("Thành công", "Xóa xe thành công!")
-        },
-      ]
-    );
+    Alert.alert("Xóa xe", `Bạn có chắc chắn muốn xóa ${vehicle.model}?`, [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Xóa",
+        style: "destructive",
+        onPress: () => Alert.alert("Thành công", "Xóa xe thành công!"),
+      },
+    ]);
   };
 
   if (loading && vehicles.length === 0) {
@@ -130,11 +130,14 @@ export default function EVMProductsPage() {
           <View
             style={[
               styles.statusBadge,
-              { backgroundColor: vehicle.status === 'ACTIVE' ? colors.success : colors.warning }
+              {
+                backgroundColor:
+                  vehicle.status === "ACTIVE" ? colors.success : colors.warning,
+              },
             ]}
           >
             <Text style={styles.statusText}>
-              {vehicle.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}
+              {vehicle.status === "ACTIVE" ? "Hoạt động" : "Tạm dừng"}
             </Text>
           </View>
         </View>
@@ -164,22 +167,22 @@ export default function EVMProductsPage() {
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => handleVehiclePress(vehicle)}
           >
             <Text style={styles.actionButtonText}>Chi tiết</Text>
           </TouchableOpacity>
-          {(isAdmin || userRole === 'EVM_STAFF') && (
+          {(isAdmin || userRole === "EVM_STAFF") && (
             <>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => handleEditVehicle(vehicle)}
               >
                 <Text style={styles.actionButtonText}>Sửa</Text>
               </TouchableOpacity>
               {isAdmin && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionButton, styles.dangerButton]}
                   onPress={() => handleDeleteVehicle(vehicle)}
                 >
@@ -195,15 +198,7 @@ export default function EVMProductsPage() {
 
   return (
     <View style={globalStyles.container}>
-      {/* Header với nút tạo mới */}
-      <View style={styles.headerContainer}>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={handleCreateVehicle}
-        >
-          <Text style={styles.createButtonText}>+ Tạo xe mới</Text>
-        </TouchableOpacity>
-      </View>
+      <Header title="Quản lý sản phẩm" />
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -262,7 +257,9 @@ export default function EVMProductsPage() {
                 <ScrollView style={styles.modalScroll}>
                   <Image
                     source={{
-                      uri: selectedVehicle.images[0]?.url || "https://placehold.co/400x300",
+                      uri:
+                        selectedVehicle.images[0]?.url ||
+                        "https://placehold.co/400x300",
                     }}
                     style={styles.modalImage}
                     resizeMode="cover"
@@ -270,16 +267,21 @@ export default function EVMProductsPage() {
 
                   <View style={styles.vehicleTitleContainer}>
                     <Text style={styles.modalModel}>
-                      {selectedVehicle.manufacturer.name} {selectedVehicle.model}
+                      {selectedVehicle.manufacturer.name}{" "}
+                      {selectedVehicle.model}
                     </Text>
                     {selectedVehicle.variant && (
-                      <Text style={styles.modalVariant}>{selectedVehicle.variant}</Text>
+                      <Text style={styles.modalVariant}>
+                        {selectedVehicle.variant}
+                      </Text>
                     )}
                   </View>
 
                   {/* Specifications */}
                   <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Thông số kỹ thuật</Text>
+                    <Text style={styles.modalSectionTitle}>
+                      Thông số kỹ thuật
+                    </Text>
                     <View style={styles.specsGrid}>
                       <View style={styles.specCard}>
                         <Text style={styles.specCardIcon}>🔋</Text>
@@ -290,9 +292,7 @@ export default function EVMProductsPage() {
                       </View>
                       <View style={styles.specCard}>
                         <Text style={styles.specCardIcon}>📏</Text>
-                        <Text style={styles.specCardLabel}>
-                          Tầm hoạt động
-                        </Text>
+                        <Text style={styles.specCardLabel}>Tầm hoạt động</Text>
                         <Text style={styles.specCardValue}>
                           {selectedVehicle.range} km
                         </Text>
@@ -308,7 +308,7 @@ export default function EVMProductsPage() {
                         <Text style={styles.specCardIcon}>⚡</Text>
                         <Text style={styles.specCardLabel}>Công suất</Text>
                         <Text style={styles.specCardValue}>
-                          {selectedVehicle.power} kW
+                          {selectedVehicle.motorPower || 0} kW
                         </Text>
                       </View>
                     </View>
@@ -319,9 +319,7 @@ export default function EVMProductsPage() {
                     <Text style={styles.modalSectionTitle}>Giá cả</Text>
                     <View style={styles.priceCard}>
                       <View style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>
-                          Giá sỉ (đại lý):
-                        </Text>
+                        <Text style={styles.priceLabel}>Giá sỉ (đại lý):</Text>
                         <Text style={styles.modalPriceWholesale}>
                           {formatPrice(selectedVehicle.wholesalePrice)}
                         </Text>
@@ -341,11 +339,9 @@ export default function EVMProductsPage() {
                     style={styles.secondaryActionButton}
                     onPress={() => setShowDetailModal(false)}
                   >
-                    <Text style={styles.secondaryActionButtonText}>
-                      Đóng
-                    </Text>
+                    <Text style={styles.secondaryActionButtonText}>Đóng</Text>
                   </TouchableOpacity>
-                  {(isAdmin || userRole === 'EVM_STAFF') && (
+                  {(isAdmin || userRole === "EVM_STAFF") && (
                     <TouchableOpacity
                       style={styles.primaryActionButton}
                       onPress={() => {

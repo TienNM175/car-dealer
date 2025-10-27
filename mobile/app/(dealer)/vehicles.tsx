@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { vehicleApi, Vehicle } from "@/lib/api/vehicleApi";
+import Header from "@/components/shared/Header";
 import {
   globalStyles,
   colors,
@@ -157,6 +158,8 @@ export default function DealerVehiclesPage() {
 
   return (
     <View style={globalStyles.container}>
+      <Header title="Danh mục xe" />
+
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
