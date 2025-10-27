@@ -20,15 +20,17 @@ export default function DealerMoreScreen() {
   const userRole = user?.role?.toUpperCase() || 'DEALER_STAFF';
   const isManager = userRole === 'DEALER_MANAGER';
 
-  // Menu items cho dealer
-  const menuItems: MenuItem[] = [
+  // Menu items cho dealer - tổ chức theo nhóm chức năng
+  const businessMenuItems: MenuItem[] = [
     {
-      id: 'contracts',
-      title: 'Hợp đồng',
-      icon: 'document-text-outline',
-      route: '/(dealer)/contracts',
-      description: 'Quản lý hợp đồng bán xe',
+      id: 'orders',
+      title: 'Đơn hàng',
+      icon: 'receipt-outline',
+      route: '/(dealer)/orders',
+      description: 'Quản lý đơn hàng từ hãng',
       roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
+      badge: '2',
+      badgeColor: '#ef4444',
     },
     {
       id: 'appointments',
@@ -38,11 +40,19 @@ export default function DealerMoreScreen() {
       description: 'Lịch hẹn xem xe & lái thử',
       roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
       badge: '3',
-      badgeColor: '#ef4444',
+      badgeColor: '#f59e0b',
+    },
+    {
+      id: 'test-drives',
+      title: 'Lái thử',
+      icon: 'car-outline',
+      route: '/(dealer)/test-drive',
+      description: 'Quản lý lịch lái thử xe',
+      roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
     },
     {
       id: 'promotions',
-      title: 'Mã khuyến mãi',
+      title: 'Khuyến mãi',
       icon: 'pricetag-outline',
       route: '/(dealer)/promotion',
       description: 'Chương trình ưu đãi hiện có',
@@ -50,12 +60,15 @@ export default function DealerMoreScreen() {
     },
     {
       id: 'inventory',
-      title: 'Quản lý kho',
+      title: 'Tồn kho',
       icon: 'cube-outline',
       route: '/(dealer)/inventory',
-      description: 'Tồn kho xe tại đại lý',
+      description: 'Quản lý tồn kho xe tại đại lý',
       roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
     },
+  ];
+
+  const managementMenuItems: MenuItem[] = [
     {
       id: 'reports',
       title: 'Báo cáo',
@@ -64,11 +77,15 @@ export default function DealerMoreScreen() {
       description: 'Thống kê và báo cáo doanh số',
       roles: ['DEALER_MANAGER'],
     },
+    {
+      id: 'quotations',
+      title: 'Báo giá',
+      icon: 'calculator-outline',
+      route: '/(dealer)/quotations',
+      description: 'Tạo và quản lý báo giá',
+      roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
+    },
   ];
-
-  const filteredItems = menuItems.filter(item => 
-    item.roles.includes(userRole)
-  );
 
   const handlePress = (route: string) => {
     router.push(route as any);
@@ -144,7 +161,9 @@ export default function DealerMoreScreen() {
       {/* Business Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>NGHIỆP VỤ</Text>
-        {filteredItems.map((item) => (
+        {businessMenuItems
+          .filter(item => item.roles.includes(userRole))
+          .map((item) => (
           <TouchableOpacity
             key={item.id}
             style={styles.menuItem}
@@ -174,6 +193,42 @@ export default function DealerMoreScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Management Section - chỉ hiện cho Manager */}
+      {isManager && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>QUẢN LÝ</Text>
+          {managementMenuItems.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.menuItem}
+              onPress={() => handlePress(item.route)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuIconContainer}>
+                <Ionicons name={item.icon} size={24} color="#10b981" />
+              </View>
+              
+              <View style={styles.menuContent}>
+                <View style={styles.menuTitleRow}>
+                  <Text style={styles.menuTitle}>{item.title}</Text>
+                  {item.badge && (
+                    <View style={[
+                      styles.badge, 
+                      { backgroundColor: item.badgeColor || '#10b981' }
+                    ]}>
+                      <Text style={styles.badgeText}>{item.badge}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.menuDescription}>{item.description}</Text>
+              </View>
+              
+              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Support Section */}
       <View style={styles.section}>

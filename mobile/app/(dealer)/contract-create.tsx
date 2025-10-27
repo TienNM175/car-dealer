@@ -15,6 +15,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { contractApi, CreateContractInput } from "@/lib/api/contractApi";
 import { vehicleApi, Vehicle } from "@/lib/api/vehicleApi";
 import { customerApi } from "@/lib/api/customerApi";
+import {
+  globalStyles,
+  colors,
+  typography,
+  spacing,
+  borderRadius,
+  shadows,
+} from "@/styles/globalStyles";
 
 export default function ContractCreatePage() {
   const router = useRouter();
@@ -168,10 +176,11 @@ export default function ContractCreatePage() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={globalStyles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
         {/* Customer Info Section */}
         <View style={styles.section}>
@@ -181,12 +190,13 @@ export default function ContractCreatePage() {
             <View style={styles.halfWidth}>
               <Text style={styles.label}>Họ *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.firstName && styles.inputError]}
                 value={customerInfo.firstName}
                 onChangeText={(text) =>
                   setCustomerInfo((prev) => ({ ...prev, firstName: text }))
                 }
                 placeholder="Nhập họ"
+                placeholderTextColor={colors.gray400}
               />
               {errors.firstName && (
                 <Text style={styles.error}>{errors.firstName}</Text>
@@ -196,12 +206,13 @@ export default function ContractCreatePage() {
             <View style={styles.halfWidth}>
               <Text style={styles.label}>Tên *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.lastName && styles.inputError]}
                 value={customerInfo.lastName}
                 onChangeText={(text) =>
                   setCustomerInfo((prev) => ({ ...prev, lastName: text }))
                 }
                 placeholder="Nhập tên"
+                placeholderTextColor={colors.gray400}
               />
               {errors.lastName && (
                 <Text style={styles.error}>{errors.lastName}</Text>
@@ -211,37 +222,46 @@ export default function ContractCreatePage() {
 
           <Text style={styles.label}>Email *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.email && styles.inputError]}
             value={customerInfo.email}
             onChangeText={(text) =>
               setCustomerInfo((prev) => ({ ...prev, email: text }))
             }
             placeholder="example@email.com"
+            placeholderTextColor={colors.gray400}
             keyboardType="email-address"
+            autoCapitalize="none"
           />
           {errors.email && <Text style={styles.error}>{errors.email}</Text>}
 
           <Text style={styles.label}>Số điện thoại *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.phone && styles.inputError]}
             value={customerInfo.phone}
             onChangeText={(text) =>
               setCustomerInfo((prev) => ({ ...prev, phone: text }))
             }
             placeholder="0123456789"
+            placeholderTextColor={colors.gray400}
             keyboardType="phone-pad"
           />
           {errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
 
           <Text style={styles.label}>Địa chỉ *</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              styles.textArea,
+              errors.address && styles.inputError,
+            ]}
             value={customerInfo.address}
             onChangeText={(text) =>
               setCustomerInfo((prev) => ({ ...prev, address: text }))
             }
             placeholder="Nhập địa chỉ"
+            placeholderTextColor={colors.gray400}
             multiline
+            numberOfLines={3}
           />
           {errors.address && <Text style={styles.error}>{errors.address}</Text>}
         </View>
@@ -251,7 +271,7 @@ export default function ContractCreatePage() {
           <Text style={styles.sectionTitle}>Thông tin xe</Text>
 
           <TouchableOpacity
-            style={styles.selectButton}
+            style={[styles.selectButton, errors.vehicleId && styles.inputError]}
             onPress={() => setShowVehicleModal(true)}
           >
             <Text
@@ -271,13 +291,31 @@ export default function ContractCreatePage() {
           )}
 
           {selectedVehicle && (
-            <View style={styles.vehicleInfo}>
-              <Text style={styles.vehicleInfoText}>
-                Năm: {selectedVehicle.year}
-              </Text>
-              <Text style={styles.vehicleInfoText}>
-                Giá: {formatPrice(Number(selectedVehicle.retailPrice))}
-              </Text>
+            <View style={styles.vehicleInfoCard}>
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Năm:</Text>
+                <Text style={styles.vehicleInfoValue}>
+                  {selectedVehicle.year}
+                </Text>
+              </View>
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Giá:</Text>
+                <Text style={styles.vehicleInfoValue}>
+                  {formatPrice(Number(selectedVehicle.retailPrice))}
+                </Text>
+              </View>
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Pin:</Text>
+                <Text style={styles.vehicleInfoValue}>
+                  {selectedVehicle.batteryCapacity}kWh
+                </Text>
+              </View>
+              <View style={styles.vehicleInfoRow}>
+                <Text style={styles.vehicleInfoLabel}>Tầm hoạt động:</Text>
+                <Text style={styles.vehicleInfoValue}>
+                  {selectedVehicle.range}km
+                </Text>
+              </View>
             </View>
           )}
         </View>
@@ -362,7 +400,7 @@ export default function ContractCreatePage() {
                 ))}
               </View>
 
-              <View style={styles.summaryBox}>
+              <View style={styles.installmentSummaryCard}>
                 <Text style={styles.summaryTitle}>Tóm tắt trả góp</Text>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Trả trước (10%):</Text>
@@ -397,13 +435,14 @@ export default function ContractCreatePage() {
               setFormData((prev) => ({ ...prev, notes: text }))
             }
             placeholder="Nhập ghi chú..."
+            placeholderTextColor={colors.gray400}
             multiline
             numberOfLines={4}
           />
         </View>
 
         {/* Summary */}
-        <View style={styles.summaryBox}>
+        <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>Tóm tắt hợp đồng</Text>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Giá xe:</Text>
@@ -432,7 +471,7 @@ export default function ContractCreatePage() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.submitButtonText}>Tạo hợp đồng</Text>
           )}
@@ -446,27 +485,33 @@ export default function ContractCreatePage() {
         transparent
         onRequestClose={() => setShowVehicleModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Chọn xe</Text>
+        <View style={globalStyles.modalOverlay}>
+          <View style={globalStyles.modalContent}>
+            <View style={globalStyles.modalHeader}>
+              <Text style={globalStyles.modalTitle}>Chọn xe</Text>
               <TouchableOpacity onPress={() => setShowVehicleModal(false)}>
                 <Text style={styles.closeButton}>✕</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView>
+            <ScrollView style={styles.modalScroll}>
               {vehicles.map((vehicle) => (
                 <TouchableOpacity
                   key={vehicle.id}
                   style={styles.vehicleOption}
                   onPress={() => handleSelectVehicle(vehicle)}
                 >
-                  <Text style={styles.vehicleOptionName}>
-                    {vehicle.manufacturer.name} {vehicle.model}
-                  </Text>
-                  <Text style={styles.vehicleOptionPrice}>
-                    {formatPrice(Number(vehicle.retailPrice))}
-                  </Text>
+                  <View style={styles.vehicleOptionContent}>
+                    <Text style={styles.vehicleOptionName}>
+                      {vehicle.manufacturer.name} {vehicle.model}
+                    </Text>
+                    <Text style={styles.vehicleOptionDetails}>
+                      {vehicle.year} • {vehicle.batteryCapacity}kWh •{" "}
+                      {vehicle.range}km
+                    </Text>
+                    <Text style={styles.vehicleOptionPrice}>
+                      {formatPrice(Number(vehicle.retailPrice))}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -478,241 +523,284 @@ export default function ContractCreatePage() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
+  // Container
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
   },
+
+  // Section
   section: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
+    backgroundColor: colors.white,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.lg,
+    ...shadows.md,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1f2937",
-    marginBottom: 16,
+    ...typography.h4,
+    color: colors.gray800,
+    marginBottom: spacing.lg,
   },
+
+  // Row Layout
   row: {
     flexDirection: "row",
-    gap: 12,
+    gap: spacing.md,
   },
   halfWidth: {
     flex: 1,
   },
+
+  // Label
   label: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#374151",
-    marginBottom: 8,
+    ...typography.bodySmall,
+    fontWeight: "600",
+    color: colors.gray700,
+    marginBottom: spacing.xs,
   },
+
+  // Input
   input: {
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    color: "#1f2937",
-    backgroundColor: "#fff",
+    borderColor: colors.gray300,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    ...typography.body,
+    color: colors.gray800,
+  },
+  inputError: {
+    borderColor: colors.danger,
   },
   textArea: {
     minHeight: 100,
     textAlignVertical: "top",
   },
+
+  // Error Text
   error: {
-    color: "#ef4444",
-    fontSize: 12,
-    marginTop: 4,
+    ...typography.caption,
+    color: colors.danger,
+    marginTop: spacing.xs,
   },
+
+  // Select Button
   selectButton: {
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: "#fff",
+    borderColor: colors.gray300,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
   },
   selectButtonText: {
-    fontSize: 14,
-    color: "#1f2937",
+    ...typography.body,
+    color: colors.gray800,
     fontWeight: "500",
   },
   selectButtonPlaceholder: {
-    fontSize: 14,
-    color: "#9ca3af",
+    ...typography.body,
+    color: colors.gray400,
   },
-  vehicleInfo: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: "#f9fafb",
-    borderRadius: 8,
+
+  // Vehicle Info Card
+  vehicleInfoCard: {
+    backgroundColor: colors.gray50,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.gray200,
   },
-  vehicleInfoText: {
-    fontSize: 13,
-    color: "#6b7280",
-    marginBottom: 4,
+  vehicleInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.xs,
   },
+  vehicleInfoLabel: {
+    ...typography.bodySmall,
+    color: colors.gray600,
+  },
+  vehicleInfoValue: {
+    ...typography.bodySmall,
+    fontWeight: "500",
+    color: colors.gray800,
+  },
+
+  // Payment Options
   paymentRow: {
     flexDirection: "row",
-    gap: 12,
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
   paymentOption: {
     flex: 1,
-    padding: 12,
-    borderRadius: 8,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    backgroundColor: "#fff",
+    borderColor: colors.gray300,
+    backgroundColor: colors.white,
     alignItems: "center",
   },
   paymentOptionActive: {
-    backgroundColor: "#2563eb",
-    borderColor: "#2563eb",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   paymentOptionText: {
-    fontSize: 14,
-    color: "#6b7280",
+    ...typography.body,
+    color: colors.gray600,
     fontWeight: "500",
   },
   paymentOptionTextActive: {
-    color: "#fff",
+    color: colors.white,
   },
+
+  // Installment Options
   installmentRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   installmentOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    backgroundColor: "#fff",
+    borderColor: colors.gray300,
+    backgroundColor: colors.white,
+    alignItems: "center",
   },
   installmentOptionActive: {
-    backgroundColor: "#2563eb",
-    borderColor: "#2563eb",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   installmentOptionText: {
-    fontSize: 13,
-    color: "#6b7280",
+    ...typography.bodySmall,
+    color: colors.gray600,
     fontWeight: "500",
   },
   installmentOptionTextActive: {
-    color: "#fff",
+    color: colors.white,
   },
-  summaryBox: {
-    marginTop: 12,
-    padding: 16,
-    backgroundColor: "#f9fafb",
-    borderRadius: 8,
+
+  // Summary Cards
+  installmentSummaryCard: {
+    backgroundColor: colors.gray50,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+  summaryCard: {
+    backgroundColor: colors.gray50,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    marginBottom: spacing.lg,
   },
   summaryTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 12,
+    ...typography.h4,
+    color: colors.gray700,
+    marginBottom: spacing.md,
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: "center",
+    marginBottom: spacing.sm,
   },
   summaryLabel: {
-    fontSize: 13,
-    color: "#6b7280",
+    ...typography.bodySmall,
+    color: colors.gray600,
   },
   summaryValue: {
-    fontSize: 13,
+    ...typography.bodySmall,
     fontWeight: "500",
-    color: "#1f2937",
+    color: colors.gray800,
   },
   summaryTotal: {
-    fontSize: 16,
+    ...typography.h4,
     fontWeight: "bold",
-    color: "#10b981",
+    color: colors.success,
   },
   discountText: {
-    color: "#ef4444",
+    color: colors.danger,
   },
   totalRow: {
     borderTopWidth: 1,
-    borderTopColor: "#d1d5db",
-    paddingTop: 8,
-    marginTop: 8,
+    borderTopColor: colors.gray300,
+    paddingTop: spacing.sm,
+    marginTop: spacing.sm,
   },
   totalLabel: {
-    fontSize: 15,
+    ...typography.body,
     fontWeight: "600",
-    color: "#1f2937",
+    color: colors.gray800,
   },
   totalValue: {
-    fontSize: 18,
+    ...typography.h3,
     fontWeight: "bold",
-    color: "#10b981",
+    color: colors.success,
   },
+
+  // Submit Button
   submitButton: {
-    backgroundColor: "#2563eb",
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.md,
     alignItems: "center",
-    marginTop: 16,
+    marginTop: spacing.lg,
+    ...shadows.md,
   },
   submitButtonText: {
-    color: "#fff",
-    fontSize: 16,
+    ...typography.h4,
     fontWeight: "600",
+    color: colors.white,
   },
-  modalOverlay: {
+
+  // Modal Styles
+  modalScroll: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "80%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1f2937",
-  },
-  closeButton: {
-    fontSize: 24,
-    color: "#6b7280",
   },
   vehicleOption: {
-    padding: 16,
+    padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
+    borderBottomColor: colors.gray200,
+  },
+  vehicleOptionContent: {
+    flex: 1,
   },
   vehicleOptionName: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#1f2937",
-    marginBottom: 4,
+    ...typography.body,
+    fontWeight: "600",
+    color: colors.gray800,
+    marginBottom: spacing.xs,
+  },
+  vehicleOptionDetails: {
+    ...typography.bodySmall,
+    color: colors.gray500,
+    marginBottom: spacing.xs,
   },
   vehicleOptionPrice: {
-    fontSize: 13,
-    color: "#10b981",
+    ...typography.body,
     fontWeight: "600",
+    color: colors.success,
+  },
+
+  // Close Button
+  closeButton: {
+    fontSize: 24,
+    color: colors.gray500,
+    fontWeight: "bold",
   },
 });
