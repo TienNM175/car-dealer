@@ -69,9 +69,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Navigate based on role
       if (user.role === 'ADMIN' || user.role?.startsWith('EVM')) {
-        router.replace('/(evm)/dashboard');
+        router.replace('/(evm)/products');
       } else {
-        router.replace('/(dealer)/dashboard');
+        router.replace('/(dealer)/vehicles');
       }
     } catch (error) {
       console.error('Login failed:', error);
