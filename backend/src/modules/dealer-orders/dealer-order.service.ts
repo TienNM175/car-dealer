@@ -1,5 +1,5 @@
-import prisma from '../../config/database';
-import { Prisma, DealerOrderStatus } from '@prisma/client';
+import prisma from "../../config/database";
+import { Prisma, DealerOrderStatus } from "@prisma/client";
 
 interface DealerOrderFilters {
   search?: string;
@@ -14,7 +14,7 @@ interface PaginationParams {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 interface CreateDealerOrderInput {
@@ -36,8 +36,8 @@ export class DealerOrderService {
    */
   private async generateOrderNumber(): Promise<string> {
     const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, '0');
-    
+    const month = String(new Date().getMonth() + 1).padStart(2, "0");
+
     const lastOrder = await prisma.dealerOrder.findFirst({
       where: {
         orderNumber: {
@@ -45,17 +45,19 @@ export class DealerOrderService {
         },
       },
       orderBy: {
-        orderNumber: 'desc',
+        orderNumber: "desc",
       },
     });
 
     let nextNumber = 1;
     if (lastOrder) {
-      const lastNumber = parseInt(lastOrder.orderNumber.split('-').pop() || '0');
+      const lastNumber = parseInt(
+        lastOrder.orderNumber.split("-").pop() || "0"
+      );
       nextNumber = lastNumber + 1;
     }
 
-    return `DO-${year}${month}-${String(nextNumber).padStart(4, '0')}`;
+    return `DO-${year}${month}-${String(nextNumber).padStart(4, "0")}`;
   }
 
   /**
@@ -70,15 +72,19 @@ export class DealerOrderService {
     const page = pagination.page || 1;
     const limit = pagination.limit || 10;
     const skip = (page - 1) * limit;
-    const sortBy = pagination.sortBy || 'createdAt';
-    const sortOrder = pagination.sortOrder || 'desc';
+    const sortBy = pagination.sortBy || "createdAt";
+    const sortOrder = pagination.sortOrder || "desc";
 
     const where: Prisma.DealerOrderWhereInput = {
       ...(filters.search && {
         OR: [
-          { orderNumber: { contains: filters.search, mode: 'insensitive' } },
-          { dealer: { name: { contains: filters.search, mode: 'insensitive' } } },
-          { dealer: { code: { contains: filters.search, mode: 'insensitive' } } },
+          { orderNumber: { contains: filters.search, mode: "insensitive" } },
+          {
+            dealer: { name: { contains: filters.search, mode: "insensitive" } },
+          },
+          {
+            dealer: { code: { contains: filters.search, mode: "insensitive" } },
+          },
         ],
       }),
       ...(filters.dealerId && { dealerId: filters.dealerId }),
@@ -87,7 +93,7 @@ export class DealerOrderService {
       ...(filters.fromDate && { orderedAt: { gte: filters.fromDate } }),
       ...(filters.toDate && { orderedAt: { lte: filters.toDate } }),
       // Dealer staff can only see their dealer's orders
-      ...(userRole === 'DEALER_MANAGER' || userRole === 'DEALER_STAFF'
+      ...(userRole === "DEALER_MANAGER" || userRole === "DEALER_STAFF"
         ? { dealerId: userDealerId }
         : {}),
     };
@@ -180,7 +186,7 @@ export class DealerOrderService {
     });
 
     if (!order) {
-      throw new Error('Dealer order not found');
+      throw new Error("Dealer order not found");
     }
 
     return order;
@@ -196,11 +202,11 @@ export class DealerOrderService {
     });
 
     if (!dealer) {
-      throw new Error('Dealer not found');
+      throw new Error("Dealer not found");
     }
 
     if (!dealer.isActive) {
-      throw new Error('Cannot create order for inactive dealer');
+      throw new Error("Cannot create order for inactive dealer");
     }
 
     // Verify vehicle exists
@@ -212,17 +218,17 @@ export class DealerOrderService {
     });
 
     if (!vehicle) {
-      throw new Error('Vehicle not found');
+      throw new Error("Vehicle not found");
     }
 
-    if (vehicle.status !== 'ACTIVE') {
-      throw new Error('Vehicle is not available for order');
+    if (vehicle.status !== "ACTIVE") {
+      throw new Error("Vehicle is not available for order");
     }
 
     // Check EVM inventory
-    const evmInventory = vehicle.evmInventories[0];
+    const evmInventory = vehicle.evmInventories;
     if (!evmInventory) {
-      throw new Error('No EVM inventory found for this vehicle');
+      throw new Error("No EVM inventory found for this vehicle");
     }
 
     if (evmInventory.available < data.quantity) {
@@ -233,7 +239,7 @@ export class DealerOrderService {
 
     // Validate quantity
     if (data.quantity < 1) {
-      throw new Error('Order quantity must be at least 1');
+      throw new Error("Order quantity must be at least 1");
     }
 
     // Get wholesale price
@@ -255,7 +261,7 @@ export class DealerOrderService {
           quantity: data.quantity,
           unitPrice,
           totalAmount,
-          status: 'PENDING',
+          status: "PENDING",
           orderedAt: new Date(),
           notes: data.notes,
         },
@@ -307,21 +313,21 @@ export class DealerOrderService {
     });
 
     if (!existingOrder) {
-      throw new Error('Dealer order not found');
+      throw new Error("Dealer order not found");
     }
 
     // Can only update PENDING orders
-    if (existingOrder.status !== 'PENDING') {
-      throw new Error('Can only update pending orders');
+    if (existingOrder.status !== "PENDING") {
+      throw new Error("Can only update pending orders");
     }
 
     // If quantity changed, update inventory reservation
     if (data.quantity && data.quantity !== existingOrder.quantity) {
       const quantityDiff = data.quantity - existingOrder.quantity;
-      const evmInventory = existingOrder.vehicle.evmInventories[0];
+      const evmInventory = existingOrder.vehicle.evmInventories;
 
       if (!evmInventory) {
-        throw new Error('No EVM inventory found');
+        throw new Error("No EVM inventory found");
       }
 
       // Check if enough inventory for increase
@@ -403,7 +409,11 @@ export class DealerOrderService {
   /**
    * Update dealer order status
    */
-  async updateDealerOrderStatus(id: string, status: DealerOrderStatus, _userId: string) {
+  async updateDealerOrderStatus(
+    id: string,
+    status: DealerOrderStatus,
+    _userId: string
+  ) {
     const order = await prisma.dealerOrder.findUnique({
       where: { id },
       include: {
@@ -413,15 +423,15 @@ export class DealerOrderService {
     });
 
     if (!order) {
-      throw new Error('Dealer order not found');
+      throw new Error("Dealer order not found");
     }
 
     // Validate status transitions
     const validTransitions: Record<DealerOrderStatus, DealerOrderStatus[]> = {
-      PENDING: ['CONFIRMED', 'CANCELLED'],
-      CONFIRMED: ['PROCESSING', 'CANCELLED'],
-      PROCESSING: ['SHIPPED', 'CANCELLED'],
-      SHIPPED: ['DELIVERED'],
+      PENDING: ["CONFIRMED", "CANCELLED"],
+      CONFIRMED: ["PROCESSING", "CANCELLED"],
+      PROCESSING: ["SHIPPED", "CANCELLED"],
+      SHIPPED: ["DELIVERED"],
       DELIVERED: [],
       CANCELLED: [],
     };
@@ -435,9 +445,9 @@ export class DealerOrderService {
         where: { id },
         data: {
           status,
-          ...(status === 'CONFIRMED' && { confirmedAt: new Date() }),
-          ...(status === 'SHIPPED' && { shippedAt: new Date() }),
-          ...(status === 'DELIVERED' && { deliveredAt: new Date() }),
+          ...(status === "CONFIRMED" && { confirmedAt: new Date() }),
+          ...(status === "SHIPPED" && { shippedAt: new Date() }),
+          ...(status === "DELIVERED" && { deliveredAt: new Date() }),
         },
         include: {
           dealer: true,
@@ -457,7 +467,7 @@ export class DealerOrderService {
       });
 
       // If delivered, update inventories
-      if (status === 'DELIVERED') {
+      if (status === "DELIVERED") {
         // Reduce EVM inventory reserved
         await tx.eVMInventory.update({
           where: { vehicleId: order.vehicleId },
@@ -499,14 +509,14 @@ export class DealerOrderService {
               reserved: 0,
               sold: 0,
               available: order.quantity,
-              location: 'Warehouse',
+              location: "Warehouse",
             },
           });
         }
       }
 
       // If cancelled, release EVM inventory
-      if (status === 'CANCELLED' && order.status !== 'DELIVERED') {
+      if (status === "CANCELLED" && order.status !== "DELIVERED") {
         await tx.eVMInventory.update({
           where: { vehicleId: order.vehicleId },
           data: {
@@ -531,27 +541,31 @@ export class DealerOrderService {
     });
 
     if (!order) {
-      throw new Error('Dealer order not found');
+      throw new Error("Dealer order not found");
     }
 
     // Cannot cancel delivered orders
-    if (order.status === 'DELIVERED') {
-      throw new Error('Cannot cancel delivered orders');
+    if (order.status === "DELIVERED") {
+      throw new Error("Cannot cancel delivered orders");
     }
 
     // Already cancelled
-    if (order.status === 'CANCELLED') {
-      throw new Error('Order is already cancelled');
+    if (order.status === "CANCELLED") {
+      throw new Error("Order is already cancelled");
     }
 
-    const cancelledOrder = await this.updateDealerOrderStatus(id, 'CANCELLED', '');
+    const cancelledOrder = await this.updateDealerOrderStatus(
+      id,
+      "CANCELLED",
+      ""
+    );
 
     // Update notes with cancellation reason
     if (reason) {
       await prisma.dealerOrder.update({
         where: { id },
         data: {
-          notes: `${order.notes || ''}\nCancelled: ${reason}`,
+          notes: `${order.notes || ""}\nCancelled: ${reason}`,
         },
       });
     }
@@ -589,7 +603,7 @@ export class DealerOrderService {
 
     // By status
     const byStatus = await prisma.dealerOrder.groupBy({
-      by: ['status'],
+      by: ["status"],
       where,
       _count: true,
       _sum: {
@@ -600,7 +614,7 @@ export class DealerOrderService {
 
     // By dealer
     const byDealer = await prisma.dealerOrder.groupBy({
-      by: ['dealerId'],
+      by: ["dealerId"],
       where,
       _count: true,
       _sum: {
@@ -656,7 +670,7 @@ export class DealerOrderService {
     };
 
     const byStatus = await prisma.dealerOrder.groupBy({
-      by: ['status'],
+      by: ["status"],
       where,
       _count: true,
     });

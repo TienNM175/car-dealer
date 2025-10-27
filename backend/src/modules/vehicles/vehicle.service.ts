@@ -81,9 +81,22 @@ export class VehicleService {
             available: true,
           },
         },
+        dealerInventories: {
+          select: {
+            quantity: true,
+            reserved: true,
+            available: true,
+            dealer: {
+              select: {
+                name: true,
+                city: true,
+              },
+            },
+          },
+        },
         _count: {
           select: {
-            evmInventories: true,
+            // evmInventories: true, // Removed - not a count relation (1-1 relation)
             dealerInventories: true,
             dealerOrders: true,
             quotations: true,
@@ -117,8 +130,13 @@ export class VehicleService {
     const sortOrder = pagination.sortOrder || "desc";
 
     const where: Prisma.VehicleWhereInput = {
-      // For dealer: show all active vehicles (same as getAllVehicles)
-      // TODO: Add inventory filtering when inventory system is properly implemented
+      // For dealer: only show vehicles that have inventory at this dealer
+      dealerInventories: {
+        some: {
+          dealerId: dealerId,
+          quantity: { gt: 0 }, // Only vehicles with stock > 0
+        },
+      },
       ...(filters.search && {
         OR: [
           { model: { contains: filters.search, mode: "insensitive" } },
@@ -159,6 +177,13 @@ export class VehicleService {
           where: { isMain: true },
           take: 1,
         },
+        evmInventories: {
+          select: {
+            quantity: true,
+            reserved: true,
+            available: true,
+          },
+        },
         dealerInventories: {
           where: { dealerId },
           select: {
@@ -169,7 +194,7 @@ export class VehicleService {
         },
         _count: {
           select: {
-            evmInventories: true,
+            // evmInventories: true, // Removed - not a count relation (1-1 relation)
             dealerInventories: true,
             dealerOrders: true,
             quotations: true,
@@ -236,9 +261,9 @@ export class VehicleService {
       await tx.eVMInventory.create({
         data: {
           vehicleId: newVehicle.id,
-          quantity: 0,
+          quantity: 10, // Default stock for new vehicles
           reserved: 0,
-          available: 0,
+          available: 10, // Same as quantity initially
           location: "EVM Warehouse",
         },
       });
@@ -267,7 +292,7 @@ export class VehicleService {
     const activeContracts = await prisma.contract.count({
       where: {
         vehicleId: id,
-        status: { in: ["PENDING", "SIGNED", "DELIVERING"] },
+        status: { in: ["PENDING", "SIGNED"] },
       },
     });
 

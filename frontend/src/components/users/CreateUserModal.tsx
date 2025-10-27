@@ -5,7 +5,7 @@ import {
   X, AlertCircle, UserPlus, Mail, Lock, User, Phone, Shield, Building2, ChevronDown, Info 
 } from 'lucide-react';
 import { usersApi } from '@/lib/api/users';
-import { dealersApi } from '@/lib/api/dealers';
+import { dealersApi } from '@/lib/api/dealer';
 import { CreateUserData, UserRole } from '@/lib/types/user';
 import { useAuth } from '@/contexts/AuthContext';
 

@@ -27,9 +27,7 @@ export default function EVMContractsPage() {
   const [statistics, setStatistics] = useState<any>(null);
 
   // Modal states
-  const [showForm, setShowForm] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);
 
   const fetchContracts = async () => {
@@ -94,10 +92,7 @@ export default function EVMContractsPage() {
     setShowDetailModal(true);
   };
 
-  const handleEdit = (contract: Contract) => {
-    setEditingContract(contract);
-    setShowForm(true);
-  };
+  // EVM/ADMIN cannot edit contracts - only view and delete
 
   const handleDelete = async (contract: Contract) => {
     if (!confirm(`Bạn có chắc muốn xóa hợp đồng ${contract.contractCode}?`)) {
@@ -119,31 +114,7 @@ export default function EVMContractsPage() {
     }
   };
 
-  const handleCreate = () => {
-    setEditingContract(null);
-    setShowForm(true);
-  };
-
-  const handleSave = async (
-    data: CreateContractInput | UpdateContractInput
-  ) => {
-    try {
-      if (editingContract) {
-        await contractApi.updateContract(editingContract.id, data);
-      } else {
-        await contractApi.createContract(data as CreateContractInput);
-      }
-      setShowForm(false);
-      setEditingContract(null);
-      fetchContracts();
-      fetchStatistics();
-    } catch (err: any) {
-      console.error("Error saving contract:", err);
-      const errorMessage =
-        err?.response?.data?.message || "Có lỗi xảy ra khi lưu hợp đồng";
-      alert(errorMessage);
-    }
-  };
+  // EVM/ADMIN cannot create contracts
 
   const handleStatusChange = async (
     contractId: string,
@@ -217,9 +188,9 @@ export default function EVMContractsPage() {
           setFilterStatus(value);
           setPage(1);
         }}
-        onCreateClick={handleCreate}
+        // onCreateClick not provided - EVM/ADMIN cannot create contracts
         onViewClick={handleView}
-        onEditClick={handleEdit}
+        // onEditClick not provided - EVM/ADMIN cannot edit contracts
         onDeleteClick={handleDelete}
         onExportClick={handleExport}
         userRole={userRole || "EVM_STAFF"}
@@ -233,20 +204,7 @@ export default function EVMContractsPage() {
         statistics={statistics}
       />
 
-      {/* Contract Form Modal */}
-      {showForm && (
-        <ContractForm
-          isOpen={showForm}
-          onClose={() => {
-            setShowForm(false);
-            setEditingContract(null);
-          }}
-          onSuccess={handleSave}
-          contract={editingContract}
-          dealerId={editingContract?.staff?.dealerId} // For editing existing contract
-          userId={(user as any)?.userId} // Pass userId as staffId
-        />
-      )}
+      {/* EVM/ADMIN cannot create contracts, only view */}
 
       {/* Contract Detail Modal */}
       {showDetailModal && (
@@ -258,7 +216,7 @@ export default function EVMContractsPage() {
           }}
           contract={viewingContract}
           onStatusChange={handleStatusChange}
-          onEditClick={handleEdit}
+          onEditClick={undefined} // EVM/ADMIN cannot edit contracts
           userRole={userRole || "EVM_STAFF"}
         />
       )}

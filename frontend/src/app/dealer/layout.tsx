@@ -24,7 +24,7 @@ export default function DealerLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeMenu, setActiveMenu] = useState("dashboard");
+  const [activeMenu, setActiveMenu] = useState("vehicles");
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
@@ -32,12 +32,6 @@ export default function DealerLayout({
   const userRole = user?.role?.toUpperCase() || "DEALER_STAFF";
 
   const dealerMenuItems = [
-    {
-      id: "dashboard",
-      icon: TrendingUp,
-      label: "Tổng quan",
-      role: ["DEALER_STAFF", "DEALER_MANAGER"],
-    },
     {
       id: "vehicles",
       icon: Car,
@@ -67,6 +61,12 @@ export default function DealerLayout({
       icon: Percent,
       label: "Mã khuyến mãi",
       role: ["DEALER_STAFF", "DEALER_MANAGER"],
+    },
+    {
+      id: "inventory",
+      icon: FileText,
+      label: "Quản lý kho",
+      role: ["DEALER_MANAGER", "DEALER_STAFF"],
     },
     {
       id: "reports",

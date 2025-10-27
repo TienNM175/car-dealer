@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
-import { QuotationsService } from './quotations.service';
-import { ResponseUtil } from '../../utils/response.util';
-import { QuotationStatus, Prisma } from '@prisma/client';
+import { Request, Response, NextFunction } from "express";
+import { QuotationCreatePayload, QuotationsService } from "./quotations.service";
+import { ResponseUtil } from "../../utils/response.util";
+import { QuotationStatus, Prisma } from "@prisma/client";
 
 const quotationsService = new QuotationsService();
 
@@ -28,7 +28,7 @@ export class QuotationsController {
         page: req.query.page ? Number(req.query.page) : 1,
         limit: req.query.limit ? Number(req.query.limit) : 10,
         sortBy: req.query.sortBy as string,
-        sortOrder: req.query.sortOrder as 'asc' | 'desc',
+        sortOrder: req.query.sortOrder as "asc" | "desc",
       };
 
       const result = await quotationsService.getAll(
@@ -42,7 +42,7 @@ export class QuotationsController {
       return ResponseUtil.success(
         res,
         result.data,
-        'Quotations retrieved successfully',
+        "Quotations retrieved successfully",
         200,
         result.meta
       );
@@ -63,12 +63,16 @@ export class QuotationsController {
         req.user?.role,
         req.user?.dealerId
       );
-      return ResponseUtil.success(res, quotation, 'Quotation retrieved successfully');
+      return ResponseUtil.success(
+        res,
+        quotation,
+        "Quotation retrieved successfully"
+      );
     } catch (error: any) {
-      if (error.message.includes('not found')) {
+      if (error.message.includes("not found")) {
         return ResponseUtil.notFound(res, error.message);
       }
-      if (error.message.includes('Access denied')) {
+      if (error.message.includes("Access denied")) {
         return ResponseUtil.forbidden(res, error.message);
       }
       return next(error);
@@ -82,9 +86,13 @@ export class QuotationsController {
     try {
       const { quoteNumber } = req.params;
       const quotation = await quotationsService.getByQuoteNumber(quoteNumber);
-      return ResponseUtil.success(res, quotation, 'Quotation retrieved successfully');
+      return ResponseUtil.success(
+        res,
+        quotation,
+        "Quotation retrieved successfully"
+      );
     } catch (error: any) {
-      if (error.message.includes('not found')) {
+      if (error.message.includes("not found")) {
         return ResponseUtil.notFound(res, error.message);
       }
       return next(error);
@@ -102,11 +110,14 @@ export class QuotationsController {
         limit: req.query.limit ? Number(req.query.limit) : 10,
       };
 
-      const result = await quotationsService.getByCustomerId(customerId, pagination);
+      const result = await quotationsService.getByCustomerId(
+        customerId,
+        pagination
+      );
       return ResponseUtil.success(
         res,
         result.data,
-        'Customer quotations retrieved successfully',
+        "Customer quotations retrieved successfully",
         200,
         result.meta
       );
@@ -122,31 +133,37 @@ export class QuotationsController {
     try {
       const staffId = req.user?.userId;
       if (!staffId) {
-        return ResponseUtil.unauthorized(res, 'Authentication required');
+        return ResponseUtil.unauthorized(res, "Authentication required");
       }
 
-      const data: Prisma.QuotationCreateInput = {
-        customer: { connect: { id: req.body.customerId } },
-        vehicle: { connect: { id: req.body.vehicleId } },
+      const data: QuotationCreatePayload = {
+        customerId: req.body.customerId,
+        vehicleId: req.body.vehicleId,
         basePrice: req.body.basePrice,
         discount: req.body.discount || 0,
-        paymentType: req.body.paymentType || 'FULL',
+        paymentType: req.body.paymentType || "FULL",
         installmentMonths: req.body.installmentMonths,
-        ...(req.body.validUntil && { validUntil: new Date(req.body.validUntil) }), // chỉ thêm khi có
-        status: req.body.status || 'DRAFT',
+        ...(req.body.validUntil && {
+          validUntil: new Date(req.body.validUntil),
+        }),
+        status: req.body.status || "DRAFT",
         notes: req.body.notes,
       };
 
       const quotation = await quotationsService.create(data, staffId);
-      return ResponseUtil.created(res, quotation, 'Quotation created successfully');
+      return ResponseUtil.created(
+        res,
+        quotation,
+        "Quotation created successfully"
+      );
     } catch (error: any) {
-      if (error.message.includes('not found')) {
+      if (error.message.includes("not found")) {
         return ResponseUtil.notFound(res, error.message);
       }
-      if (error.message.includes('not available')) {
+      if (error.message.includes("not available")) {
         return ResponseUtil.badRequest(res, error.message);
       }
-      if (error.message.includes('cannot be negative')) {
+      if (error.message.includes("cannot be negative")) {
         return ResponseUtil.badRequest(res, error.message);
       }
       return next(error);
@@ -164,31 +181,45 @@ export class QuotationsController {
       const dealerId = req.user?.dealerId;
 
       if (!userId || !userRole) {
-        return ResponseUtil.unauthorized(res, 'Authentication required');
+        return ResponseUtil.unauthorized(res, "Authentication required");
       }
 
       const data: Prisma.QuotationUpdateInput = {
         ...(req.body.basePrice && { basePrice: req.body.basePrice }),
         ...(req.body.discount !== undefined && { discount: req.body.discount }),
         ...(req.body.paymentType && { paymentType: req.body.paymentType }),
-        ...(req.body.installmentMonths && { installmentMonths: req.body.installmentMonths }),
-        ...(req.body.validUntil && { validUntil: new Date(req.body.validUntil) }),
+        ...(req.body.installmentMonths && {
+          installmentMonths: req.body.installmentMonths,
+        }),
+        ...(req.body.validUntil && {
+          validUntil: new Date(req.body.validUntil),
+        }),
         ...(req.body.notes !== undefined && { notes: req.body.notes }),
       };
 
-      const quotation = await quotationsService.update(id, data, userId, userRole, dealerId);
-      return ResponseUtil.success(res, quotation, 'Quotation updated successfully');
+      const quotation = await quotationsService.update(
+        id,
+        data,
+        userId,
+        userRole,
+        dealerId
+      );
+      return ResponseUtil.success(
+        res,
+        quotation,
+        "Quotation updated successfully"
+      );
     } catch (error: any) {
-      if (error.message.includes('not found')) {
+      if (error.message.includes("not found")) {
         return ResponseUtil.notFound(res, error.message);
       }
-      if (error.message.includes('Access denied')) {
+      if (error.message.includes("Access denied")) {
         return ResponseUtil.forbidden(res, error.message);
       }
-      if (error.message.includes('Cannot update')) {
+      if (error.message.includes("Cannot update")) {
         return ResponseUtil.badRequest(res, error.message);
       }
-      if (error.message.includes('cannot be negative')) {
+      if (error.message.includes("cannot be negative")) {
         return ResponseUtil.badRequest(res, error.message);
       }
       return next(error);
@@ -207,11 +238,11 @@ export class QuotationsController {
       const dealerId = req.user?.dealerId;
 
       if (!userId || !userRole) {
-        return ResponseUtil.unauthorized(res, 'Authentication required');
+        return ResponseUtil.unauthorized(res, "Authentication required");
       }
 
       if (!status) {
-        return ResponseUtil.badRequest(res, 'Status is required');
+        return ResponseUtil.badRequest(res, "Status is required");
       }
 
       const quotation = await quotationsService.updateStatus(
@@ -222,15 +253,19 @@ export class QuotationsController {
         dealerId
       );
 
-      return ResponseUtil.success(res, quotation, `Quotation ${status.toLowerCase()} successfully`);
+      return ResponseUtil.success(
+        res,
+        quotation,
+        `Quotation ${status.toLowerCase()} successfully`
+      );
     } catch (error: any) {
-      if (error.message.includes('not found')) {
+      if (error.message.includes("not found")) {
         return ResponseUtil.notFound(res, error.message);
       }
-      if (error.message.includes('Access denied')) {
+      if (error.message.includes("Access denied")) {
         return ResponseUtil.forbidden(res, error.message);
       }
-      if (error.message.includes('Cannot transition')) {
+      if (error.message.includes("Cannot transition")) {
         return ResponseUtil.badRequest(res, error.message);
       }
       return next(error);
@@ -248,19 +283,24 @@ export class QuotationsController {
       const dealerId = req.user?.dealerId;
 
       if (!userId || !userRole) {
-        return ResponseUtil.unauthorized(res, 'Authentication required');
+        return ResponseUtil.unauthorized(res, "Authentication required");
       }
 
-      const result = await quotationsService.delete(id, userId, userRole, dealerId);
+      const result = await quotationsService.delete(
+        id,
+        userId,
+        userRole,
+        dealerId
+      );
       return ResponseUtil.success(res, result);
     } catch (error: any) {
-      if (error.message.includes('not found')) {
+      if (error.message.includes("not found")) {
         return ResponseUtil.notFound(res, error.message);
       }
-      if (error.message.includes('Access denied')) {
+      if (error.message.includes("Access denied")) {
         return ResponseUtil.forbidden(res, error.message);
       }
-      if (error.message.includes('Can only delete')) {
+      if (error.message.includes("Can only delete")) {
         return ResponseUtil.badRequest(res, error.message);
       }
       return next(error);
@@ -289,12 +329,16 @@ export class QuotationsController {
   async getStatistics(req: Request, res: Response, next: NextFunction) {
     try {
       const dealerId =
-        req.user?.role === 'ADMIN' || req.user?.role === 'EVM_STAFF'
+        req.user?.role === "ADMIN" || req.user?.role === "EVM_STAFF"
           ? undefined
           : req.user?.dealerId;
 
       const stats = await quotationsService.getStatistics(dealerId);
-      return ResponseUtil.success(res, stats, 'Statistics retrieved successfully');
+      return ResponseUtil.success(
+        res,
+        stats,
+        "Statistics retrieved successfully"
+      );
     } catch (error: any) {
       return next(error);
     }

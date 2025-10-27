@@ -1,11 +1,13 @@
-import { Router } from 'express';
-import { InventoryController } from './inventory.controller';
-import { AuthMiddleware } from '../../middlewares/auth.middleware';
-import { RoleMiddleware } from '../../middlewares/role.middleware';
-import { ValidationMiddleware } from '../../middlewares/validation.middleware';
+import { Router } from "express";
+import { InventoryController } from "./inventory.controller";
+import { AuthMiddleware } from "../../middlewares/auth.middleware";
+import { RoleMiddleware } from "../../middlewares/role.middleware";
+import { ValidationMiddleware } from "../../middlewares/validation.middleware";
 import {
   updateEVMInventoryValidation,
-} from './inventory.validation';
+  updateDealerInventoryValidation,
+  transferInventoryValidation,
+} from "./inventory.validation";
 
 const router = Router();
 const inventoryController = new InventoryController();
@@ -20,7 +22,7 @@ const inventoryController = new InventoryController();
  * @access  Private - EVM Staff, Admin
  */
 router.get(
-  '/evm',
+  "/evm",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   inventoryController.getEVMInventory
@@ -32,7 +34,7 @@ router.get(
  * @access  Private - EVM Staff, Admin
  */
 router.get(
-  '/evm/vehicle/:vehicleId',
+  "/evm/vehicle/:vehicleId",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   inventoryController.getEVMInventoryByVehicle
@@ -44,7 +46,7 @@ router.get(
  * @access  Private - EVM Staff, Admin
  */
 router.put(
-  '/evm/:vehicleId',
+  "/evm/:vehicleId",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   updateEVMInventoryValidation,
@@ -62,7 +64,7 @@ router.put(
  * @access  Private - All authenticated users
  */
 router.get(
-  '/dealers',
+  "/dealers",
   AuthMiddleware.authenticate,
   inventoryController.getAllDealerInventories
 );
@@ -73,7 +75,7 @@ router.get(
  * @access  Private - Dealer staff can only view own inventory
  */
 router.get(
-  '/dealers/:dealerId',
+  "/dealers/:dealerId",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireSameDealer,
   inventoryController.getDealerInventory
@@ -85,12 +87,25 @@ router.get(
  * @access  Private - Dealer staff can only view own inventory
  */
 router.get(
-  '/dealers/:dealerId/vehicle/:vehicleId',
+  "/dealers/:dealerId/vehicle/:vehicleId",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireSameDealer,
   inventoryController.getDealerInventoryItem
 );
 
+/**
+ * @route   PUT /api/v1/inventory/dealers/:dealerId/:vehicleId
+ * @desc    Update dealer inventory
+ * @access  Private - Dealer staff can only update own inventory
+ */
+router.put(
+  "/dealers/:dealerId/:vehicleId",
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireSameDealer,
+  updateDealerInventoryValidation,
+  ValidationMiddleware.validate,
+  inventoryController.updateDealerInventory
+);
 
 // ============================================
 // REPORTS & ALERTS
@@ -102,9 +117,9 @@ router.get(
  * @access  Private - Admin, EVM Staff, Dealer Manager
  */
 router.get(
-  '/low-stock',
+  "/low-stock",
   AuthMiddleware.authenticate,
-  RoleMiddleware.requireRole('ADMIN', 'EVM_STAFF', 'DEALER_MANAGER'),
+  RoleMiddleware.requireRole("ADMIN", "EVM_STAFF", "DEALER_MANAGER"),
   inventoryController.getLowStockAlerts
 );
 
@@ -114,10 +129,24 @@ router.get(
  * @access  Private - Admin, EVM Staff
  */
 router.get(
-  '/summary',
+  "/summary",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   inventoryController.getInventorySummary
+);
+
+/**
+ * @route   POST /api/v1/inventory/transfer
+ * @desc    Transfer inventory from EVM to dealer
+ * @access  Private - EVM Staff, Admin
+ */
+router.post(
+  "/transfer",
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireEVMStaff,
+  transferInventoryValidation,
+  ValidationMiddleware.validate,
+  inventoryController.transferInventory
 );
 
 export default router;

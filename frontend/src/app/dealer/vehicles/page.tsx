@@ -36,9 +36,9 @@ export default function VehiclesPage() {
       setLoading(true);
       console.log("Fetching dealer vehicles - Page:", page, "Limit:", limit);
 
-      // Dealer uses same API as Admin/EVM - getAllVehicles
-
-      const res = await vehicleApi.getAllVehicles(
+      // Dealer should use getDealerVehicles API to filter by dealer inventory
+      const res = await vehicleApi.getDealerVehicles(
+        user?.dealerId || "",
         { search: searchTerm, status: filterStatus },
         { page, limit }
       );
@@ -122,7 +122,8 @@ export default function VehiclesPage() {
     console.log("Contract created successfully:", contract);
     setShowContractForm(false);
     setPreselectedVehicle(null);
-    // Optional: Show success message or refresh data
+    // Refresh vehicle list after contract creation
+    fetchVehicles();
   };
 
   return (
@@ -147,6 +148,7 @@ export default function VehiclesPage() {
           setPage(1); // Reset về trang 1 khi filter
         }}
         userRole={"DEALER_STAFF"} // Dealer chỉ được xem, không CRUD
+        user={user} // Pass user để lấy dealerId
         onExportClick={handleExport}
         onCreateContractFromVehicle={handleCreateContractFromVehicle}
         pagination={{
@@ -169,7 +171,7 @@ export default function VehiclesPage() {
           onSuccess={handleContractSuccess}
           selectedVehicle={preselectedVehicle || undefined}
           dealerId={(user as any)?.dealerId}
-          userId={(user as any)?.userId}
+          userId={(user as any)?.id}
           dealerInfo={{
             name: (user as any)?.dealer?.name || "N/A",
             address: (user as any)?.dealer?.address,

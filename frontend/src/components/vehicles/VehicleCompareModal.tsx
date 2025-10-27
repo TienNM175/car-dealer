@@ -901,7 +901,7 @@ export default function VehicleCompareModal({
                           Tồn kho EVM:
                         </span>
                         <span className="font-medium text-black">
-                          {selectedFirstVehicle?._count?.evmInventories || 0}
+                          {selectedFirstVehicle?.evmInventories?.quantity || 0}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -909,7 +909,10 @@ export default function VehicleCompareModal({
                           Tồn kho đại lý:
                         </span>
                         <span className="font-medium text-black">
-                          {selectedFirstVehicle?._count?.dealerInventories || 0}
+                          {selectedFirstVehicle?.dealerInventories?.reduce(
+                            (sum, inv) => sum + inv.quantity,
+                            0
+                          ) || 0}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -953,7 +956,7 @@ export default function VehicleCompareModal({
                           Tồn kho EVM:
                         </span>
                         <span className="font-medium text-black">
-                          {selectedSecondVehicle?._count?.evmInventories || 0}
+                          {selectedSecondVehicle?.evmInventories?.quantity || 0}
                         </span>
                       </div>
                       <div className="flex justify-between">

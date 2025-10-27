@@ -45,6 +45,7 @@ interface VehicleListProps {
   onExportClick: () => void;
   onCreateContractFromVehicle?: (vehicle: Vehicle) => void; // New - Tạo hợp đồng từ xe
   userRole?: "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN"; // Role để control UI
+  user?: any; // User object để lấy dealerId
   pagination: {
     page: number;
     limit: number;
@@ -463,11 +464,36 @@ export default function VehicleList({
                     </td>
                     <td className="px-4 py-4 w-32">
                       <div className="flex flex-wrap gap-1">
-                        {/* Hiển thị thông tin kinh doanh thực tế */}
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                          <Package className="w-3 h-3" />
-                          {vehicle._count?.dealerInventories || 0} kho
-                        </span>
+                        {/* Hiển thị thông tin kinh doanh theo role */}
+                        {/* EVM/ADMIN: Hiển thị cả EVM và Dealer inventory */}
+                        {(userRole === "EVM_STAFF" || userRole === "ADMIN") && (
+                          <>
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                              <Package className="w-3 h-3" />
+                              {vehicle.evmInventories?.quantity || 0} EVM
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs">
+                              <Package className="w-3 h-3" />
+                              {vehicle.dealerInventories?.reduce(
+                                (sum, inv) => sum + inv.quantity,
+                                0
+                              ) || 0}{" "}
+                              DL
+                            </span>
+                          </>
+                        )}
+                        {/* DEALER: Chỉ hiển thị Dealer inventory */}
+                        {(userRole === "DEALER_STAFF" ||
+                          userRole === "DEALER_MANAGER") && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                            <Package className="w-3 h-3" />
+                            {vehicle.dealerInventories?.reduce(
+                              (sum, inv) => sum + inv.quantity,
+                              0
+                            ) || 0}{" "}
+                            kho
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
                           <DollarSign className="w-3 h-3" />
                           {vehicle._count?.contracts || 0} HĐ
@@ -660,10 +686,35 @@ export default function VehicleList({
                   {/* Business Stats */}
                   <div className="border-t pt-3">
                     <div className="flex flex-wrap gap-1">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                        <Package className="w-3 h-3" />
-                        {vehicle._count?.dealerInventories || 0}
-                      </span>
+                      {/* EVM/ADMIN: Hiển thị cả EVM và Dealer inventory */}
+                      {(userRole === "EVM_STAFF" || userRole === "ADMIN") && (
+                        <>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                            <Package className="w-3 h-3" />
+                            {vehicle.evmInventories?.quantity || 0} EVM
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs">
+                            <Package className="w-3 h-3" />
+                            {vehicle.dealerInventories?.reduce(
+                              (sum, inv) => sum + inv.quantity,
+                              0
+                            ) || 0}{" "}
+                            DL
+                          </span>
+                        </>
+                      )}
+                      {/* DEALER: Chỉ hiển thị Dealer inventory của dealer hiện tại */}
+                      {(userRole === "DEALER_STAFF" ||
+                        userRole === "DEALER_MANAGER") && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                          <Package className="w-3 h-3" />
+                          {vehicle.dealerInventories?.reduce(
+                            (sum, inv) => sum + inv.quantity,
+                            0
+                          ) || 0}{" "}
+                          kho
+                        </span>
+                      )}
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
                         <DollarSign className="w-3 h-3" />
                         {vehicle._count?.contracts || 0}

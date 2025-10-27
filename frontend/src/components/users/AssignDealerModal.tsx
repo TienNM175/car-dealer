@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, Building2, ChevronDown, Check } from 'lucide-react';
 import { usersApi } from '@/lib/api/users';
-import { dealersApi } from '@/lib/api/dealers';
+import { dealersApi } from '@/lib/api/dealer';
 import { User } from '@/lib/types/user';
 
 interface AssignDealerModalProps {
