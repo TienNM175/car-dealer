@@ -100,19 +100,7 @@ export default function DealerLayout() {
         }}
       />
 
-      {/* Tab 4: Customers - Khách hàng */}
-      <Tabs.Screen
-        name="customers"
-        options={{
-          title: "Khách hàng",
-          headerTitle: "Danh sách khách hàng",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people" size={size} color={color} />
-          ),
-        }}
-      />
-
-      {/* Tab 5: More - Menu khác */}
+      {/* Tab 4: More - Menu khác */}
       <Tabs.Screen
         name="more"
         options={{
