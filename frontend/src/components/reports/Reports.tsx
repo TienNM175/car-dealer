@@ -7,8 +7,12 @@ import ReportEVM from "./ReportEVM";
 
 export default function Reports({
     userRole,
+    userId,
+    dealerId
 }: {
     userRole: string;
+    userId?: string;
+    dealerId?: string;
 }) {
     const role = userRole?.toLowerCase() ?? "";
 
@@ -20,7 +24,7 @@ export default function Reports({
                 <p className="text-gray-600">
                     Xem báo cáo doanh số nhân viên và công nợ khách hàng.
                 </p>
-                <ReportDealer userRole={role} />
+                <ReportDealer userRole={role} userId={userId} dealerId={dealerId} />
             </div>
         );
     }

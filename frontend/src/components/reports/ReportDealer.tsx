@@ -34,11 +34,15 @@ type URec = Record<string, unknown>;
 
 interface ReportDealerProps {
     userRole: string;
+    userId?: string;
+    dealerId?: string;
     defaultPeriod?: Period;
 }
 
 export default function ReportDealer({
     userRole,
+    userId,
+    dealerId,
     defaultPeriod = "month",
 }: ReportDealerProps) {
     const reportDefs = DEALER_REPORTS;
@@ -55,7 +59,7 @@ export default function ReportDealer({
             setLoading(true);
             setErr(null);
             try {
-                const json = await fetchReport(activeReport, period);
+                const json = await fetchReport(activeReport, period, dealerId);
                 if (!aborted) setData(json);
             } catch (e) {
                 if (!aborted) setErr("Không thể tải dữ liệu");
@@ -139,91 +143,91 @@ export default function ReportDealer({
             : [];
 
         // --- Tạo dataset nhân viên, có dealer info ---
-        const staffPerf: ChartData[] = Array.isArray(d.staffPerformance)
-            ? (d.staffPerformance as URec[]).map((r) => {
-                const staff = r.staff as URec;
-                const dealer = (staff as any)?.dealer as URec | undefined;
-                return {
-                    staff: staff
-                        ? `${staff.firstName ?? ""} ${staff.lastName ?? ""}`.trim() ||
-                        staff.email ||
-                        ""
-                        : "",
-                    email: staff?.email ?? "",
-                    id: staff?.id ?? "",
-                    dealerId: (staff as any)?.dealerId ?? "",
-                    dealerName: dealer?.name ?? "Đại lý không xác định",
-                    totalRevenue: toNum((r as any).totalRevenue),
-                    salesCount: toNum((r as any).salesCount),
-                };
-            })
-            : [];
-        console.log("[DEBUG] Staff performance data:", staffPerf);
+        // const staffPerf: ChartData[] = Array.isArray(d.staffPerformance)
+        //     ? (d.staffPerformance as URec[]).map((r) => {
+        //         const staff = r.staff as URec;
+        //         const dealer = (staff as any)?.dealer as URec | undefined;
+        //         return {
+        //             staff: staff
+        //                 ? `${staff.firstName ?? ""} ${staff.lastName ?? ""}`.trim() ||
+        //                 staff.email ||
+        //                 ""
+        //                 : "",
+        //             email: staff?.email ?? "",
+        //             id: staff?.id ?? "",
+        //             dealerId: (staff as any)?.dealerId ?? "",
+        //             dealerName: dealer?.name ?? "Đại lý không xác định",
+        //             totalRevenue: toNum((r as any).totalRevenue),
+        //             salesCount: toNum((r as any).salesCount),
+        //         };
+        //     })
+        //     : [];
+        // console.log("[DEBUG] Staff performance data:", staffPerf);
 
 
-        // --- Nhóm theo dealerId ---
-        const grouped: Record<string, ChartData[]> = {};
-        for (const s of staffPerf) {
-            const key = (s.dealerId as string) || "unknown";
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(s);
-        }
+        // // --- Nhóm theo dealerId ---
+        // const grouped: Record<string, ChartData[]> = {};
+        // for (const s of staffPerf) {
+        //     const key = (s.dealerId as string) || "unknown";
+        //     if (!grouped[key]) grouped[key] = [];
+        //     grouped[key].push(s);
+        // }
 
-        // --- Quyền: nếu là Dealer hoặc Manager -> chỉ hiển thị đại lý của họ ---
-        const role = (userRole || "").toUpperCase();
-        let charts: React.ReactNode[] = [];
+        // // --- Quyền: nếu là Dealer hoặc Manager -> chỉ hiển thị đại lý của họ ---
+        // const role = (userRole || "").toUpperCase();
+        // let charts: React.ReactNode[] = [];
 
-        if (role.includes("ADMIN") || role.includes("EVM")) {
-            charts = Object.entries(grouped).map(([dealerId, list]) => (
-                <ChartCard
-                    key={dealerId}
-                    title={`Hiệu suất nhân viên - ${list[0]?.dealerName ?? "Đại lý không xác định"}`}
-                >
-                    <BarChartComponent
-                        layout="vertical"
-                        data={list}
-                        xKey="staff"
-                        bars={[{ key: "totalRevenue", color: COLORS[2] }]}
-                        valueFormatter={vf}
-                    />
-                </ChartCard>
-            ));
-        } else if (role.includes("DEALER") || role.includes("MANAGER")) {
-            let currentDealerId: string | null = null;
-            if (typeof window !== "undefined") {
-                currentDealerId = localStorage.getItem("dealerId");
-            }
-            if (!currentDealerId) {
-                const uniqueDealerIds = Array.from(
-                    new Set(staffPerf.map((s) => s.dealerId).filter(Boolean))
-                );
-                if (uniqueDealerIds.length === 1) currentDealerId = uniqueDealerIds[0] as string;
-            }
-            const list = staffPerf.filter((s) => s.dealerId === currentDealerId);
-            charts =
-                list.length > 0
-                    ? [
-                        <ChartCard
-                            key={currentDealerId}
-                            title={`Hiệu suất nhân viên - ${list[0]?.dealerName ?? "Đại lý của bạn"}`}
-                        >
-                            <BarChartComponent
-                                layout="vertical"
-                                data={list}
-                                xKey="staff"
-                                bars={[{ key: "totalRevenue", color: COLORS[2] }]}
-                                valueFormatter={vf}
-                            />
-                        </ChartCard>,
-                    ]
-                    : [
-                        <ChartCard key="no-data" title="Hiệu suất nhân viên">
-                            <p className="text-center text-gray-500 italic">
-                                Không có dữ liệu cho đại lý của bạn.
-                            </p>
-                        </ChartCard>,
-                    ];
-        }
+        // if (role.includes("ADMIN") || role.includes("EVM")) {
+        //     charts = Object.entries(grouped).map(([dealerId, list]) => (
+        //         <ChartCard
+        //             key={dealerId}
+        //             title={`Hiệu suất nhân viên - ${list[0]?.dealerName ?? "Đại lý không xác định"}`}
+        //         >
+        //             <BarChartComponent
+        //                 layout="vertical"
+        //                 data={list}
+        //                 xKey="staff"
+        //                 bars={[{ key: "totalRevenue", color: COLORS[2] }]}
+        //                 valueFormatter={vf}
+        //             />
+        //         </ChartCard>
+        //     ));
+        // } else if (role.includes("DEALER") || role.includes("MANAGER")) {
+        //     let currentDealerId: string | null = null;
+        //     if (typeof window !== "undefined") {
+        //         currentDealerId = localStorage.getItem("dealerId");
+        //     }
+        //     if (!currentDealerId) {
+        //         const uniqueDealerIds = Array.from(
+        //             new Set(staffPerf.map((s) => s.dealerId).filter(Boolean))
+        //         );
+        //         if (uniqueDealerIds.length === 1) currentDealerId = uniqueDealerIds[0] as string;
+        //     }
+        //     const list = staffPerf.filter((s) => s.dealerId === currentDealerId);
+        //     charts =
+        //         list.length > 0
+        //             ? [
+        //                 <ChartCard
+        //                     key={currentDealerId}
+        //                     title={`Hiệu suất nhân viên - ${list[0]?.dealerName ?? "Đại lý của bạn"}`}
+        //                 >
+        //                     <BarChartComponent
+        //                         layout="vertical"
+        //                         data={list}
+        //                         xKey="staff"
+        //                         bars={[{ key: "totalRevenue", color: COLORS[2] }]}
+        //                         valueFormatter={vf}
+        //                     />
+        //                 </ChartCard>,
+        //             ]
+        //             : [
+        //                 <ChartCard key="no-data" title="Hiệu suất nhân viên">
+        //                     <p className="text-center text-gray-500 italic">
+        //                         Không có dữ liệu cho đại lý của bạn.
+        //                     </p>
+        //                 </ChartCard>,
+        //             ];
+        // }
 
         return (
             <div className="grid grid-cols-1 gap-8">
@@ -257,7 +261,7 @@ export default function ReportDealer({
                     />
                 </ChartCard>
 
-                {charts.length > 0 ? (
+                {/* {charts.length > 0 ? (
                     charts
                 ) : (
                     <ChartCard title="Hiệu suất nhân viên">
@@ -265,7 +269,7 @@ export default function ReportDealer({
                             Không có dữ liệu hoặc bạn không có quyền xem phần này.
                         </p>
                     </ChartCard>
-                )}
+                )} */}
             </div>
         );
     };

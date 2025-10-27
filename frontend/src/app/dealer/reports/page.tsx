@@ -30,10 +30,13 @@ export default function DealerReportsPage() {
   if (!user) return <div>Vui lòng đăng nhập.</div>;
 
   const userRole = mapUserRole(user.role);
+  const userId = user?.id;
+  const dealerId = user?.dealerId;
+
 
   return (
     <main className="p-8 bg-gray-50 min-h-screen">
-      <Reports userRole={userRole} />
+      <Reports userRole={userRole} userId={userId} dealerId={dealerId} />
     </main>
   );
 }

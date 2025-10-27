@@ -125,8 +125,8 @@ export const makeValueFormatter =
     (unit?: string) =>
         (value: ValueType, _name: NameType): string => {
             if (typeof value !== "number") return String(value);
-            if (unit === "VND" || unit === "₫")
-                return new Intl.NumberFormat("vi-VN").format(value) + " ₫";
+            if (unit === "VND" || unit === "")
+                return new Intl.NumberFormat("vi-VN").format(value) + " ";
             if (unit === "%") return `${value.toFixed(1)}%`;
             return new Intl.NumberFormat("vi-VN").format(value);
         };

@@ -152,6 +152,8 @@ export async function fetchReport(
     if (type === "sales") {
         const res = await axiosClient.get(`/reports/sales`, { params });
         const data = res.data?.data || res.data;
+        console.log("data: ", data);
+
 
         const totalRevenue =
             data.byStatus?.reduce(
@@ -171,12 +173,15 @@ export async function fetchReport(
     if (type === "customers") {
         const res = await axiosClient.get(`/reports/customers`, { params });
         const data = res.data?.data || res.data;
+        console.log("cus: ", data);
 
         const totalCustomers =
             data.byStatus?.reduce(
                 (sum: number, s: any) => sum + Number(s.count ?? 0),
                 0
             ) ?? 0;
+
+        // const totalCustomers = data.byStatus?.find((item) => item.status === "SIGNED")?.count ?? 0;
 
         return {
             title: "Báo cáo khách hàng",

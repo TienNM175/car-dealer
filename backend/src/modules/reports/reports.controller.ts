@@ -49,6 +49,7 @@ export class ReportsController {
       const filters = {
         fromDate: req.query.fromDate ? new Date(req.query.fromDate as string) : undefined,
         toDate: req.query.toDate ? new Date(req.query.toDate as string) : undefined,
+        dealerId: req.query.dealerId as string,
       };
 
       const report = await reportsService.getCustomerReport(filters);

@@ -8,6 +8,7 @@ interface DateRangeFilter {
 
 interface DealerFilter extends DateRangeFilter {
   dealerId?: string;
+  userId?: string;
 }
 
 export class ReportsService {
@@ -339,16 +340,35 @@ export class ReportsService {
   /**
    * Customer Report
    */
-  async getCustomerReport(filters: DateRangeFilter) {
+  async getCustomerReport(filters: DealerFilter) {
+
+    const where: Prisma.ContractWhereInput = {
+      ...(filters.fromDate && { createdAt: { gte: filters.fromDate } }),
+      ...(filters.toDate && { createdAt: { lte: filters.toDate } }),
+      ...(filters.dealerId && { staff: { dealerId: filters.dealerId } }),
+      status: { not: "COMPLETED" },
+    };
+
+    // Sales by status
+    const listContract = await prisma.contract.findMany({
+      where,
+    });
+
+    const customerIds = [
+      ...new Set(listContract.map((c) => c.customerId)),
+    ];
+
     // Customer by status
     const byStatus = await prisma.customer.groupBy({
       by: ["status"],
+      where: { id: { in: customerIds } },
       _count: true,
     });
 
     // Customer by city
     const byCity = await prisma.customer.groupBy({
       by: ["city"],
+      where: { id: { in: customerIds } },
       _count: true,
       orderBy: {
         _count: {
@@ -369,6 +389,7 @@ export class ReportsService {
           gte: startDate,
           lte: endDate,
         },
+        id: { in: customerIds }
       },
       select: {
         createdAt: true,
@@ -455,7 +476,8 @@ export class ReportsService {
     // Dealer inventory summary
     const dealerInventory = await prisma.inventory.groupBy({
       by: ["dealerId"],
-      where: dealerId ? { dealerId } : {},
+      // where: dealerId ? { dealerId } : {},
+      where: { dealerId },
       _sum: {
         quantity: true,
         available: true,
@@ -517,7 +539,8 @@ export class ReportsService {
     // Vehicle popularity (most in inventory)
     const byVehicle = await prisma.inventory.groupBy({
       by: ["vehicleId"],
-      where: dealerId ? { dealerId } : {},
+      // where: dealerId ? { dealerId } : {},
+      where: { dealerId },
       _sum: {
         quantity: true,
         sold: true,
@@ -639,15 +662,15 @@ export class ReportsService {
           staffCount,
           target: target
             ? {
-                targetAmount: target.targetAmount,
-                achievedAmount: target.achievedAmount,
-                achievementRate:
-                  Number(target.targetAmount) > 0
-                    ? (Number(target.achievedAmount) /
-                        Number(target.targetAmount)) *
-                      100
-                    : 0,
-              }
+              targetAmount: target.targetAmount,
+              achievedAmount: target.achievedAmount,
+              achievementRate:
+                Number(target.targetAmount) > 0
+                  ? (Number(target.achievedAmount) /
+                    Number(target.targetAmount)) *
+                  100
+                  : 0,
+            }
             : null,
         };
       })

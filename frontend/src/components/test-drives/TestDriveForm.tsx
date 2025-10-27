@@ -67,32 +67,64 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
     const normalizeResponse = (res: any) => {
         if (!res) return [];
         if (Array.isArray(res)) return res;
-        if (res.data?.data) return res.data.data;
+        if (res.data?.data) return res.data;
         if (res.data) return res.data;
         return [];
     };
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchDropdowns = async () => {
             try {
-                const [customerRes, vehicleRes, staffRes] = await Promise.all([
-                    customerApi.getAllCustomers(),
-                    vehicleApi.getAllVehicles(),
-                    usersApi.list(),
+                const [customersRes, vehiclesRes, staffRes] = await Promise.all([
+                    customerApi.getAllCustomers({}, { page: 1, limit: 100 }),
+                    vehicleApi.getAllVehicles({}, { page: 1, limit: 100 }),
+                    usersApi.list({ limit: 100 }),
                 ]);
 
-                setCustomers(normalizeResponse(customerRes));
-                setVehicles(normalizeResponse(vehicleRes).filter((v: Vehicle) => v.status === 'ACTIVE'));
-                setStaff(normalizeResponse(staffRes));
+                const customersData =
+                    customersRes?.data?.data ||
+                    customersRes?.data?.customers ||
+                    customersRes?.data ||
+                    [];
 
-                console.log('✅ Dữ liệu form loaded');
+                const vehiclesData =
+                    vehiclesRes?.data?.data ||
+                    vehiclesRes?.data?.vehicles ||
+                    vehiclesRes?.data ||
+                    [];
+
+                const staffData =
+                    staffRes?.data?.user ||
+                    staffRes?.data?.data ||
+                    staffRes?.data ||
+                    [];
+
+                const activeVehicles = vehiclesData.filter((v: any) => v.status === 'ACTIVE');
+                const staffFiltered = staffData.filter((s: any) =>
+                    ['DEALER_STAFF', 'DEALER_MANAGER'].includes(s.role)
+                );
+
+                setCustomers(customersData);
+                setVehicles(activeVehicles);
+                setStaff(staffFiltered);
+
+                console.log('✅ Loaded dropdowns:', {
+                    customers: customersData.length,
+                    vehicles: activeVehicles.length,
+                    staff: staffFiltered.length,
+                });
             } catch (error) {
-                console.error('❌ Lỗi tải dữ liệu:', error);
+                console.error('❌ Lỗi tải dropdown:', error);
                 toast.error('Không thể tải dữ liệu dropdown');
             }
         };
-        fetchData();
+
+        fetchDropdowns();
     }, []);
+
+
+
+
 
     const onSubmit = async (data: TestDriveFormData) => {
         setLoading(true);
