@@ -71,11 +71,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("user", JSON.stringify(user));
       setUser(user);
 
-      // 🔹 Redirect theo role
+      // 🔹 Redirect theo role - Chuyển về trang xe
       if (user.role === "ADMIN" || user.role?.startsWith("EVM")) {
-        router.push("/evm/dashboard");
+        router.push("/evm/products");
       } else {
-        router.push("/dealer/dashboard");
+        router.push("/dealer/vehicles");
       }
     } catch (error) {
       console.error("Login failed:", error);

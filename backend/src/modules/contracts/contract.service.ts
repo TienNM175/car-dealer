@@ -48,6 +48,21 @@ interface UpdateContractInput {
 
 export class ContractService {
   /**
+   * Map contractCode to contractNumber for frontend compatibility
+   */
+  private mapContractResponse(contract: any) {
+    if (!contract) return contract;
+    return {
+      ...contract,
+      contractNumber: contract.contractCode,
+    };
+  }
+
+  private mapContractsResponse(contracts: any[]) {
+    return contracts.map((contract) => this.mapContractResponse(contract));
+  }
+
+  /**
    * Calculate contract financial details
    */
   private calculateFinancials(
@@ -222,7 +237,7 @@ export class ContractService {
     });
 
     return {
-      data: contracts,
+      data: this.mapContractsResponse(contracts),
       meta: {
         page,
         limit,
@@ -290,7 +305,7 @@ export class ContractService {
       throw new Error("Contract not found");
     }
 
-    return contract;
+    return this.mapContractResponse(contract);
   }
 
   /**
@@ -306,19 +321,27 @@ export class ContractService {
       throw new Error("Customer not found");
     }
 
+    // Get staff info to determine dealerId
+    const staff = await prisma.user.findUnique({
+      where: { id: data.staffId },
+      include: { dealer: true },
+    });
+
+    if (!staff) {
+      throw new Error("Staff not found");
+    }
+
+    if (!staff.dealerId) {
+      throw new Error("Staff must be assigned to a dealer");
+    }
+
     // Verify vehicle exists and is available
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: data.vehicleId },
       include: {
         dealerInventories: {
           where: {
-            dealer: {
-              users: {
-                some: {
-                  id: data.staffId,
-                },
-              },
-            },
+            dealerId: staff.dealerId, // Direct filter by dealerId
           },
         },
       },
@@ -422,12 +445,12 @@ export class ContractService {
               dealer: true,
             },
           },
-          quotation: true,
-          promotion: true,
+          // quotation: true, // Removed - quotation relation doesn't exist
+          // promotion: true, // Removed - promotion relation doesn't exist
         },
       });
 
-      // Reserve inventory
+      // Reserve inventory (don't reduce quantity, just reserve)
       await tx.inventory.update({
         where: {
           dealerId_vehicleId: {
@@ -436,8 +459,8 @@ export class ContractService {
           },
         },
         data: {
-          reserved: { increment: 1 },
-          available: { decrement: 1 },
+          reserved: { increment: 1 }, // Tăng số đã đặt
+          available: { decrement: 1 }, // Giảm số có sẵn
         },
       });
 
@@ -462,7 +485,11 @@ export class ContractService {
       return newContract;
     });
 
-    return contract;
+    // Map contractCode to contractNumber for frontend compatibility
+    return {
+      ...contract,
+      contractNumber: contract.contractCode,
+    };
   }
 
   /**
@@ -534,7 +561,7 @@ export class ContractService {
       },
     });
 
-    return contract;
+    return this.mapContractResponse(contract);
   }
 
   /**
@@ -610,7 +637,7 @@ export class ContractService {
           data: {
             reserved: { decrement: 1 },
             sold: { increment: 1 },
-            quantity: { decrement: 1 },
+            quantity: { decrement: 1 }, // Giảm quantity khi bán thành công
           },
         });
       }
@@ -625,8 +652,8 @@ export class ContractService {
             },
           },
           data: {
-            reserved: { decrement: 1 },
-            available: { increment: 1 },
+            reserved: { decrement: 1 }, // Giảm số đã đặt
+            available: { increment: 1 }, // Tăng số có sẵn
           },
         });
       }
@@ -634,7 +661,7 @@ export class ContractService {
       return updatedContract;
     });
 
-    return result;
+    return this.mapContractResponse(result);
   }
 
   /**

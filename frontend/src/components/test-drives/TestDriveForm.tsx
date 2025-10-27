@@ -176,6 +176,7 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
                         label: `${c.firstName} ${c.lastName} (${c.email})`,
                     }))}
                     onChange={(opt) => setValue('customerId', opt?.value || '')}
+
                     defaultValue={
                         initialData
                             ? {

@@ -21,6 +21,18 @@ interface PaginationParams {
   sortOrder?: 'asc' | 'desc';
 }
 
+ export interface QuotationCreatePayload {
+  customerId: string;
+  vehicleId: string;
+  basePrice?: number;
+  discount?: number;
+  paymentType?: 'FULL' | 'INSTALLMENT';
+  installmentMonths?: number;
+  validUntil?: Date;
+  status?: QuotationStatus;
+  notes?: string;
+}
+
 export class QuotationsService {
   /**
    * Get all quotations with filters and pagination
@@ -222,10 +234,10 @@ export class QuotationsService {
   /**
    * Create new quotation
    */
-  async create(data: Prisma.QuotationCreateInput, staffId: string) {
+  async create(data: QuotationCreatePayload, staffId: string) {
     // Validate customer exists
     const customer = await prisma.customer.findUnique({
-      where: { id: data.customer.connect?.id },
+      where: { id: data.customerId },
     });
     if (!customer) {
       throw new Error('Customer not found');
@@ -233,7 +245,7 @@ export class QuotationsService {
 
     // Validate vehicle exists and get price
     const vehicle = await prisma.vehicle.findUnique({
-      where: { id: data.vehicle.connect?.id },
+      where: { id: data.vehicleId },
     });
     if (!vehicle) {
       throw new Error('Vehicle not found');

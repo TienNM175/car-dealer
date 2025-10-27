@@ -10,12 +10,20 @@ export class ContractController {
    */
   async getAllContracts(req: Request, res: Response, next: NextFunction) {
     try {
+      // Backend auto-determines dealerId from auth user
+      // ADMIN/EVM can specify dealerId via query, or see all if not specified
+      // DEALER roles automatically filtered by their dealerId
+      const userDealerId = req.user?.dealerId;
+      const isAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'EVM_STAFF';
+      const queryDealerId = req.query.dealerId as string;
+      
       const filters = {
         search: req.query.search as string,
         status: req.query.status as any,
         customerId: req.query.customerId as string,
         staffId: req.query.staffId as string,
-        dealerId: req.query.dealerId as string,
+        // Use dealerId from query only if admin, otherwise use user's dealerId
+        dealerId: isAdmin ? queryDealerId : userDealerId,
         paymentType: req.query.paymentType as any,
         fromDate: req.query.fromDate ? new Date(req.query.fromDate as string) : undefined,
         toDate: req.query.toDate ? new Date(req.query.toDate as string) : undefined,
@@ -33,7 +41,7 @@ export class ContractController {
         pagination,
         req.user?.userId,
         req.user?.role,
-        req.user?.dealerId
+        userDealerId
       );
       
       return ResponseUtil.success(
@@ -171,7 +179,12 @@ export class ContractController {
    */
   async getContractsByStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const dealerId = req.query.dealerId as string;
+      // Use dealerId from auth user for DEALER roles
+      const userDealerId = req.user?.dealerId;
+      const isAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'EVM_STAFF';
+      const queryDealerId = req.query.dealerId as string;
+      
+      const dealerId = isAdmin ? queryDealerId : userDealerId;
       const statusCounts = await contractService.getContractsByStatus(dealerId);
       return ResponseUtil.success(res, statusCounts, 'Contract status summary retrieved successfully');
     } catch (error: any) {
@@ -184,8 +197,13 @@ export class ContractController {
    */
   async getStatistics(req: Request, res: Response, next: NextFunction) {
     try {
+      // Use dealerId from auth user for DEALER roles
+      const userDealerId = req.user?.dealerId;
+      const isAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'EVM_STAFF';
+      const queryDealerId = req.query.dealerId as string;
+      
       const filters = {
-        dealerId: req.query.dealerId as string,
+        dealerId: isAdmin ? queryDealerId : userDealerId,
         staffId: req.query.staffId as string,
         fromDate: req.query.fromDate ? new Date(req.query.fromDate as string) : undefined,
         toDate: req.query.toDate ? new Date(req.query.toDate as string) : undefined,

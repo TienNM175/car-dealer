@@ -158,10 +158,16 @@ export default function VehicleForm({
       return;
     }
 
+    // Additional protection: disable form for 3 seconds
     submitRef.current = true;
     setIsSubmitting(true);
     setLoading(true);
     setError(null);
+
+    // Disable form for 3 seconds to prevent double submission
+    setTimeout(() => {
+      submitRef.current = false;
+    }, 3000);
 
     // Validate required fields
     if (!formData.description || formData.description.trim() === "") {
@@ -229,7 +235,7 @@ export default function VehicleForm({
 
       onClose(); // Close modal
       console.log("Calling onRefresh after vehicle creation");
-      onRefresh?.(); // Refresh parent list
+      onRefresh?.(); // Refresh parent list for vehicles without images
     } catch (err: any) {
       setError(err.response?.data?.message || "Có lỗi xảy ra");
     } finally {
