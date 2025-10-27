@@ -24,7 +24,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative bg-cover bg-center bg-[url('/images/vin.png')]">
+    <div className="min-h-screen flex items-center justify-center p-4 relative bg-cover bg-center bg-[url('/images/bg.jpg')]">
       {/* Overlay */}
       <div className="absolute inset-0 bg-black opacity-20"></div>
 
