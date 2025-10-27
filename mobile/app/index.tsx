@@ -13,9 +13,9 @@ export default function IndexScreen() {
     if (!user) {
       router.replace("/(auth)/login");
     } else if (user.role === "ADMIN" || user.role?.startsWith("EVM")) {
-      router.replace("/(evm)/dashboard");
+      router.replace("/(evm)/products");
     } else {
-      router.replace("/(dealer)/dashboard");
+      router.replace("/(dealer)/vehicles");
     }
   }, [isLoading, user]);
 

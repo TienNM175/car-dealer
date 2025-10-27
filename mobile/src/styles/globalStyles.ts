@@ -68,6 +68,16 @@ export const typography = {
     fontWeight: "500" as const,
     lineHeight: 14,
   },
+  bodyBold: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    lineHeight: 20,
+  },
+  bodySmallBold: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    lineHeight: 16,
+  },
 };
 
 // Spacing

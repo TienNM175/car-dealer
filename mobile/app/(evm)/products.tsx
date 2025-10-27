@@ -25,7 +25,7 @@ import {
   shadows,
 } from "@/styles/globalStyles";
 
-export default function DealerVehiclesPage() {
+export default function EVMProductsPage() {
   const { user } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,16 +34,13 @@ export default function DealerVehiclesPage() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
+  const userRole = user?.role?.toUpperCase() || "EVM_STAFF";
+  const isAdmin = userRole === "ADMIN";
+
   const fetchVehicles = async () => {
     try {
       setLoading(true);
-      const dealerId = (user as any)?.dealerId;
-      if (!dealerId) {
-        Alert.alert("Lỗi", "Không tìm thấy thông tin đại lý");
-        return;
-      }
-
-      const response = await vehicleApi.getDealerVehicles(dealerId);
+      const response = await vehicleApi.getAllVehicles();
       const vehiclesData = response.data.data?.data || [];
       setVehicles(vehiclesData);
     } catch (error) {
@@ -70,25 +67,44 @@ export default function DealerVehiclesPage() {
       vehicle.manufacturer.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(price);
-  };
 
   const handleVehiclePress = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setShowDetailModal(true);
   };
 
+  const handleCreateVehicle = () => {
+    Alert.alert("Tạo xe mới", "Tính năng đang phát triển");
+  };
+
+  const handleEditVehicle = (vehicle: Vehicle) => {
+    Alert.alert(
+      "Chỉnh sửa xe",
+      `Chỉnh sửa ${vehicle.model} - Tính năng đang phát triển`
+    );
+  };
+
+  const handleDeleteVehicle = (vehicle: Vehicle) => {
+    Alert.alert("Xóa xe", `Bạn có chắc chắn muốn xóa ${vehicle.model}?`, [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Xóa",
+        style: "destructive",
+        onPress: () => Alert.alert("Thành công", "Xóa xe thành công!"),
+      },
+    ]);
+  };
+
   if (loading && vehicles.length === 0) {
     return (
-      <View style={globalStyles.container}>
-        <View style={globalStyles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={globalStyles.loadingText}>Đang tải...</Text>
-        </View>
+      <View style={globalStyles.centerContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={globalStyles.loadingText}>Đang tải danh sách xe...</Text>
       </View>
     );
   }
@@ -112,9 +128,17 @@ export default function DealerVehiclesPage() {
             {vehicle.manufacturer.name} {vehicle.model}
           </Text>
           <View
-            style={[styles.statusBadge, { backgroundColor: colors.success }]}
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor:
+                  vehicle.status === "ACTIVE" ? colors.success : colors.warning,
+              },
+            ]}
           >
-            <Text style={styles.statusText}>Có sẵn</Text>
+            <Text style={styles.statusText}>
+              {vehicle.status === "ACTIVE" ? "Hoạt động" : "Tạm dừng"}
+            </Text>
           </View>
         </View>
 
@@ -143,14 +167,30 @@ export default function DealerVehiclesPage() {
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleVehiclePress(vehicle)}
+          >
             <Text style={styles.actionButtonText}>Chi tiết</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.primaryActionButton]}
-          >
-            <Text style={styles.primaryActionButtonText}>Đặt hàng</Text>
-          </TouchableOpacity>
+          {(isAdmin || userRole === "EVM_STAFF") && (
+            <>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleEditVehicle(vehicle)}
+              >
+                <Text style={styles.actionButtonText}>Sửa</Text>
+              </TouchableOpacity>
+              {isAdmin && (
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.dangerButton]}
+                  onPress={() => handleDeleteVehicle(vehicle)}
+                >
+                  <Text style={styles.dangerButtonText}>Xóa</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -158,16 +198,16 @@ export default function DealerVehiclesPage() {
 
   return (
     <View style={globalStyles.container}>
-      <Header title="Danh mục xe" />
+      <Header title="Quản lý sản phẩm" />
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Tìm kiếm xe theo tên, hãng..."
-          placeholderTextColor={colors.gray400}
+          placeholder="Tìm kiếm xe theo tên hoặc hãng..."
           value={searchTerm}
           onChangeText={setSearchTerm}
+          placeholderTextColor={colors.gray400}
         />
       </View>
 
@@ -182,10 +222,8 @@ export default function DealerVehiclesPage() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             colors={[colors.primary]}
-            tintColor={colors.primary}
           />
         }
-        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={globalStyles.emptyContainer}>
             <Text style={globalStyles.emptyText}>Không tìm thấy xe nào</Text>
@@ -196,18 +234,26 @@ export default function DealerVehiclesPage() {
         }
       />
 
-      {/* Detail Modal */}
-      <Modal visible={showDetailModal} animationType="slide" transparent>
+      {/* Vehicle Detail Modal */}
+      <Modal
+        visible={showDetailModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
         <View style={globalStyles.modalOverlay}>
           <View style={globalStyles.modalContent}>
+            <View style={globalStyles.modalHeader}>
+              <Text style={globalStyles.modalTitle}>Chi tiết xe</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowDetailModal(false)}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
             {selectedVehicle && (
               <>
-                <View style={globalStyles.modalHeader}>
-                  <Text style={globalStyles.modalTitle}>Chi tiết xe</Text>
-                  <TouchableOpacity onPress={() => setShowDetailModal(false)}>
-                    <Text style={styles.closeButton}>✕</Text>
-                  </TouchableOpacity>
-                </View>
                 <ScrollView style={styles.modalScroll}>
                   <Image
                     source={{
@@ -218,100 +264,97 @@ export default function DealerVehiclesPage() {
                     style={styles.modalImage}
                     resizeMode="cover"
                   />
-                  <View style={globalStyles.modalBody}>
-                    <View style={styles.vehicleTitleContainer}>
-                      <Text style={styles.modalModel}>
-                        {selectedVehicle.manufacturer.name}{" "}
-                        {selectedVehicle.model}
-                      </Text>
-                      {selectedVehicle.variant && (
-                        <Text style={styles.modalVariant}>
-                          {selectedVehicle.variant}
-                        </Text>
-                      )}
-                    </View>
 
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>
-                        Thông số kỹ thuật
+                  <View style={styles.vehicleTitleContainer}>
+                    <Text style={styles.modalModel}>
+                      {selectedVehicle.manufacturer.name}{" "}
+                      {selectedVehicle.model}
+                    </Text>
+                    {selectedVehicle.variant && (
+                      <Text style={styles.modalVariant}>
+                        {selectedVehicle.variant}
                       </Text>
-                      <View style={styles.specsGrid}>
-                        <View style={styles.specCard}>
-                          <Text style={styles.specCardIcon}>🔋</Text>
-                          <Text style={styles.specCardLabel}>Pin</Text>
-                          <Text style={styles.specCardValue}>
-                            {selectedVehicle.batteryCapacity} kWh
-                          </Text>
-                        </View>
-                        <View style={styles.specCard}>
-                          <Text style={styles.specCardIcon}>📏</Text>
-                          <Text style={styles.specCardLabel}>
-                            Tầm hoạt động
-                          </Text>
-                          <Text style={styles.specCardValue}>
-                            {selectedVehicle.range} km
-                          </Text>
-                        </View>
-                        <View style={styles.specCard}>
-                          <Text style={styles.specCardIcon}>🚗</Text>
-                          <Text style={styles.specCardLabel}>Năm</Text>
-                          <Text style={styles.specCardValue}>
-                            {selectedVehicle.year}
-                          </Text>
-                        </View>
-                        <View style={styles.specCard}>
-                          <Text style={styles.specCardIcon}>👥</Text>
-                          <Text style={styles.specCardLabel}>Chỗ ngồi</Text>
-                          <Text style={styles.specCardValue}>
-                            {selectedVehicle.seats} người
-                          </Text>
-                        </View>
+                    )}
+                  </View>
+
+                  {/* Specifications */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>
+                      Thông số kỹ thuật
+                    </Text>
+                    <View style={styles.specsGrid}>
+                      <View style={styles.specCard}>
+                        <Text style={styles.specCardIcon}>🔋</Text>
+                        <Text style={styles.specCardLabel}>Dung lượng pin</Text>
+                        <Text style={styles.specCardValue}>
+                          {selectedVehicle.batteryCapacity} kWh
+                        </Text>
+                      </View>
+                      <View style={styles.specCard}>
+                        <Text style={styles.specCardIcon}>📏</Text>
+                        <Text style={styles.specCardLabel}>Tầm hoạt động</Text>
+                        <Text style={styles.specCardValue}>
+                          {selectedVehicle.range} km
+                        </Text>
+                      </View>
+                      <View style={styles.specCard}>
+                        <Text style={styles.specCardIcon}>🚗</Text>
+                        <Text style={styles.specCardLabel}>Năm sản xuất</Text>
+                        <Text style={styles.specCardValue}>
+                          {selectedVehicle.year}
+                        </Text>
+                      </View>
+                      <View style={styles.specCard}>
+                        <Text style={styles.specCardIcon}>⚡</Text>
+                        <Text style={styles.specCardLabel}>Công suất</Text>
+                        <Text style={styles.specCardValue}>
+                          {selectedVehicle.motorPower || 0} kW
+                        </Text>
                       </View>
                     </View>
+                  </View>
 
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Giá cả</Text>
-                      <View style={styles.priceCard}>
-                        <View style={styles.priceRow}>
-                          <Text style={styles.priceLabel}>Giá bán lẻ:</Text>
-                          <Text style={styles.modalPrice}>
-                            {formatPrice(selectedVehicle.retailPrice)}
-                          </Text>
-                        </View>
-                        <View style={styles.priceRow}>
-                          <Text style={styles.priceLabel}>
-                            Giá sỉ (đại lý):
-                          </Text>
-                          <Text style={styles.modalPriceWholesale}>
-                            {formatPrice(selectedVehicle.wholesalePrice)}
-                          </Text>
-                        </View>
+                  {/* Pricing */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>Giá cả</Text>
+                    <View style={styles.priceCard}>
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>Giá sỉ (đại lý):</Text>
+                        <Text style={styles.modalPriceWholesale}>
+                          {formatPrice(selectedVehicle.wholesalePrice)}
+                        </Text>
                       </View>
-                    </View>
-
-                    <View style={styles.modalActions}>
-                      <TouchableOpacity
-                        style={styles.secondaryActionButton}
-                        onPress={() => setShowDetailModal(false)}
-                      >
-                        <Text style={styles.secondaryActionButtonText}>
-                          Đóng
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceLabel}>Giá bán lẻ:</Text>
+                        <Text style={styles.modalPrice}>
+                          {formatPrice(selectedVehicle.retailPrice)}
                         </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.primaryActionButton}
-                        onPress={() => {
-                          Alert.alert("Đặt hàng", "Tính năng đang phát triển");
-                          setShowDetailModal(false);
-                        }}
-                      >
-                        <Text style={styles.primaryActionButtonText}>
-                          Đặt hàng từ hãng
-                        </Text>
-                      </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 </ScrollView>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.secondaryActionButton}
+                    onPress={() => setShowDetailModal(false)}
+                  >
+                    <Text style={styles.secondaryActionButtonText}>Đóng</Text>
+                  </TouchableOpacity>
+                  {(isAdmin || userRole === "EVM_STAFF") && (
+                    <TouchableOpacity
+                      style={styles.primaryActionButton}
+                      onPress={() => {
+                        Alert.alert("Chỉnh sửa", "Tính năng đang phát triển");
+                        setShowDetailModal(false);
+                      }}
+                    >
+                      <Text style={styles.primaryActionButtonText}>
+                        Chỉnh sửa xe
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </>
             )}
           </View>
@@ -322,6 +365,29 @@ export default function DealerVehiclesPage() {
 }
 
 const styles = StyleSheet.create({
+  // Header Container
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+  },
+  createButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  createButtonText: {
+    ...typography.bodySmall,
+    fontWeight: "600",
+    color: colors.white,
+  },
+
   // Search Container
   searchContainer: {
     padding: spacing.md,
@@ -442,11 +508,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.gray700,
   },
-  primaryActionButton: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  dangerButton: {
+    backgroundColor: colors.danger,
+    borderColor: colors.danger,
   },
-  primaryActionButtonText: {
+  dangerButtonText: {
+    ...typography.bodySmall,
+    fontWeight: "600",
     color: colors.white,
   },
 
@@ -512,10 +580,10 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.gray500,
     marginBottom: spacing.xs,
+    textAlign: "center",
   },
   specCardValue: {
-    ...typography.bodySmall,
-    fontWeight: "600",
+    ...typography.bodySmallBold,
     color: colors.gray800,
     textAlign: "center",
   },
@@ -537,19 +605,22 @@ const styles = StyleSheet.create({
   modalPrice: {
     ...typography.h4,
     fontWeight: "bold",
-    color: colors.success,
+    color: colors.primary,
   },
   modalPriceWholesale: {
     ...typography.h4,
     fontWeight: "bold",
-    color: colors.primary,
+    color: colors.success,
   },
 
   // Modal Actions
   modalActions: {
     flexDirection: "row",
     gap: spacing.md,
-    marginTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray200,
   },
   secondaryActionButton: {
     flex: 1,
@@ -561,15 +632,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryActionButtonText: {
-    ...typography.body,
-    fontWeight: "600",
+    ...typography.bodyBold,
     color: colors.gray700,
+  },
+  primaryActionButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+  },
+  primaryActionButtonText: {
+    ...typography.bodyBold,
+    color: colors.white,
   },
 
   // Close Button
   closeButton: {
-    fontSize: 24,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.gray200,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    ...typography.bodyBold,
     color: colors.gray500,
-    fontWeight: "bold",
   },
 });

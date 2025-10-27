@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { contractApi, Contract } from "@/lib/api/contractApi";
-import { useRouter } from "expo-router";
 import Header from "@/components/shared/Header";
 import {
   globalStyles,
@@ -24,8 +23,7 @@ import {
   shadows,
 } from "@/styles/globalStyles";
 
-export default function DealerContractsPage() {
-  const router = useRouter();
+export default function EVMContractsPage() {
   const { user } = useAuth();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,10 +34,12 @@ export default function DealerContractsPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState("");
 
+  const userRole = user?.role?.toUpperCase() || "EVM_STAFF";
+  const isAdmin = userRole === "ADMIN";
+
   const fetchContracts = async () => {
     try {
       setLoading(true);
-
       const filters = filterStatus ? { status: filterStatus } : undefined;
       const response = await contractApi.getAllContracts(filters);
       const contractsData = response.data.data?.data || [];
@@ -62,56 +62,60 @@ export default function DealerContractsPage() {
     fetchContracts();
   };
 
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "COMPLETED":
-        return "#10b981";
-      case "SIGNED":
-        return "#3b82f6";
-      case "DELIVERING":
-        return "#f59e0b";
       case "PENDING":
-        return "#ef4444";
+        return colors.warning;
+      case "SIGNED":
+        return colors.info;
+      case "COMPLETED":
+        return colors.success;
+      case "CANCELLED":
+        return colors.danger;
       default:
-        return "#6b7280";
+        return colors.gray500;
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusText = (status: string) => {
     switch (status) {
-      case "COMPLETED":
-        return "Hoàn thành";
+      case "PENDING":
+        return "Chờ ký";
       case "SIGNED":
         return "Đã ký";
-      case "DELIVERING":
-        return "Đang giao";
-      case "PENDING":
-        return "Chờ xử lý";
+      case "COMPLETED":
+        return "Hoàn thành";
+      case "CANCELLED":
+        return "Đã hủy";
       default:
         return status;
     }
   };
 
-  const filteredContracts = filterStatus
-    ? contracts.filter((c) => c.status === filterStatus)
-    : contracts;
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
-  };
-
-  const handleContractPress = (contract: Contract) => {
-    setSelectedContract(contract);
-    setShowDetailModal(true);
-  };
+  if (loading && contracts.length === 0) {
+    return (
+      <View style={globalStyles.centerContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={globalStyles.loadingText}>
+          Đang tải danh sách hợp đồng...
+        </Text>
+      </View>
+    );
+  }
 
   const renderContractCard = ({ item: contract }: { item: Contract }) => (
     <TouchableOpacity
       style={styles.contractCard}
-      onPress={() => handleContractPress(contract)}
+      onPress={() => {
+        setSelectedContract(contract);
+        setShowDetailModal(true);
+      }}
       activeOpacity={0.7}
     >
       <View style={styles.contractHeader}>
@@ -128,7 +132,7 @@ export default function DealerContractsPage() {
           ]}
         >
           <Text style={styles.statusText}>
-            {getStatusLabel(contract.status)}
+            {getStatusText(contract.status)}
           </Text>
         </View>
       </View>
@@ -173,12 +177,18 @@ export default function DealerContractsPage() {
         </View>
 
         <View style={styles.contractActions}>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              setSelectedContract(contract);
+              setShowDetailModal(true);
+            }}
+          >
             <Text style={styles.actionButtonText}>Chi tiết</Text>
           </TouchableOpacity>
-          {contract.status === "PENDING" && (
+          {isAdmin && contract.status === "PENDING" && (
             <TouchableOpacity style={styles.primaryActionButton}>
-              <Text style={styles.primaryActionButtonText}>Cập nhật</Text>
+              <Text style={styles.primaryActionButtonText}>Xem xét</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -186,32 +196,24 @@ export default function DealerContractsPage() {
     </TouchableOpacity>
   );
 
-  if (loading && contracts.length === 0) {
-    return (
-      <View style={globalStyles.container}>
-        <View style={globalStyles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={globalStyles.loadingText}>Đang tải...</Text>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={globalStyles.container}>
-      <Header title="Danh sách hợp đồng" />
+      <Header title="Quản lý hợp đồng" />
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <TouchableOpacity
-            style={[styles.filterTab, !filterStatus && styles.filterTabActive]}
+            style={[
+              styles.filterTab,
+              filterStatus === "" && styles.filterTabActive,
+            ]}
             onPress={() => setFilterStatus("")}
           >
             <Text
               style={[
                 styles.filterTabText,
-                !filterStatus && styles.filterTabTextActive,
+                filterStatus === "" && styles.filterTabTextActive,
               ]}
             >
               Tất cả
@@ -230,7 +232,7 @@ export default function DealerContractsPage() {
                 filterStatus === "PENDING" && styles.filterTabTextActive,
               ]}
             >
-              Chờ xử lý
+              Chờ ký
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -268,9 +270,9 @@ export default function DealerContractsPage() {
         </ScrollView>
       </View>
 
-      {/* Contract List */}
+      {/* Contracts List */}
       <FlatList
-        data={filteredContracts}
+        data={contracts}
         renderItem={renderContractCard}
         keyExtractor={(item) => item.id}
         contentContainerStyle={globalStyles.listContent}
@@ -279,175 +281,173 @@ export default function DealerContractsPage() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             colors={[colors.primary]}
-            tintColor={colors.primary}
           />
         }
-        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={globalStyles.emptyContainer}>
-            <Text style={globalStyles.emptyText}>Không có hợp đồng nào</Text>
-            <Text style={styles.emptySubtext}>Tạo hợp đồng mới để bắt đầu</Text>
+            <Text style={globalStyles.emptyText}>Chưa có hợp đồng nào</Text>
+            <Text style={styles.emptySubtext}>
+              Các đại lý sẽ tạo hợp đồng và hiển thị ở đây
+            </Text>
           </View>
         }
       />
 
-      {/* Detail Modal */}
-      <Modal visible={showDetailModal} animationType="slide" transparent>
+      {/* Contract Detail Modal */}
+      <Modal
+        visible={showDetailModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
         <View style={globalStyles.modalOverlay}>
           <View style={globalStyles.modalContent}>
+            <View style={globalStyles.modalHeader}>
+              <Text style={globalStyles.modalTitle}>Chi tiết hợp đồng</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowDetailModal(false)}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
             {selectedContract && (
               <>
-                <View style={globalStyles.modalHeader}>
-                  <Text style={globalStyles.modalTitle}>Chi tiết hợp đồng</Text>
-                  <TouchableOpacity onPress={() => setShowDetailModal(false)}>
-                    <Text style={styles.closeButton}>✕</Text>
-                  </TouchableOpacity>
-                </View>
                 <ScrollView style={styles.modalScroll}>
-                  <View style={globalStyles.modalBody}>
-                    {/* Contract Header */}
-                    <View style={styles.modalContractHeader}>
-                      <View style={styles.modalContractCodeContainer}>
-                        <Text style={styles.modalContractCode}>
-                          {selectedContract.contractCode}
-                        </Text>
-                        <Text style={styles.modalContractDate}>
-                          Tạo ngày:{" "}
-                          {new Date(
-                            selectedContract.createdAt
-                          ).toLocaleDateString("vi-VN")}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.modalStatusBadge,
-                          {
-                            backgroundColor: getStatusColor(
-                              selectedContract.status
-                            ),
-                          },
-                        ]}
-                      >
-                        <Text style={styles.modalStatusText}>
-                          {getStatusLabel(selectedContract.status)}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Customer Info */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>
-                        Thông tin khách hàng
+                  {/* Contract Header */}
+                  <View style={styles.modalContractHeader}>
+                    <View style={styles.modalContractCodeContainer}>
+                      <Text style={styles.modalContractCode}>
+                        {selectedContract.contractCode}
                       </Text>
-                      <View style={styles.modalInfoCard}>
-                        <Text style={styles.modalInfoLabel}>Họ tên:</Text>
-                        <Text style={styles.modalInfoValue}>
-                          {selectedContract.customer.firstName}{" "}
-                          {selectedContract.customer.lastName}
-                        </Text>
-                        <Text style={styles.modalInfoLabel}>Email:</Text>
-                        <Text style={styles.modalInfoValue}>
-                          {selectedContract.customer.email}
-                        </Text>
-                        {selectedContract.customer.phone && (
-                          <>
-                            <Text style={styles.modalInfoLabel}>
-                              Số điện thoại:
-                            </Text>
-                            <Text style={styles.modalInfoValue}>
-                              {selectedContract.customer.phone}
-                            </Text>
-                          </>
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Vehicle Info */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Thông tin xe</Text>
-                      <View style={styles.modalInfoCard}>
-                        <Text style={styles.modalInfoLabel}>Xe:</Text>
-                        <Text style={styles.modalInfoValue}>
-                          {selectedContract.vehicle.manufacturer.name}{" "}
-                          {selectedContract.vehicle.model}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Payment Info */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>
-                        Thông tin thanh toán
+                      <Text style={styles.modalContractDate}>
+                        Tạo ngày:{" "}
+                        {new Date(
+                          selectedContract.createdAt
+                        ).toLocaleDateString("vi-VN")}
                       </Text>
-                      <View style={styles.modalPaymentCard}>
-                        <View style={styles.modalPaymentRow}>
-                          <Text style={styles.modalPaymentLabel}>Giá gốc:</Text>
-                          <Text style={styles.modalPaymentValue}>
-                            {formatPrice(selectedContract.basePrice)}
-                          </Text>
-                        </View>
-                        {selectedContract.discount > 0 && (
-                          <View style={styles.modalPaymentRow}>
-                            <Text style={styles.modalPaymentLabel}>
-                              Chiết khấu:
-                            </Text>
-                            <Text style={styles.modalDiscountValue}>
-                              -{formatPrice(selectedContract.discount)}
-                            </Text>
-                          </View>
-                        )}
-                        <View style={styles.modalPaymentRow}>
-                          <Text style={styles.modalPaymentLabel}>
-                            Hình thức thanh toán:
-                          </Text>
-                          <Text style={styles.modalPaymentValue}>
-                            {selectedContract.paymentType === "FULL"
-                              ? "Trả thẳng"
-                              : `Trả góp ${selectedContract.installmentMonths} tháng`}
-                          </Text>
-                        </View>
-                        <View
-                          style={[styles.modalPaymentRow, styles.modalTotalRow]}
-                        >
-                          <Text style={styles.modalTotalLabel}>
-                            Thành tiền:
-                          </Text>
-                          <Text style={styles.modalTotalValue}>
-                            {formatPrice(selectedContract.finalPrice)}
-                          </Text>
-                        </View>
-                      </View>
                     </View>
+                    <View
+                      style={[
+                        styles.modalStatusBadge,
+                        {
+                          backgroundColor: getStatusColor(
+                            selectedContract.status
+                          ),
+                        },
+                      ]}
+                    >
+                      <Text style={styles.modalStatusText}>
+                        {getStatusText(selectedContract.status)}
+                      </Text>
+                    </View>
+                  </View>
 
-                    {/* Contract Actions */}
-                    <View style={styles.modalActions}>
-                      <TouchableOpacity
-                        style={styles.secondaryActionButton}
-                        onPress={() => setShowDetailModal(false)}
-                      >
-                        <Text style={styles.secondaryActionButtonText}>
-                          Đóng
-                        </Text>
-                      </TouchableOpacity>
-                      {selectedContract.status === "PENDING" && (
-                        <TouchableOpacity
-                          style={styles.primaryActionButton}
-                          onPress={() => {
-                            Alert.alert(
-                              "Cập nhật",
-                              "Tính năng đang phát triển"
-                            );
-                            setShowDetailModal(false);
-                          }}
-                        >
-                          <Text style={styles.primaryActionButtonText}>
-                            Cập nhật trạng thái
+                  {/* Customer Info */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>
+                      Thông tin khách hàng
+                    </Text>
+                    <View style={styles.modalInfoCard}>
+                      <Text style={styles.modalInfoLabel}>Họ tên:</Text>
+                      <Text style={styles.modalInfoValue}>
+                        {selectedContract.customer.firstName}{" "}
+                        {selectedContract.customer.lastName}
+                      </Text>
+                      <Text style={styles.modalInfoLabel}>Email:</Text>
+                      <Text style={styles.modalInfoValue}>
+                        {selectedContract.customer.email}
+                      </Text>
+                      {selectedContract.customer.phone && (
+                        <>
+                          <Text style={styles.modalInfoLabel}>
+                            Số điện thoại:
                           </Text>
-                        </TouchableOpacity>
+                          <Text style={styles.modalInfoValue}>
+                            {selectedContract.customer.phone}
+                          </Text>
+                        </>
                       )}
                     </View>
                   </View>
+
+                  {/* Vehicle Info */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>Thông tin xe</Text>
+                    <View style={styles.modalInfoCard}>
+                      <Text style={styles.modalInfoLabel}>Xe:</Text>
+                      <Text style={styles.modalInfoValue}>
+                        {selectedContract.vehicle.manufacturer.name}{" "}
+                        {selectedContract.vehicle.model}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Payment Info */}
+                  <View style={styles.modalSection}>
+                    <Text style={styles.modalSectionTitle}>
+                      Thông tin thanh toán
+                    </Text>
+                    <View style={styles.modalPaymentCard}>
+                      <View style={styles.modalPaymentRow}>
+                        <Text style={styles.modalPaymentLabel}>Giá gốc:</Text>
+                        <Text style={styles.modalPaymentValue}>
+                          {formatPrice(selectedContract.basePrice)}
+                        </Text>
+                      </View>
+                      {selectedContract.discount > 0 && (
+                        <View style={styles.modalPaymentRow}>
+                          <Text style={styles.modalPaymentLabel}>
+                            Chiết khấu:
+                          </Text>
+                          <Text style={styles.modalDiscountValue}>
+                            -{formatPrice(selectedContract.discount)}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.modalPaymentRow}>
+                        <Text style={styles.modalPaymentLabel}>
+                          Hình thức thanh toán:
+                        </Text>
+                        <Text style={styles.modalPaymentValue}>
+                          {selectedContract.paymentType === "FULL"
+                            ? "Trả một lần"
+                            : `Trả góp ${selectedContract.installmentMonths} tháng`}
+                        </Text>
+                      </View>
+                      <View
+                        style={[styles.modalPaymentRow, styles.modalTotalRow]}
+                      >
+                        <Text style={styles.modalTotalLabel}>Thành tiền:</Text>
+                        <Text style={styles.modalTotalValue}>
+                          {formatPrice(selectedContract.finalPrice)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
                 </ScrollView>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.secondaryActionButton}
+                    onPress={() => setShowDetailModal(false)}
+                  >
+                    <Text style={styles.secondaryActionButtonText}>Đóng</Text>
+                  </TouchableOpacity>
+                  {isAdmin && selectedContract.status === "PENDING" && (
+                    <TouchableOpacity
+                      style={styles.primaryActionButton}
+                      onPress={() => {
+                        Alert.alert("Xem xét", "Tính năng đang phát triển");
+                        setShowDetailModal(false);
+                      }}
+                    >
+                      <Text style={styles.primaryActionButtonText}>
+                        Xem xét hợp đồng
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </>
             )}
           </View>
@@ -460,35 +460,32 @@ export default function DealerContractsPage() {
 const styles = StyleSheet.create({
   // Header Container
   headerContainer: {
-    padding: spacing.md,
+    padding: spacing.lg,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray200,
   },
-  createButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    alignItems: "center",
+  headerTitle: {
+    ...typography.h3,
+    color: colors.gray800,
+    marginBottom: spacing.xs,
   },
-  createButtonText: {
-    ...typography.body,
-    fontWeight: "600",
-    color: colors.white,
+  headerSubtitle: {
+    ...typography.bodySmall,
+    color: colors.gray500,
   },
 
   // Filter Container
   filterContainer: {
     backgroundColor: colors.white,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray200,
   },
   filterTab: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    marginLeft: spacing.md,
+    marginHorizontal: spacing.xs,
     borderRadius: borderRadius.full,
     backgroundColor: colors.gray100,
   },
@@ -497,7 +494,7 @@ const styles = StyleSheet.create({
   },
   filterTabText: {
     ...typography.bodySmall,
-    fontWeight: "500",
+    fontWeight: "600",
     color: colors.gray600,
   },
   filterTabTextActive: {
@@ -516,9 +513,9 @@ const styles = StyleSheet.create({
   contractHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     padding: spacing.lg,
-    paddingBottom: spacing.md,
+    backgroundColor: colors.gray50,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray200,
   },
@@ -527,12 +524,11 @@ const styles = StyleSheet.create({
   },
   contractCode: {
     ...typography.h4,
-    fontWeight: "bold",
     color: colors.gray800,
     marginBottom: spacing.xs,
   },
   contractDate: {
-    ...typography.caption,
+    ...typography.bodySmall,
     color: colors.gray500,
   },
 
@@ -552,26 +548,22 @@ const styles = StyleSheet.create({
   contractBody: {
     padding: spacing.lg,
   },
-
-  // Customer Info
   customerInfo: {
     marginBottom: spacing.md,
   },
   customerLabel: {
     ...typography.caption,
-    fontWeight: "600",
     color: colors.gray500,
     marginBottom: spacing.xs,
   },
   customerName: {
-    ...typography.body,
-    fontWeight: "600",
+    ...typography.bodyBold,
     color: colors.gray800,
     marginBottom: spacing.xs,
   },
   customerEmail: {
     ...typography.bodySmall,
-    color: colors.gray600,
+    color: colors.gray500,
   },
 
   // Vehicle Info
@@ -580,21 +572,16 @@ const styles = StyleSheet.create({
   },
   vehicleLabel: {
     ...typography.caption,
-    fontWeight: "600",
     color: colors.gray500,
     marginBottom: spacing.xs,
   },
   vehicleName: {
-    ...typography.body,
-    fontWeight: "500",
+    ...typography.bodyBold,
     color: colors.gray800,
   },
 
   // Payment Info
   paymentInfo: {
-    backgroundColor: colors.gray50,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
     marginBottom: spacing.md,
   },
   paymentRow: {
@@ -608,18 +595,15 @@ const styles = StyleSheet.create({
     color: colors.gray600,
   },
   paymentValue: {
-    ...typography.bodySmall,
-    fontWeight: "500",
+    ...typography.bodySmallBold,
     color: colors.gray800,
   },
   discountValue: {
-    ...typography.bodySmall,
-    fontWeight: "500",
+    ...typography.bodySmallBold,
     color: colors.danger,
   },
   totalLabel: {
-    ...typography.body,
-    fontWeight: "600",
+    ...typography.bodyBold,
     color: colors.gray800,
   },
   totalValue: {
@@ -649,10 +633,16 @@ const styles = StyleSheet.create({
     color: colors.gray700,
   },
   primaryActionButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    alignItems: "center",
   },
   primaryActionButtonText: {
+    ...typography.bodySmall,
+    fontWeight: "600",
     color: colors.white,
   },
 
@@ -670,18 +660,18 @@ const styles = StyleSheet.create({
   modalContractHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.md,
+    alignItems: "center",
+    padding: spacing.lg,
+    backgroundColor: colors.gray50,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray200,
+    marginBottom: spacing.lg,
   },
   modalContractCodeContainer: {
     flex: 1,
   },
   modalContractCode: {
     ...typography.h3,
-    fontWeight: "bold",
     color: colors.gray800,
     marginBottom: spacing.xs,
   },
@@ -719,14 +709,13 @@ const styles = StyleSheet.create({
     borderColor: colors.gray200,
   },
   modalInfoLabel: {
-    ...typography.bodySmall,
-    fontWeight: "600",
-    color: colors.gray600,
+    ...typography.caption,
+    color: colors.gray500,
     marginBottom: spacing.xs,
     marginTop: spacing.sm,
   },
   modalInfoValue: {
-    ...typography.body,
+    ...typography.bodyBold,
     color: colors.gray800,
     marginBottom: spacing.xs,
   },
@@ -750,13 +739,11 @@ const styles = StyleSheet.create({
     color: colors.gray600,
   },
   modalPaymentValue: {
-    ...typography.bodySmall,
-    fontWeight: "500",
+    ...typography.bodySmallBold,
     color: colors.gray800,
   },
   modalDiscountValue: {
-    ...typography.bodySmall,
-    fontWeight: "500",
+    ...typography.bodySmallBold,
     color: colors.danger,
   },
   modalTotalRow: {
@@ -766,8 +753,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   modalTotalLabel: {
-    ...typography.body,
-    fontWeight: "600",
+    ...typography.bodyBold,
     color: colors.gray800,
   },
   modalTotalValue: {
@@ -780,7 +766,10 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: "row",
     gap: spacing.md,
-    marginTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray200,
   },
   secondaryActionButton: {
     flex: 1,
@@ -792,15 +781,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryActionButtonText: {
-    ...typography.body,
-    fontWeight: "600",
+    ...typography.bodyBold,
     color: colors.gray700,
   },
 
   // Close Button
   closeButton: {
-    fontSize: 24,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.gray200,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    ...typography.bodyBold,
     color: colors.gray500,
-    fontWeight: "bold",
   },
 });
