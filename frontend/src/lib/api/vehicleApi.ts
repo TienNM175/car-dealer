@@ -91,7 +91,7 @@ export interface CreateVehicleInput {
   specifications?: string;
 }
 
-export interface UpdateVehicleInput extends Partial<CreateVehicleInput> {}
+export interface UpdateVehicleInput extends Partial<CreateVehicleInput> { }
 
 export interface VehicleFilters {
   search?: string;

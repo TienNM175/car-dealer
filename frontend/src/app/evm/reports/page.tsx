@@ -6,30 +6,38 @@
 //   return <UnifiedReports userRole={userRole} />;
 // }
 
+
+
+
 "use client";
 
-import Reports, { ReportsUserRole } from "@/components/reports/Reports";
-import RouteGuard from "@/components/auth/RouteGuard";
+import ReportEVM from "@/components/reports/ReportEVM";
 import { useAuth } from "@/contexts/AuthContext";
+import Reports from "@/components/reports/Reports";
 
-function normalizeRole(role?: string | null): ReportsUserRole {
-  const r = (role ?? "").toLowerCase();
-  if (r === "dealer_staff") return "dealer_staff";
-  if (r === "dealer_manager") return "dealer_manager";
-  if (r === "evm_staff") return "evm_staff";
-  if (r === "admin" || r === "evm_admin") return "evm_admin";
-  return "dealer_staff";
-}
 
-export default function ReportsPage() {
-  const { user } = useAuth();
-  const role = normalizeRole(user?.role);
+const mapUserRole = (role: string | null | undefined) => {
+  if (!role) return "evm_staff";
+  switch (role) {
+    case "ADMIN": return "evm_admin";
+    case "EVM_ADMIN":
+      return "evm_admin";
+    case "EVM_STAFF":
+      return "evm_staff";
+    default: return "evm_staff";
+  }
+};
+
+export default function EVMReportsPage() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <div>Đang tải...</div>;
+  if (!user) return <div>Vui lòng đăng nhập.</div>;
+
+  const userRole = mapUserRole(user.role);
 
   return (
-    <RouteGuard>
-      <div className="container mx-auto p-6">
-        <Reports userRole={role} defaultPeriod="month" />
-      </div>
-    </RouteGuard>
-  );
+  <main className="p-8 bg-gray-50 min-h-screen">
+      <Reports userRole={userRole} />
+    </main>
+    );
 }

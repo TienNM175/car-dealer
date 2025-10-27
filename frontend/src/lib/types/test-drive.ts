@@ -25,7 +25,8 @@ export interface User {
     lastName: string;
     email: string;
     phone?: string;
-    role: string;
+    // role: string;
+    role?: string;
     dealer?: Dealer;
 }
 
@@ -85,7 +86,8 @@ export interface TestDrive {
     feedback?: string;
     createdAt: string;
     updatedAt: string;
-    customer: Customer;
+    // customer: Customer;
+    customer?: Customer;
     vehicle: Vehicle;
     staff: User;
 }
