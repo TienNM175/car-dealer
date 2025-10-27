@@ -29,39 +29,65 @@ export default function CreateOrderModal({ visible, onClose, onSuccess }: Create
     notes: ''
   });
 
-useEffect(() => {
+  useEffect(() => {
   const fetchVehicles = async () => {
+    if (!user?.dealerId) return;
+
     try {
       setLoading(true);
-      const response = await vehicleApi.getAllVehicles(
+      
+      const response = await vehicleApi.getDealerVehicles(
+        user.dealerId,
         { 
           status: 'ACTIVE',
           search: searchVehicle 
         },
         { 
-          limit: 20,
-          sortBy: 'model',
-          sortOrder: 'asc'
+          limit: 20
         }
       );
       
-      // Handle API response structure
-      const responseData = response.data.data || response.data;
-      const vehiclesData = Array.isArray(responseData) ? responseData : responseData.data || [];
-      setVehicles(vehiclesData);
-    } catch (err) {
-      console.error('Error fetching vehicles:', err);
+      const responseData = response.data as any;
+      
+      if (responseData) {
+        if (Array.isArray(responseData)) {
+          setVehicles(responseData);
+          return;
+        }
+        
+        if (responseData.data && Array.isArray(responseData.data)) {
+          setVehicles(responseData.data);
+          return;
+        }
+        
+        if (responseData.data && responseData.data.data && Array.isArray(responseData.data.data)) {
+          setVehicles(responseData.data.data);
+          return;
+        }
+        
+        const arrayKey = Object.keys(responseData).find(key => 
+          Array.isArray(responseData[key])
+        );
+        if (arrayKey) {
+          setVehicles(responseData[arrayKey]);
+          return;
+        }
+        
+        setVehicles([]);
+      }
+      
+    } catch (err: any) {
       Alert.alert('Lỗi', 'Không thể tải danh sách xe');
     } finally {
       setLoading(false);
     }
   };
 
-  if (visible) {
+  if (visible && user?.dealerId) {
     fetchVehicles();
     setErrors({});
   }
-}, [visible, searchVehicle]);
+}, [visible, searchVehicle, user?.dealerId]);
 
   const resetForm = () => {
     setFormData({ quantity: 1, notes: '' });
@@ -184,7 +210,7 @@ useEffect(() => {
               >
                 <Text style={selectedVehicle ? styles.vehicleSelectedText : styles.vehiclePlaceholder}>
                   {selectedVehicle 
-                    ? `${selectedVehicle.manufacturer?.name} ${selectedVehicle.model} ${selectedVehicle.variant}`
+                    ? `${selectedVehicle.manufacturer?.name} ${selectedVehicle.model} ${selectedVehicle.variant || ''}`
                     : 'Chọn xe từ danh sách...'
                   }
                 </Text>
@@ -214,7 +240,12 @@ useEffect(() => {
                   
                   {/* List vehicles */}
                   <ScrollView style={styles.vehicleList} nestedScrollEnabled>
-                    {filteredVehicles.length === 0 ? (
+                    {loading ? (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="small" color="#3b82f6" />
+                        <Text style={styles.loadingText}>Đang tải xe...</Text>
+                      </View>
+                    ) : filteredVehicles.length === 0 ? (
                       <Text style={styles.noVehiclesText}>Không tìm thấy xe phù hợp</Text>
                     ) : (
                       filteredVehicles.map(vehicle => (
@@ -230,7 +261,7 @@ useEffect(() => {
                         >
                           <View style={styles.vehicleOptionInfo}>
                             <Text style={styles.vehicleOptionName}>
-                              {vehicle.manufacturer?.name} {vehicle.model} {vehicle.variant}
+                              {vehicle.manufacturer?.name} {vehicle.model} {vehicle.variant || ''}
                             </Text>
                             <Text style={styles.vehicleOptionDetails}>
                               {vehicle.year} • {vehicle.color}
@@ -265,7 +296,7 @@ useEffect(() => {
                   </View>
                   <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>Phiên bản</Text>
-                    <Text style={styles.detailValue}>{selectedVehicle.variant}</Text>
+                    <Text style={styles.detailValue}>{selectedVehicle.variant || 'Không có'}</Text>
                   </View>
                   <View style={styles.detailItem}>
                     <Text style={styles.detailLabel}>Năm sản xuất</Text>
@@ -787,5 +818,16 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     color: '#dc2626',
+  },
+  loadingContainer: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6b7280',
   },
 });
