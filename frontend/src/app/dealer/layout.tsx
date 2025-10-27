@@ -80,6 +80,12 @@ export default function DealerLayout({
       label: "Báo cáo",
       role: ["DEALER_MANAGER"],
     },
+    {
+      id: "test-drive",
+      icon: Calendar,
+      label: "Lái thử",
+      role: ["DEALER_STAFF", "DEALER_MANAGER"],
+    },
   ];
 
   const filteredMenuItems = dealerMenuItems.filter((item) =>

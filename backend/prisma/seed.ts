@@ -20,8 +20,8 @@ async function main() {
   };
 
   // Date ranges for 2025 data
-  const recentStart = new Date('2025-01-01T00:00:00Z');
-  const recentEnd = new Date('2025-10-15T23:59:59Z');
+  const recentStart = new Date('2025-10-15T00:00:00Z');
+  const recentEnd = new Date('2025-10-26T23:59:59Z');
 
   // 1. REGIONS
   console.log('🌍 Creating regions...');
@@ -137,7 +137,7 @@ async function main() {
 
   console.log('✅ Created 3 dealer contracts\n');
 
-  // 4. USERS
+  // 4. USERS (GIỮ NGUYÊN)
   console.log('👥 Creating users...');
   const hashedPassword = await bcrypt.hash('Admin@123456', 10);
 
@@ -277,35 +277,12 @@ async function main() {
       isActive: true,
     },
   });
-  const kia = await prisma.manufacturer.upsert({
-    where: { code: 'KIA' },
-    update: {},
-    create: {
-      name: 'KIA',
-      code: 'KIA',
-      country: 'South Korea',
-      logo: 'https://res.cloudinary.com/demo/image/upload/v1/manufacturers/kia-logo.png',
-      isActive: true,
-    },
-  });
-  const mercedes = await prisma.manufacturer.upsert({
-    where: { code: 'MERCEDES' },
-    update: {},
-    create: {
-      name: 'Mercedes-Benz',
-      code: 'MERCEDES',
-      country: 'Germany',
-      logo: 'https://res.cloudinary.com/demo/image/upload/v1/manufacturers/mercedes-logo.png',
-      isActive: true,
-    },
-  });
-  console.log('✅ Created 6 manufacturers\n');
+  console.log('✅ Created 4 manufacturers\n');
 
-  // 6. VEHICLES
-  console.log('🚗 Creating 15 vehicles for 2025...');
+  // 6. VEHICLES (CHỈ 10 XE)
+  console.log('🚗 Creating 10 vehicles for 2025...');
   const vehicles = [];
 
-  // Tesla Models
   vehicles.push(await prisma.vehicle.create({
     data: {
       manufacturerId: tesla.id,
@@ -356,31 +333,6 @@ async function main() {
 
   vehicles.push(await prisma.vehicle.create({
     data: {
-      manufacturerId: tesla.id,
-      model: 'Model S',
-      variant: 'Plaid',
-      year: 2025,
-      batteryCapacity: 100,
-      range: 637,
-      chargingTime: 35,
-      motorPower: 750,
-      topSpeed: 322,
-      acceleration: 1.99,
-      seats: 5,
-      doors: 4,
-      color: 'RED',
-      bodyType: 'SEDAN',
-      wholesalePrice: 2286000000,
-      retailPrice: 2667000000,
-      currency: 'VND',
-      status: 'ACTIVE',
-      description: 'Tesla Model S Plaid - Ultimate performance sedan',
-    },
-  }));
-
-  // VinFast Models
-  vehicles.push(await prisma.vehicle.create({
-    data: {
       manufacturerId: vinfast.id,
       model: 'VF 8',
       variant: 'Eco',
@@ -427,31 +379,6 @@ async function main() {
     },
   }));
 
-  vehicles.push(await prisma.vehicle.create({
-    data: {
-      manufacturerId: vinfast.id,
-      model: 'VF 5',
-      variant: 'Standard',
-      year: 2025,
-      batteryCapacity: 38,
-      range: 310,
-      chargingTime: 25,
-      motorPower: 130,
-      topSpeed: 165,
-      acceleration: 7.5,
-      seats: 5,
-      doors: 4,
-      color: 'WHITE',
-      bodyType: 'HATCHBACK',
-      wholesalePrice: 457200000,
-      retailPrice: 533400000,
-      currency: 'VND',
-      status: 'ACTIVE',
-      description: 'VinFast VF 5 - Compact city car',
-    },
-  }));
-
-  // BYD Models
   vehicles.push(await prisma.vehicle.create({
     data: {
       manufacturerId: byd.id,
@@ -502,31 +429,6 @@ async function main() {
 
   vehicles.push(await prisma.vehicle.create({
     data: {
-      manufacturerId: byd.id,
-      model: 'Seal',
-      variant: 'Premium',
-      year: 2025,
-      batteryCapacity: 82,
-      range: 650,
-      chargingTime: 30,
-      motorPower: 230,
-      topSpeed: 180,
-      acceleration: 5.5,
-      seats: 5,
-      doors: 4,
-      color: 'BLUE',
-      bodyType: 'SEDAN',
-      wholesalePrice: 889000000,
-      retailPrice: 1041400000,
-      currency: 'VND',
-      status: 'ACTIVE',
-      description: 'BYD Seal - Long range sedan',
-    },
-  }));
-
-  // Hyundai Models
-  vehicles.push(await prisma.vehicle.create({
-    data: {
       manufacturerId: hyundai.id,
       model: 'IONIQ 5',
       variant: 'Long Range AWD',
@@ -573,114 +475,64 @@ async function main() {
     },
   }));
 
-  // KIA Models
   vehicles.push(await prisma.vehicle.create({
     data: {
-      manufacturerId: kia.id,
-      model: 'EV6',
-      variant: 'GT-Line',
+      manufacturerId: tesla.id,
+      model: 'Model S',
+      variant: 'Plaid',
       year: 2025,
-      batteryCapacity: 77,
-      range: 510,
-      chargingTime: 18,
-      motorPower: 239,
-      topSpeed: 185,
-      acceleration: 5.2,
+      batteryCapacity: 100,
+      range: 637,
+      chargingTime: 35,
+      motorPower: 750,
+      topSpeed: 322,
+      acceleration: 1.99,
       seats: 5,
       doors: 4,
-      color: 'GREEN',
-      bodyType: 'SUV',
-      wholesalePrice: 1041400000,
-      retailPrice: 1206500000,
-      currency: 'VND',
-      status: 'ACTIVE',
-      description: 'KIA EV6 GT-Line - Sporty crossover',
-    },
-  }));
-
-  vehicles.push(await prisma.vehicle.create({
-    data: {
-      manufacturerId: kia.id,
-      model: 'EV9',
-      variant: 'Premium',
-      year: 2025,
-      batteryCapacity: 99,
-      range: 541,
-      chargingTime: 24,
-      motorPower: 283,
-      topSpeed: 200,
-      acceleration: 5.3,
-      seats: 7,
-      doors: 4,
-      color: 'BLACK',
-      bodyType: 'SUV',
-      wholesalePrice: 1320800000,
-      retailPrice: 1524000000,
-      currency: 'VND',
-      status: 'ACTIVE',
-      description: 'KIA EV9 - Flagship electric SUV',
-    },
-  }));
-
-  // Mercedes Models
-  vehicles.push(await prisma.vehicle.create({
-    data: {
-      manufacturerId: mercedes.id,
-      model: 'EQS',
-      variant: '450+',
-      year: 2025,
-      batteryCapacity: 108,
-      range: 725,
-      chargingTime: 31,
-      motorPower: 245,
-      topSpeed: 210,
-      acceleration: 6.2,
-      seats: 5,
-      doors: 4,
-      color: 'SILVER',
+      color: 'RED',
       bodyType: 'SEDAN',
-      wholesalePrice: 2159000000,
-      retailPrice: 2540000000,
+      wholesalePrice: 2286000000,
+      retailPrice: 2667000000,
       currency: 'VND',
       status: 'ACTIVE',
-      description: 'Mercedes EQS - Luxury electric flagship',
+      description: 'Tesla Model S Plaid - Ultimate performance sedan',
     },
   }));
 
   vehicles.push(await prisma.vehicle.create({
     data: {
-      manufacturerId: mercedes.id,
-      model: 'EQE SUV',
-      variant: '350 4MATIC',
+      manufacturerId: vinfast.id,
+      model: 'VF 5',
+      variant: 'Standard',
       year: 2025,
-      batteryCapacity: 96,
-      range: 590,
-      chargingTime: 32,
-      motorPower: 215,
-      topSpeed: 210,
-      acceleration: 6.5,
+      batteryCapacity: 38,
+      range: 310,
+      chargingTime: 25,
+      motorPower: 130,
+      topSpeed: 165,
+      acceleration: 7.5,
       seats: 5,
       doors: 4,
-      color: 'BLACK',
-      bodyType: 'SUV',
-      wholesalePrice: 1778000000,
-      retailPrice: 2082800000,
+      color: 'WHITE',
+      bodyType: 'HATCHBACK',
+      wholesalePrice: 457200000,
+      retailPrice: 533400000,
       currency: 'VND',
       status: 'ACTIVE',
-      description: 'Mercedes EQE SUV - Executive electric SUV',
+      description: 'VinFast VF 5 - Compact city car',
     },
   }));
 
   console.log(`✅ Created ${vehicles.length} vehicles\n`);
 
-  // 7. VEHICLE IMAGES ✅ WITH PUBLICID
+  // 7. VEHICLE IMAGES WITH PUBLICID
   console.log('🖼️ Creating vehicle images with publicId...');
   const imageData = vehicles.map((v) => {
     const modelSlug = v.model.toLowerCase().replace(/\s+/g, '-');
     return {
       vehicleId: v.id,
       url: `https://res.cloudinary.com/demo/image/upload/v1/vehicles/${modelSlug}-2025-main.jpg`,
-      publicId: `vehicles/${modelSlug}-2025-main`, // ✅ ADDED PUBLICID
+      publicId: `vehicles/${modelSlug}-2025-main`,
       alt: `${v.model} ${v.variant} 2025 - Main Image`,
       isMain: true,
       order: 0,
@@ -709,12 +561,12 @@ async function main() {
   const dealerInventoryData = [];
   
   for (const dealer of [dealer1, dealer2, dealer3]) {
-    const dealerVehicles = vehicles.slice(0, randomNumber(8, 10));
+    const dealerVehicles = vehicles.slice(0, randomNumber(5, 8));
     
     for (const vehicle of dealerVehicles) {
-      const quantity = randomNumber(5, 25);
-      const sold = randomNumber(1, Math.floor(quantity * 0.4));
-      const reserved = randomNumber(0, Math.floor((quantity - sold) * 0.3));
+      const quantity = randomNumber(3, 10);
+      const sold = randomNumber(0, Math.floor(quantity * 0.3));
+      const reserved = randomNumber(0, Math.floor((quantity - sold) * 0.2));
       
       dealerInventoryData.push({
         dealerId: dealer.id,
@@ -723,7 +575,7 @@ async function main() {
         reserved,
         sold,
         available: quantity - reserved - sold,
-        location: randomElement(['Showroom Floor 1', 'Showroom Floor 2', 'Storage', 'Display']),
+        location: randomElement(['Showroom Floor 1', 'Showroom Floor 2', 'Storage']),
       });
     }
   }
@@ -731,33 +583,31 @@ async function main() {
   await prisma.inventory.createMany({ data: dealerInventoryData });
   console.log(`✅ Created ${dealerInventoryData.length} dealer inventory records\n`);
 
-  // 10. CUSTOMERS ✅ WITH DEALERID
-  console.log('👤 Creating 50 customers with dealerId...');
+  // 10. CUSTOMERS (20 CHỈ THÔI)
+  console.log('👤 Creating 20 customers with dealerId...');
   
-  const firstNames = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Võ', 'Phan', 'Vũ', 'Đặng', 'Bùi', 'Đỗ', 'Hồ', 'Ngô', 'Dương'];
-  const middleNames = ['Văn', 'Thị', 'Minh', 'Thanh', 'Thu', 'Hồng', 'Anh', 'Tuấn', 'Quốc', 'Đức'];
-  const lastNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T'];
-  const cities = ['Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ'];
-  const statuses: CustomerStatus[] = ['INTERESTED', 'CONTACTED', 'TEST_DRIVE', 'QUOTED', 'PURCHASED', 'COLD'];
+  const firstNames = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Võ', 'Phan'];
+  const middleNames = ['Văn', 'Thị', 'Minh', 'Thanh', 'Thu', 'Hồng', 'Anh'];
+  const lastNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K'];
+  const cities = ['Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng'];
+  const statuses: CustomerStatus[] = ['INTERESTED', 'CONTACTED', 'TEST_DRIVE', 'QUOTED', 'PURCHASED'];
   const staffMembers = [dealerStaff1, dealerStaff2, dealerManager1, dealerManager2];
   
   const customers = [];
-  for (let i = 1; i <= 50; i++) {
+  for (let i = 1; i <= 20; i++) {
     const firstName = randomElement(firstNames);
     const middleName = randomElement(middleNames);
     const lastName = randomElement(lastNames);
     
-    // ✅ Assign dealer based on distribution (20 for dealer1, 20 for dealer2, 10 for dealer3)
     let assignedDealer;
-    if (i <= 20) {
+    if (i <= 8) {
       assignedDealer = dealer1;
-    } else if (i <= 40) {
+    } else if (i <= 16) {
       assignedDealer = dealer2;
     } else {
       assignedDealer = dealer3;
     }
     
-    // ✅ Get staff from same dealer for createdBy
     const dealerStaffForCustomer = assignedDealer.id === dealer1.id 
       ? randomElement([dealerStaff1, dealerManager1])
       : assignedDealer.id === dealer2.id
@@ -774,40 +624,33 @@ async function main() {
         city: randomElement(cities),
         identityCard: `00${String(100000000 + i).slice(1)}`,
         status: randomElement(statuses),
-        dealerId: assignedDealer.id, // ✅ ASSIGN DEALER
-        createdBy: dealerStaffForCustomer.id, // ✅ CREATED BY STAFF
+        dealerId: assignedDealer.id,
+        createdBy: dealerStaffForCustomer.id,
         createdAt: randomDateBetween(recentStart, recentEnd),
       },
     });
     customers.push(customer);
   }
   
-  console.log(`✅ Created ${customers.length} customers (20 in HN, 20 in HCM, 10 in DN)\n`);
+  console.log(`✅ Created ${customers.length} customers\n`);
 
   // 11. CUSTOMER LIFECYCLE
   console.log('📊 Creating customer lifecycle...');
   const lifecycleData = [];
   
   for (const customer of customers) {
-    // Get staff from same dealer
     const dealerStaffForLifecycle = customer.dealerId === dealer1.id
       ? randomElement([dealerStaff1, dealerManager1])
       : customer.dealerId === dealer2.id
       ? randomElement([dealerStaff2, dealerManager2])
       : randomElement(staffMembers);
     
-    const eventCount = randomNumber(1, 3);
+    const eventCount = randomNumber(1, 2);
     for (let i = 0; i < eventCount; i++) {
       lifecycleData.push({
         customerId: customer.id,
         status: randomElement(statuses),
-        notes: randomElement([
-          'Quan tâm qua website',
-          'Gọi tư vấn',
-          'Đã lái thử',
-          'Yêu cầu báo giá',
-          'Follow up định kỳ',
-        ]),
+        notes: randomElement(['Quan tâm qua website', 'Gọi tư vấn', 'Đã lái thử', 'Yêu cầu báo giá']),
         changedBy: dealerStaffForLifecycle.id,
         createdAt: randomDateBetween(customer.createdAt, recentEnd),
       });
@@ -817,16 +660,15 @@ async function main() {
   await prisma.customerLifecycle.createMany({ data: lifecycleData });
   console.log(`✅ Created ${lifecycleData.length} lifecycle records\n`);
 
-  // 12. TEST DRIVES
-  console.log('🎯 Creating 80 test drives...');
+  // 12. TEST DRIVES (30)
+  console.log('🎯 Creating 30 test drives...');
   const testDriveData = [];
-  const tdStatuses: TestDriveStatus[] = ['SCHEDULED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'];
+  const tdStatuses: TestDriveStatus[] = ['SCHEDULED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'];
   
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 30; i++) {
     const customer = randomElement(customers);
     const vehicle = randomElement(vehicles);
     
-    // Get staff from customer's dealer
     const staff = customer.dealerId === dealer1.id
       ? randomElement([dealerStaff1, dealerManager1])
       : customer.dealerId === dealer2.id
@@ -841,23 +683,22 @@ async function main() {
       staffId: staff.id,
       scheduledDate: randomDateBetween(recentStart, recentEnd),
       status,
-      notes: status === 'COMPLETED' ? 'Hoàn thành tốt' : status === 'NO_SHOW' ? 'Khách không đến' : 'Đang chờ xử lý',
-      feedback: status === 'COMPLETED' ? randomElement(['Rất hài lòng', 'Tốt', 'Ổn', 'Cần cải thiện']) : null,
+      notes: status === 'COMPLETED' ? 'Hoàn thành tốt' : 'Đang chờ xử lý',
+      feedback: status === 'COMPLETED' ? randomElement(['Rất hài lòng', 'Tốt']) : null,
     });
   }
   
   await prisma.testDrive.createMany({ data: testDriveData });
-  console.log('✅ Created 80 test drives\n');
+  console.log('✅ Created 30 test drives\n');
 
-  // 13. QUOTATIONS
-  console.log('💰 Creating 60 quotations...');
-  const quotationStatuses: QuotationStatus[] = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED'];
+  // 13. QUOTATIONS (25)
+  console.log('💰 Creating 25 quotations...');
+  const quotationStatuses: QuotationStatus[] = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED'];
   
-  for (let i = 1; i <= 60; i++) {
+  for (let i = 1; i <= 25; i++) {
     const customer = randomElement(customers);
     const vehicle = randomElement(vehicles);
     
-    // Get staff from customer's dealer
     const staff = customer.dealerId === dealer1.id
       ? randomElement([dealerStaff1, dealerManager1])
       : customer.dealerId === dealer2.id
@@ -865,10 +706,9 @@ async function main() {
       : randomElement(staffMembers);
     
     const basePrice = Number(vehicle.retailPrice);
-    const discount = randomNumber(0, Math.floor(basePrice * 0.1));
+    const discount = randomNumber(0, Math.floor(basePrice * 0.08));
     const finalPrice = basePrice - discount;
     const paymentType: PaymentType = randomElement(['FULL', 'INSTALLMENT']);
-    const status = randomElement(quotationStatuses);
     
     await prisma.quotation.create({
       data: {
@@ -880,27 +720,26 @@ async function main() {
         discount,
         finalPrice,
         paymentType,
-        installmentMonths: paymentType === 'INSTALLMENT' ? randomElement([36, 48, 60]) : null,
-        monthlyPayment: paymentType === 'INSTALLMENT' ? Math.round(finalPrice / randomElement([36, 48, 60])) : null,
+        installmentMonths: paymentType === 'INSTALLMENT' ? randomElement([36, 48]) : null,
+        monthlyPayment: paymentType === 'INSTALLMENT' ? Math.round(finalPrice / randomElement([36, 48])) : null,
         validUntil: randomDateBetween(recentStart, new Date('2025-12-31')),
-        status,
-        notes: `Báo giá ${vehicle.model} - Q${Math.ceil(Math.random() * 4)} 2025`,
+        status: randomElement(quotationStatuses),
+        notes: `Báo giá ${vehicle.model}`,
         createdAt: randomDateBetween(recentStart, recentEnd),
       },
     });
   }
   
-  console.log('✅ Created 60 quotations\n');
+  console.log('✅ Created 25 quotations\n');
 
-  // 14. CONTRACTS
-  console.log('📝 Creating 45 contracts...');
+  // 14. CONTRACTS (15)
+  console.log('📋 Creating 15 contracts...');
   const contracts = [];
   
-  for (let i = 1; i <= 45; i++) {
+  for (let i = 1; i <= 15; i++) {
     const customer = randomElement(customers);
     const vehicle = randomElement(vehicles);
     
-    // Get staff from customer's dealer
     const staff = customer.dealerId === dealer1.id
       ? randomElement([dealerStaff1, dealerManager1])
       : customer.dealerId === dealer2.id
@@ -908,13 +747,13 @@ async function main() {
       : randomElement(staffMembers);
     
     const basePrice = Number(vehicle.retailPrice);
-    const discount = randomNumber(25400000, Math.floor(basePrice * 0.12));
+    const discount = randomNumber(25400000, Math.floor(basePrice * 0.1));
     const finalPrice = basePrice - discount;
     const paymentType: PaymentType = randomElement(['FULL', 'INSTALLMENT']);
-    const status: ContractStatus = i <= 30 ? 'COMPLETED' : randomElement(['SIGNED', 'DELIVERING', 'COMPLETED']);
+    const status: ContractStatus = i <= 10 ? 'COMPLETED' : randomElement(['SIGNED', 'DELIVERING']);
     
     const signedDate = randomDateBetween(recentStart, recentEnd);
-    const deliveryDate = new Date(signedDate.getTime() + randomNumber(3, 14) * 24 * 60 * 60 * 1000);
+    const deliveryDate = new Date(signedDate.getTime() + randomNumber(3, 7) * 24 * 60 * 60 * 1000);
     
     const contract = await prisma.contract.create({
       data: {
@@ -926,14 +765,14 @@ async function main() {
         discount,
         finalPrice,
         paymentType,
-        installmentMonths: paymentType === 'INSTALLMENT' ? randomElement([36, 48, 60]) : null,
-        monthlyPayment: paymentType === 'INSTALLMENT' ? Math.round(finalPrice / randomElement([36, 48, 60])) : null,
-        interestRate: paymentType === 'INSTALLMENT' ? randomNumber(35, 65) / 10 : null,
+        installmentMonths: paymentType === 'INSTALLMENT' ? randomElement([36, 48]) : null,
+        monthlyPayment: paymentType === 'INSTALLMENT' ? Math.round(finalPrice / randomElement([36, 48])) : null,
+        interestRate: paymentType === 'INSTALLMENT' ? randomNumber(35, 60) / 10 : null,
         status,
         signedAt: signedDate,
         deliveryDate: deliveryDate,
-        deliveredAt: status === 'COMPLETED' ? new Date(deliveryDate.getTime() + randomNumber(1, 3) * 24 * 60 * 60 * 1000) : null,
-        notes: `Hợp đồng ${vehicle.model} - ${staff.firstName}`,
+        deliveredAt: status === 'COMPLETED' ? new Date(deliveryDate.getTime() + randomNumber(1, 2) * 24 * 60 * 60 * 1000) : null,
+        notes: `Hợp đồng ${vehicle.model}`,
         createdAt: randomDateBetween(recentStart, signedDate),
       },
     });
@@ -941,16 +780,16 @@ async function main() {
     contracts.push(contract);
   }
   
-  console.log('✅ Created 45 contracts\n');
+  console.log('✅ Created 15 contracts\n');
 
-  // 15. FEEDBACKS
-  console.log('⭐ Creating 35 feedbacks...');
-  const feedbackCategories: FeedbackCategory[] = ['SERVICE', 'PRODUCT', 'DELIVERY', 'OTHER'];
+  // 15. FEEDBACKS (10)
+  console.log('⭐ Creating 10 feedbacks...');
+  const feedbackCategories: FeedbackCategory[] = ['SERVICE', 'PRODUCT', 'DELIVERY'];
   const feedbackData = [];
   
   const completedContracts = contracts.filter(c => c.status === 'COMPLETED');
   
-  for (let i = 0; i < 35; i++) {
+  for (let i = 0; i < 10; i++) {
     const contract = i < completedContracts.length ? completedContracts[i] : null;
     const customer = contract ? await prisma.customer.findUnique({ where: { id: contract.customerId } }) : randomElement(customers);
     
@@ -958,69 +797,56 @@ async function main() {
       customerId: customer!.id,
       contractId: contract?.id || null,
       rating: randomNumber(3, 5),
-      comment: randomElement([
-        'Dịch vụ tốt, nhân viên tận tâm',
-        'Xe chất lượng, giao đúng hẹn',
-        'Hài lòng với trải nghiệm',
-        'Tư vấn chi tiết, chuyên nghiệp',
-        'Sẽ giới thiệu bạn bè',
-      ]),
+      comment: randomElement(['Dịch vụ tốt', 'Tốt', 'Hài lòng', 'Chuyên nghiệp']),
       category: randomElement(feedbackCategories),
       createdAt: randomDateBetween(recentStart, recentEnd),
     });
   }
   
   await prisma.feedback.createMany({ data: feedbackData });
-  console.log('✅ Created 35 feedbacks\n');
+  console.log('✅ Created 10 feedbacks\n');
 
-  // 16. COMPLAINTS
-  console.log('📢 Creating 12 complaints...');
-  const complaintStatuses: ComplaintStatus[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+  // 16. COMPLAINTS (5)
+  console.log('🔔 Creating 5 complaints...');
+  const complaintStatuses: ComplaintStatus[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED'];
   const complaintData = [];
   
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 5; i++) {
     const customer = randomElement(customers);
     const contract = randomElement(contracts.filter(c => c.customerId === customer.id)) || null;
     const status = randomElement(complaintStatuses);
     const createdDate = randomDateBetween(recentStart, recentEnd);
     
-    // Get manager from customer's dealer for resolution
     const resolver = customer.dealerId === dealer1.id
       ? dealerManager1.id
       : customer.dealerId === dealer2.id
       ? dealerManager2.id
-      : randomElement([dealerManager1, dealerManager2]).id;
+      : dealerManager1.id;
     
     complaintData.push({
       customerId: customer.id,
       contractId: contract?.id || null,
-      subject: randomElement([
-        'Chậm trễ giao xe',
-        'Xe có lỗi kỹ thuật nhỏ',
-        'Tư vấn cần cải thiện',
-        'Vấn đề về hóa đơn',
-        'Yêu cầu hỗ trợ thêm',
-      ]),
-      description: 'Khách hàng báo cáo vấn đề cần xử lý',
+      subject: randomElement(['Chậm trả giao xe', 'Xe có lỗi kỹ thuật', 'Tư vấn cần cải thiện']),
+      description: 'Khách hàng báo cáo vấn đề',
       status,
-      resolution: status === 'RESOLVED' || status === 'CLOSED' ? 'Đã xử lý và hỗ trợ khách hàng thỏa đáng' : null,
-      resolvedAt: status === 'RESOLVED' || status === 'CLOSED' ? randomDateBetween(createdDate, recentEnd) : null,
-      resolvedBy: status === 'RESOLVED' || status === 'CLOSED' ? resolver : null,
+      resolution: status === 'RESOLVED' ? 'Đã xử lý' : null,
+      resolvedAt: status === 'RESOLVED' ? randomDateBetween(createdDate, recentEnd) : null,
+      resolvedBy: status === 'RESOLVED' ? resolver : null,
       createdAt: createdDate,
     });
   }
   
   await prisma.complaint.createMany({ data: complaintData });
-  console.log('✅ Created 12 complaints\n');
+  console.log('✅ Created 5 complaints\n');
 
   // 17. CUSTOMER DEBTS
   console.log('💳 Creating customer debts...');
   const installmentContracts = contracts.filter(c => c.paymentType === 'INSTALLMENT' && c.status === 'COMPLETED');
   const debtData: Prisma.CustomerDebtCreateManyInput[] = [];
   
-  for (const contract of installmentContracts.slice(0, 20)) {
+  for (const contract of installmentContracts.slice(0, 8)) {
     const totalDebt = Number(contract.finalPrice);
-    const monthsPaid = randomNumber(3, 12);
+    const monthsPaid = randomNumber(2, 8);
     const paidAmount = Number(contract.monthlyPayment!) * monthsPaid;
     
     debtData.push({
@@ -1036,20 +862,20 @@ async function main() {
   await prisma.customerDebt.createMany({ data: debtData });
   console.log(`✅ Created ${debtData.length} customer debts\n`);
 
-  // 18. DEALER ORDERS
-  console.log('📦 Creating 25 dealer orders...');
-  const orderStatuses: DealerOrderStatus[] = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+  // 18. DEALER ORDERS (10)
+  console.log('📦 Creating 10 dealer orders...');
+  const orderStatuses: DealerOrderStatus[] = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
   
-  for (let i = 1; i <= 25; i++) {
+  for (let i = 1; i <= 10; i++) {
     const dealer = randomElement([dealer1, dealer2, dealer3]);
-    const manager = dealer.id === dealer1.id ? dealerManager1 : dealer.id === dealer2.id ? dealerManager2 : randomElement([dealerManager1, dealerManager2]);
+    const manager = dealer.id === dealer1.id ? dealerManager1 : dealer.id === dealer2.id ? dealerManager2 : dealerManager1;
     const vehicle = randomElement(vehicles);
-    const quantity = randomNumber(5, 15);
+    const quantity = randomNumber(3, 8);
     const unitPrice = Number(vehicle.wholesalePrice);
-    const status: DealerOrderStatus = i <= 20 ? randomElement(['DELIVERED', 'SHIPPED']) : randomElement(orderStatuses);
+    const status: DealerOrderStatus = i <= 6 ? randomElement(['DELIVERED', 'SHIPPED']) : randomElement(orderStatuses);
     
     const orderedDate = randomDateBetween(recentStart, recentEnd);
-    const confirmedDate = status !== 'PENDING' && status !== 'CANCELLED' ? randomDateBetween(orderedDate, recentEnd) : null;
+    const confirmedDate = status !== 'PENDING' ? randomDateBetween(orderedDate, recentEnd) : null;
     const shippedDate = status === 'SHIPPED' || status === 'DELIVERED' ? randomDateBetween(confirmedDate || orderedDate, recentEnd) : null;
     const deliveredDate = status === 'DELIVERED' ? randomDateBetween(shippedDate || orderedDate, recentEnd) : null;
     
@@ -1067,36 +893,25 @@ async function main() {
         confirmedAt: confirmedDate,
         shippedAt: shippedDate,
         deliveredAt: deliveredDate,
-        notes: `Đơn hàng ${vehicle.model} cho ${dealer.name}`,
+        notes: `Đơn hàng ${vehicle.model}`,
       },
     });
   }
   
-  console.log('✅ Created 25 dealer orders\n');
+  console.log('✅ Created 10 dealer orders\n');
 
-  // 19. DEALER DISCOUNTS
-  console.log('🎁 Creating 8 dealer discounts...');
+  // 19. DEALER DISCOUNTS (5)
+  console.log('🎁 Creating 5 dealer discounts...');
   const discountData: Prisma.DealerDiscountCreateManyInput[] = [
     {
       dealerId: dealer1.id,
       name: 'Khuyến mãi Tết 2025',
-      description: 'Giảm giá mùa Tết Nguyên Đán',
+      description: 'Giảm giá mùa Tết',
       discountType: 'PERCENTAGE',
       discountValue: 8,
       minPurchase: 889000000,
       startDate: new Date('2025-01-15'),
       endDate: new Date('2025-02-15'),
-      isActive: false,
-    },
-    {
-      dealerId: dealer1.id,
-      name: 'Khuyến mãi mùa hè 2025',
-      description: 'Giảm giá cho Model 3 và VF8',
-      discountType: 'FIXED',
-      discountValue: 63500000,
-      minPurchase: 914400000,
-      startDate: new Date('2025-06-01'),
-      endDate: new Date('2025-08-31'),
       isActive: false,
     },
     {
@@ -1123,17 +938,6 @@ async function main() {
     },
     {
       dealerId: dealer2.id,
-      name: 'Khuyến mãi Q3 2025',
-      description: 'Giảm giá các mẫu SUV',
-      discountType: 'FIXED',
-      discountValue: 76200000,
-      minPurchase: 1143000000,
-      startDate: new Date('2025-07-01'),
-      endDate: new Date('2025-09-30'),
-      isActive: false,
-    },
-    {
-      dealerId: dealer2.id,
       name: 'Ưu đãi tháng 10',
       description: 'Giảm 4% cho tất cả mẫu xe',
       discountType: 'PERCENTAGE',
@@ -1142,17 +946,6 @@ async function main() {
       startDate: new Date('2025-10-01'),
       endDate: new Date('2025-10-15'),
       isActive: true,
-    },
-    {
-      dealerId: dealer3.id,
-      name: 'Khai trương khuyến mãi',
-      description: 'Ưu đãi đặc biệt tháng 1',
-      discountType: 'FIXED',
-      discountValue: 50800000,
-      minPurchase: 635000000,
-      startDate: new Date('2025-01-01'),
-      endDate: new Date('2025-01-31'),
-      isActive: false,
     },
     {
       dealerId: dealer3.id,
@@ -1168,17 +961,17 @@ async function main() {
   ];
   
   await prisma.dealerDiscount.createMany({ data: discountData });
-  console.log('✅ Created 8 dealer discounts\n');
+  console.log('✅ Created 5 dealer discounts\n');
 
   // 20. TARGETS
   console.log('🎯 Creating sales targets for 2025...');
   const targetData = [];
   
   for (const dealer of [dealer1, dealer2, dealer3]) {
-    for (let month = 1; month <= 10; month++) {
+    for (let month = 1; month <= 6; month++) {
       const baseTarget = dealer.id === dealer2.id ? 17780000000 : dealer.id === dealer1.id ? 13970000000 : 10160000000;
-      const targetAmount = baseTarget + randomNumber(-1270000000, 2540000000);
-      const achievedAmount = randomNumber(Math.floor(targetAmount * 0.6), Math.floor(targetAmount * 1.2));
+      const targetAmount = baseTarget + randomNumber(-1270000000, 1270000000);
+      const achievedAmount = randomNumber(Math.floor(targetAmount * 0.7), Math.floor(targetAmount * 1.1));
       
       targetData.push({
         dealerId: dealer.id,
@@ -1224,81 +1017,48 @@ async function main() {
       dueDate: new Date('2025-10-28'),
       status: 'PARTIAL',
     },
-    {
-      dealerId: dealer3.id,
-      totalDebt: 7112000000,
-      paidAmount: 7112000000,
-      dueDate: new Date('2025-07-31'),
-      status: 'PAID',
-    },
-    {
-      dealerId: dealer3.id,
-      totalDebt: 8128000000,
-      paidAmount: 4064000000,
-      dueDate: new Date('2025-11-15'),
-      status: 'PARTIAL',
-    },
   ];
   
   await prisma.dealerDebt.createMany({ data: dealerDebtData });
-  console.log('✅ Created 6 dealer debts\n');
+  console.log('✅ Created 4 dealer debts\n');
 
   // 22. FINAL SUMMARY
-  console.log('\n🎉 ENHANCED 2025 Database seeding completed! (VND + DealerId + publicId)\n');
-  console.log('╔═══════════════════════════════════════════════════════════╗');
-  console.log('📊 ENHANCED SEEDING SUMMARY (2025)');
-  console.log('╚═══════════════════════════════════════════════════════════╝');
-  console.log('✓ Regions: 3 (North, Central, South)');
-  console.log('✓ Dealers: 3 (Hà Nội, HCM, Đà Nẵng)');
+  console.log('\n🎉 OPTIMIZED 2025 Database seeding completed!\n');
+  console.log('┌─────────────────────────────────────────────────────────────┐');
+  console.log('📊 OPTIMIZED SEEDING SUMMARY (2025)');
+  console.log('└─────────────────────────────────────────────────────────────┘');
+  console.log('✓ Regions: 3');
+  console.log('✓ Dealers: 3');
   console.log('✓ Dealer Contracts: 3');
-  console.log('✓ Users: 6 (kept original accounts)');
-  console.log('✓ Manufacturers: 6 (Tesla, VinFast, BYD, Hyundai, KIA, Mercedes)');
-  console.log('✓ Vehicles: 15 models');
-  console.log('✓ Vehicle Images: 15 ✅ WITH PUBLICID');
-  console.log('✓ EVM Inventory: 15 records');
-  console.log(`✓ Dealer Inventory: ${dealerInventoryData.length} records`);
-  console.log('✓ Customers: 50 ✅ WITH DEALERID (20 HN, 20 HCM, 10 DN)');
-  console.log(`✓ Customer Lifecycle: ${lifecycleData.length} events`);
-  console.log('✓ Test Drives: 80');
-  console.log('✓ Quotations: 60');
-  console.log('✓ Contracts: 45 (30 completed)');
-  console.log('✓ Feedbacks: 35');
-  console.log('✓ Complaints: 12');
-  console.log(`✓ Customer Debts: ${debtData.length} records`);
-  console.log('✓ Dealer Orders: 25');
-  console.log('✓ Dealer Discounts: 8 promotions');
-  console.log(`✓ Sales Targets: ${targetData.length} (full year 2025)`);
-  console.log('✓ Dealer Debts: 6 records');
-  console.log('═══════════════════════════════════════════════════════════\n');
+  console.log('✓ Users: 6 (giữ nguyên)');
+  console.log('✓ Manufacturers: 4');
+  console.log('✓ Vehicles: 10');
+  console.log('✓ Vehicle Images: 10 (with publicId)');
+  console.log('✓ EVM Inventory: 10');
+  console.log(`✓ Dealer Inventory: ${dealerInventoryData.length}`);
+  console.log('✓ Customers: 20');
+  console.log(`✓ Customer Lifecycle: ${lifecycleData.length}`);
+  console.log('✓ Test Drives: 30');
+  console.log('✓ Quotations: 25');
+  console.log('✓ Contracts: 15');
+  console.log('✓ Feedbacks: 10');
+  console.log('✓ Complaints: 5');
+  console.log(`✓ Customer Debts: ${debtData.length}`);
+  console.log('✓ Dealer Orders: 10');
+  console.log('✓ Dealer Discounts: 5');
+  console.log(`✓ Sales Targets: ${targetData.length}`);
+  console.log('✓ Dealer Debts: 4');
+  console.log('─────────────────────────────────────────────────────────────\n');
 
-  console.log('📍 Customer Distribution by Dealer:');
-  const customersByDealer = await prisma.customer.groupBy({
-    by: ['dealerId'],
-    _count: true,
-  });
-  
-  for (const group of customersByDealer) {
-    const dealer = await prisma.dealer.findUnique({
-      where: { id: group.dealerId },
-      select: { name: true, code: true },
-    });
-    console.log(`  • ${dealer?.name} (${dealer?.code}): ${group._count} customers`);
-  }
-  
-  console.log('\n👥 TEST ACCOUNTS:');
-  console.log('🔑 Admin: admin@evdealer.com / Admin@123456');
+  console.log('👥 TEST ACCOUNTS (GIỮ NGUYÊN):');
+  console.log('🔐 Admin: admin@evdealer.com / Admin@123456');
   console.log('🏭 EVM Staff: evm@evdealer.com / Admin@123456');
-  console.log('👔 Dealer Manager (Hà Nội): manager.hn@evdealer.com / Admin@123456');
-  console.log('👤 Dealer Staff (Hà Nội): staff.hn@evdealer.com / Admin@123456');
-  console.log('👔 Dealer Manager (HCM): manager.hcm@evdealer.com / Admin@123456');
-  console.log('👤 Dealer Staff (HCM): staff.hcm@evdealer.com / Admin@123456\n');
+  console.log('🏢 Manager HN: manager.hn@evdealer.com / Admin@123456');
+  console.log('👤 Staff HN: staff.hn@evdealer.com / Admin@123456');
+  console.log('🏢 Manager HCM: manager.hcm@evdealer.com / Admin@123456');
+  console.log('👤 Staff HCM: staff.hcm@evdealer.com / Admin@123456\n');
 
-  console.log('🚀 Next steps:');
-  console.log('  1. Login with dealer account');
-  console.log('  2. Verify customers are filtered by dealer');
-  console.log('  3. Test create new customer (auto-assigned to dealer)');
-  console.log('  4. Test access control (cannot view other dealer customers)');
-  console.log('  5. ✅ Upload images via Cloudinary (publicId ready)\n');
+  console.log('🚀 Ready to use!\n');
 }
 
 main()
