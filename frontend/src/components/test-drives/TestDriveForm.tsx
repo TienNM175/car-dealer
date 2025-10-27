@@ -13,7 +13,7 @@ import { customerApi } from '@/lib/api/customerApi';
 import { vehicleApi } from '@/lib/api/vehicleApi';
 import { usersApi } from '@/lib/api/users';
 import { Button } from '@/components/shared/button';
-import { TestDrive, Customer, Vehicle, User, TestDriveStatus } from '@/lib/types/test-drive';
+import { TestDrive, Customer, Vehicle, User } from '@/lib/types/test-drive';
 
 const testDriveSchema = z.object({
     customerId: z.string().min(1, 'Vui lòng chọn khách hàng'),
@@ -22,10 +22,12 @@ const testDriveSchema = z.object({
     scheduledDate: z
         .string()
         .min(1, 'Vui lòng chọn ngày hẹn')
-        .refine((val) => new Date(val) > new Date(), { message: 'Ngày hẹn phải ở tương lai' }),
+        .refine((val) => new Date(val) > new Date(), {
+            message: 'Ngày hẹn phải ở tương lai',
+        }),
     status: z.enum(['SCHEDULED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']),
-    notes: z.string().max(1000, 'Ghi chú không vượt quá 1000 ký tự').optional(),
-    feedback: z.string().max(1000, 'Feedback không vượt quá 1000 ký tự').optional(),
+    notes: z.string().max(1000).optional(),
+    feedback: z.string().max(1000).optional(),
 });
 
 type TestDriveFormData = z.infer<typeof testDriveSchema>;
@@ -35,7 +37,10 @@ interface TestDriveFormProps {
     onSubmitSuccess: () => void;
 }
 
-export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSubmitSuccess }) => {
+export const TestDriveForm: React.FC<TestDriveFormProps> = ({
+    initialData,
+    onSubmitSuccess,
+}) => {
     const [loading, setLoading] = useState(false);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -54,23 +59,15 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
                 customerId: initialData.customerId,
                 vehicleId: initialData.vehicleId,
                 staffId: initialData.staffId,
-                scheduledDate: new Date(initialData.scheduledDate).toISOString().slice(0, 16),
+                scheduledDate: new Date(initialData.scheduledDate)
+                    .toISOString()
+                    .slice(0, 16),
                 notes: initialData.notes ?? '',
                 feedback: initialData.feedback ?? '',
                 status: initialData.status ?? 'SCHEDULED',
             }
-            : {
-                status: 'SCHEDULED',
-            },
+            : { status: 'SCHEDULED' },
     });
-
-    const normalizeResponse = (res: any) => {
-        if (!res) return [];
-        if (Array.isArray(res)) return res;
-        if (res.data?.data) return res.data;
-        if (res.data) return res.data;
-        return [];
-    };
 
     useEffect(() => {
         const fetchDropdowns = async () => {
@@ -78,30 +75,37 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
                 const [customersRes, vehiclesRes, staffRes] = await Promise.all([
                     customerApi.getAllCustomers({}, { page: 1, limit: 100 }),
                     vehicleApi.getAllVehicles({}, { page: 1, limit: 100 }),
-                    usersApi.list({ limit: 100 }),
+                    usersApi.list({ page: 1, limit: 100 }),
                 ]);
 
-                const customersData =
+                const customersData: Customer[] =
                     customersRes?.data?.data ||
                     customersRes?.data?.customers ||
                     customersRes?.data ||
                     [];
 
-                const vehiclesData =
+                const vehiclesData: Vehicle[] =
                     vehiclesRes?.data?.data ||
                     vehiclesRes?.data?.vehicles ||
                     vehiclesRes?.data ||
                     [];
 
-                const staffData =
-                    staffRes?.data?.user ||
+                const staffData: User[] =
                     staffRes?.data?.data ||
+                    staffRes?.data?.users ||
                     staffRes?.data ||
                     [];
 
-                const activeVehicles = vehiclesData.filter((v: any) => v.status === 'ACTIVE');
-                const staffFiltered = staffData.filter((s: any) =>
-                    ['DEALER_STAFF', 'DEALER_MANAGER'].includes(s.role)
+                // LỌC XE CÒN KHẢ DỤNG
+                const activeVehicles = vehiclesData.filter(
+                    (v) => v.status === 'AVAILABLE' || v.status === 'ACTIVE'
+                );
+
+                // LỌC NHÂN VIÊN CÓ ROLE DEALER_STAFF / DEALER_MANAGER (KIỂM TRA ROLE TRƯỚC)
+                const staffFiltered = staffData.filter(
+                    (u) =>
+                        u.role &&
+                        ['DEALER_STAFF', 'DEALER_MANAGER'].includes(u.role)
                 );
 
                 setCustomers(customersData);
@@ -121,9 +125,6 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
 
         fetchDropdowns();
     }, []);
-
-
-
 
 
     const onSubmit = async (data: TestDriveFormData) => {
@@ -148,9 +149,10 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
 
             reset();
             onSubmitSuccess();
-        } catch (error: unknown) {
+        } catch (error) {
             let message = 'Đã có lỗi xảy ra.';
-            if (error instanceof AxiosError) message = error.response?.data?.message || message;
+            if (error instanceof AxiosError)
+                message = error.response?.data?.message || message;
             else if (error instanceof Error) message = error.message;
             toast.error(message);
         } finally {
@@ -167,13 +169,12 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
                 {initialData ? 'Cập nhật lịch lái thử' : 'Tạo mới lịch lái thử'}
             </h2>
 
-            {/* KHÁCH HÀNG */}
             <div>
                 <label className="block font-medium text-gray-700 mb-1">Khách hàng</label>
                 <Select
                     options={customers.map((c) => ({
                         value: c.id,
-                        label: `${c.firstName} ${c.lastName} (${c.email})`,
+                        label: `${c.firstName} ${c.lastName} (${c.email ?? c.phone ?? ''})`,
                     }))}
                     onChange={(opt) => setValue('customerId', opt?.value || '')}
                     defaultValue={
@@ -186,34 +187,40 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
                     }
                     className="text-black"
                 />
-                {errors.customerId && <p className="text-red-500 text-sm mt-1">{errors.customerId.message}</p>}
+                {errors.customerId && (
+                    <p className="text-red-500 text-sm mt-1">{errors.customerId.message}</p>
+                )}
             </div>
 
-            {/* XE */}
             <div>
                 <label className="block font-medium text-gray-700 mb-1">Xe được chọn</label>
                 <Select
                     options={vehicles.map((v) => ({
                         value: v.id,
-                        label: `${v.manufacturer?.name} ${v.model} ${v.variant || ''}`,
+                        label: `${v.manufacturer?.name ?? ''} ${v.model ?? ''} ${v.variant || ''
+                            }`,
                     }))}
                     onChange={(opt) => setValue('vehicleId', opt?.value || '')}
                     defaultValue={
                         initialData
                             ? {
                                 value: initialData.vehicleId,
-                                label: `${initialData.vehicle?.manufacturer?.name} ${initialData.vehicle?.model}`,
+                                label: `${initialData.vehicle?.manufacturer?.name ?? ''} ${initialData.vehicle?.model ?? ''
+                                    }`,
                             }
                             : null
                     }
                     className="text-black"
                 />
-                {errors.vehicleId && <p className="text-red-500 text-sm mt-1">{errors.vehicleId.message}</p>}
+                {errors.vehicleId && (
+                    <p className="text-red-500 text-sm mt-1">{errors.vehicleId.message}</p>
+                )}
             </div>
 
-            {/* NHÂN VIÊN */}
             <div>
-                <label className="block font-medium text-gray-700 mb-1">Nhân viên phụ trách</label>
+                <label className="block font-medium text-gray-700 mb-1">
+                    Nhân viên phụ trách
+                </label>
                 <Select
                     options={staff.map((s) => ({
                         value: s.id,
@@ -230,25 +237,31 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
                     }
                     className="text-black"
                 />
-                {errors.staffId && <p className="text-red-500 text-sm mt-1">{errors.staffId.message}</p>}
+                {errors.staffId && (
+                    <p className="text-red-500 text-sm mt-1">{errors.staffId.message}</p>
+                )}
             </div>
 
-            {/* NGÀY HẸN */}
             <div>
-                <label className="block font-medium text-gray-700 mb-1">Thời gian lái thử</label>
+                <label className="block font-medium text-gray-700 mb-1">
+                    Thời gian lái thử
+                </label>
                 <input
                     type="datetime-local"
                     {...register('scheduledDate')}
                     className="w-full border border-gray-300 rounded-md p-3"
                 />
                 {errors.scheduledDate && (
-                    <p className="text-red-500 text-sm mt-1">{errors.scheduledDate.message}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                        {errors.scheduledDate.message}
+                    </p>
                 )}
             </div>
 
-            {/* TRẠNG THÁI */}
             <div>
-                <label className="block font-medium text-gray-700 mb-1">Trạng thái buổi lái thử</label>
+                <label className="block font-medium text-gray-700 mb-1">
+                    Trạng thái buổi lái thử
+                </label>
                 <select
                     {...register('status')}
                     className="w-full border border-gray-300 rounded-md p-3"
@@ -259,10 +272,11 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
                     <option value="NO_SHOW">Không đến</option>
                     <option value="CANCELLED">Đã hủy</option>
                 </select>
-                {errors.status && <p className="text-red-500 text-sm mt-1">{errors.status.message}</p>}
+                {errors.status && (
+                    <p className="text-red-500 text-sm mt-1">{errors.status.message}</p>
+                )}
             </div>
 
-            {/* GHI CHÚ */}
             <div>
                 <label className="block font-medium text-gray-700 mb-1">Ghi chú</label>
                 <textarea
@@ -273,9 +287,10 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
                 />
             </div>
 
-            {/* FEEDBACK */}
             <div>
-                <label className="block font-medium text-gray-700 mb-1">Phản hồi (Feedback)</label>
+                <label className="block font-medium text-gray-700 mb-1">
+                    Phản hồi (Feedback)
+                </label>
                 <textarea
                     {...register('feedback')}
                     rows={3}
@@ -284,7 +299,6 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
                 />
             </div>
 
-            {/* SUBMIT */}
             <div className="flex justify-end">
                 <Button type="submit" disabled={loading}>
                     {loading ? 'Đang xử lý...' : initialData ? 'Cập nhật' : 'Tạo mới'}
@@ -293,6 +307,7 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
         </form>
     );
 };
+
 
 
 
