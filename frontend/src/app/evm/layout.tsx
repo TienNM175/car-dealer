@@ -32,12 +32,6 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
 
   const evmMenuItems = [
     {
-      id: "ai-insights",
-      icon: Sparkles,
-      label: "AI Insights",
-      role: ["ADMIN"],
-    },
-    {
       id: "products",
       icon: Car,
       label: "Quản lý sản phẩm",
@@ -75,6 +69,12 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
       label: "Báo cáo & Phân tích",
       role: ["EVM_STAFF", "ADMIN"],
     },
+    {
+      id: "ai-insights",
+      icon: Sparkles,
+      label: "AI Insights",
+      role: ["ADMIN"],
+    }
   ];
 
   const filteredMenuItems = evmMenuItems.filter((item) =>
