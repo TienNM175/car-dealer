@@ -35,13 +35,22 @@ export default function DealerLayout() {
           backgroundColor: "#fff",
           borderTopWidth: 1,
           borderTopColor: "#e5e7eb",
-          height: 60,
+          height: 65,
           paddingBottom: 8,
           paddingTop: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: "600",
+          marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginTop: 2,
         },
         headerStyle: {
           backgroundColor: "#2563eb",
@@ -62,7 +71,7 @@ export default function DealerLayout() {
           title: "Tổng quan",
           headerTitle: "Dashboard",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart" size={size} color={color} />
+            <Ionicons name="home" size={size} color={color} />
           ),
         }}
       />
@@ -71,7 +80,7 @@ export default function DealerLayout() {
       <Tabs.Screen
         name="vehicles"
         options={{
-          title: "Danh mục",
+          title: "Xe",
           headerTitle: "Danh mục xe",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="car-sport" size={size} color={color} />
@@ -110,18 +119,20 @@ export default function DealerLayout() {
           title: "Thêm",
           headerTitle: "Menu",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="menu" size={size} color={color} />
+            <Ionicons name="ellipsis-horizontal" size={size} color={color} />
           ),
         }}
       />
 
       {/* Hidden screens - không hiển thị trên tab bar */}
+      <Tabs.Screen name="contract-create" options={{ href: null }} />
       <Tabs.Screen name="orders" options={{ href: null }} />
       <Tabs.Screen name="appointments" options={{ href: null }} />
       <Tabs.Screen name="promotion" options={{ href: null }} />
       <Tabs.Screen name="inventory" options={{ href: null }} />
       <Tabs.Screen name="reports" options={{ href: null }} />
       <Tabs.Screen name="test-drive" options={{ href: null }} />
+      <Tabs.Screen name="quotations" options={{ href: null }} />
     </Tabs>
   );
 }
