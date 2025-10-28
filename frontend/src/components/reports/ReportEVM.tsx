@@ -390,7 +390,7 @@ export default function ReportEVM({
                         data={targetChart}
                         xKey="dealer"
                         bars={[{ key: "achievementRate", color: COLORS[5] }]}
-                        valueFormatter={(v) => `${v.toFixed(1)}%`}
+                        valueFormatter={(v) => `${Number(v).toFixed(1)}%`}
                     />
                 </ChartCard>
             </div>
