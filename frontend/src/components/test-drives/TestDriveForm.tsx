@@ -94,8 +94,7 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({ initialData, onSub
                     [];
 
                 const staffData =
-                    staffRes?.data?.user ||
-                    staffRes?.data?.data ||
+                    staffRes?.data?.users ||
                     staffRes?.data ||
                     [];
 
