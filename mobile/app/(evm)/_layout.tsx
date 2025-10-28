@@ -132,13 +132,12 @@ export default function EVMLayout() {
       />
 
       {/* Hidden screens - không hiển thị trên tab bar */}
+      <Tabs.Screen name="users" options={{ href: null }} />
       <Tabs.Screen name="dealers" options={{ href: null }} />
       <Tabs.Screen name="promotions" options={{ href: null }} />
       <Tabs.Screen name="pricing" options={{ href: null }} />
-      <Tabs.Screen
-        name="ai-insights"
-        options={{ headerTitle: "AI Phân tích ", href: null }}
-      />
+      <Tabs.Screen name="ai-insights" options={{ href: null }} />
+      <Tabs.Screen name="contracts" options={{ href: null }} />
     </Tabs>
   );
 }
