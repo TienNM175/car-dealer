@@ -1,11 +1,29 @@
 import React, { useEffect, useState } from "react";
 import {
-  View, Text, FlatList, ActivityIndicator, SafeAreaView,
-  RefreshControl, TextInput, TouchableOpacity, Alert
+  View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+  SafeAreaView,
+  RefreshControl,
+  TextInput,
+  TouchableOpacity,
+  Alert,
 } from "react-native";
-import { Search, Filter, Eye, ChevronDown, CheckCircle, Package, Truck, Clock, Ban } from "lucide-react-native";
+import {
+  Search,
+  Filter,
+  Eye,
+  ChevronDown,
+  CheckCircle,
+  Package,
+  Truck,
+  Clock,
+  Ban,
+} from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
+import Header from "@/components/shared/Header";
 import { dealerOrderApi, DealerOrder } from "@/lib/api/dealerOrderApi";
 import OrderDetailModal from "@/components/orders/OrderDetailModal";
 import { styles } from "@/components/orders/evmOrdersStyles";
@@ -17,7 +35,7 @@ export default function EVMOrdersScreen() {
   const [orders, setOrders] = useState<DealerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -32,7 +50,11 @@ export default function EVMOrdersScreen() {
 
   // Auth guard - chỉ EVM Staff và Admin
   useEffect(() => {
-    if (!authLoading && (!isAuthenticated || (user?.role !== 'EVM_STAFF' && user?.role !== 'ADMIN'))) {
+    if (
+      !authLoading &&
+      (!isAuthenticated ||
+        (user?.role !== "EVM_STAFF" && user?.role !== "ADMIN"))
+    ) {
       router.replace("/(auth)/login");
     }
   }, [isAuthenticated, authLoading, user]);
@@ -41,7 +63,7 @@ export default function EVMOrdersScreen() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      
+
       const response = await dealerOrderApi.getAllDealerOrders(
         {
           search: searchTerm,
@@ -50,13 +72,18 @@ export default function EVMOrdersScreen() {
         },
         { page: 1, limit: 50 } // EVM Staff xem nhiều orders hơn
       );
-      
+
       const responseData = response.data.data || response.data;
-      const ordersData = Array.isArray(responseData) ? responseData : responseData.data || [];
+      const ordersData = Array.isArray(responseData)
+        ? responseData
+        : responseData.data || [];
       setOrders(ordersData);
     } catch (err: any) {
       console.error("Error fetching orders:", err);
-      Alert.alert("Lỗi", err.response?.data?.message || "Không thể tải danh sách đơn hàng");
+      Alert.alert(
+        "Lỗi",
+        err.response?.data?.message || "Không thể tải danh sách đơn hàng"
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -64,7 +91,7 @@ export default function EVMOrdersScreen() {
   };
 
   useEffect(() => {
-    if (user?.role === 'EVM_STAFF' || user?.role === 'ADMIN') {
+    if (user?.role === "EVM_STAFF" || user?.role === "ADMIN") {
       fetchOrders();
     }
   }, [user, searchTerm, filterStatus, filterDealer]);
@@ -80,24 +107,35 @@ export default function EVMOrdersScreen() {
   };
 
   // Update order status - EVM Staff có thể update status
-  const handleUpdateStatus = async (orderId: string, newStatus: DealerOrder['status']) => {
+  const handleUpdateStatus = async (
+    orderId: string,
+    newStatus: DealerOrder["status"]
+  ) => {
     try {
       setUpdatingStatus(orderId);
-      
+
       await dealerOrderApi.updateDealerOrderStatus(orderId, newStatus);
-      
-      Alert.alert("Thành công", `Đã cập nhật trạng thái đơn hàng thành ${getStatusConfig(newStatus).label}`);
-      
+
+      Alert.alert(
+        "Thành công",
+        `Đã cập nhật trạng thái đơn hàng thành ${
+          getStatusConfig(newStatus).label
+        }`
+      );
+
       // Refresh orders
       fetchOrders();
-      
+
       // Close detail modal if open
       if (showDetailModal) {
         setShowDetailModal(false);
       }
     } catch (err: any) {
       console.error("Error updating order status:", err);
-      Alert.alert("Lỗi", err.response?.data?.message || "Không thể cập nhật trạng thái");
+      Alert.alert(
+        "Lỗi",
+        err.response?.data?.message || "Không thể cập nhật trạng thái"
+      );
     } finally {
       setUpdatingStatus(null);
     }
@@ -105,12 +143,12 @@ export default function EVMOrdersScreen() {
 
   // Cancel order - EVM Staff có thể cancel nhiều trạng thái
   const handleCancelOrder = async (order: DealerOrder) => {
-    if (order.status === 'DELIVERED') {
+    if (order.status === "DELIVERED") {
       Alert.alert("Lỗi", "Không thể hủy đơn hàng đã giao");
       return;
     }
 
-    if (order.status === 'CANCELLED') {
+    if (order.status === "CANCELLED") {
       Alert.alert("Thông báo", "Đơn hàng đã được hủy trước đó");
       return;
     }
@@ -120,18 +158,24 @@ export default function EVMOrdersScreen() {
       `Bạn có chắc muốn hủy đơn hàng ${order.orderNumber}?`,
       [
         { text: "Hủy", style: "cancel" },
-        { 
-          text: "Xác nhận", 
+        {
+          text: "Xác nhận",
           style: "destructive",
           onPress: async () => {
             try {
-              await dealerOrderApi.cancelDealerOrder(order.id, "Hủy bởi EVM Staff");
+              await dealerOrderApi.cancelDealerOrder(
+                order.id,
+                "Hủy bởi EVM Staff"
+              );
               Alert.alert("Thành công", "Đã hủy đơn hàng thành công");
               fetchOrders();
             } catch (err: any) {
-              Alert.alert("Lỗi", err.response?.data?.message || "Không thể hủy đơn hàng");
+              Alert.alert(
+                "Lỗi",
+                err.response?.data?.message || "Không thể hủy đơn hàng"
+              );
             }
-          }
+          },
         },
       ]
     );
@@ -150,37 +194,42 @@ export default function EVMOrdersScreen() {
   };
 
   // THÊM HÀM getNextStatus
-  const getNextStatus = (currentStatus: DealerOrder['status']): DealerOrder['status'] | null => {
+  const getNextStatus = (
+    currentStatus: DealerOrder["status"]
+  ): DealerOrder["status"] | null => {
     const statusFlow = {
       PENDING: "CONFIRMED",
-      CONFIRMED: "PROCESSING", 
+      CONFIRMED: "PROCESSING",
       PROCESSING: "SHIPPED",
       SHIPPED: "DELIVERED",
       DELIVERED: null,
       CANCELLED: null,
     };
-    return statusFlow[currentStatus] as DealerOrder['status'] | null;
+    return statusFlow[currentStatus] as DealerOrder["status"] | null;
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN');
+    return new Date(dateString).toLocaleDateString("vi-VN");
   };
 
   // Get unique dealers for filter
-  const uniqueDealers = Array.from(new Set(orders.map(order => order.dealer?.name).filter(Boolean))) as string[];
+  const uniqueDealers = Array.from(
+    new Set(orders.map((order) => order.dealer?.name).filter(Boolean))
+  ) as string[];
 
   const renderOrderCard = ({ item }: { item: DealerOrder }) => {
     const statusConfig = getStatusConfig(item.status);
     const StatusIcon = statusConfig.icon;
     const nextStatus = getNextStatus(item.status);
-    const canUpdateStatus = nextStatus && user?.role && ['EVM_STAFF', 'ADMIN'].includes(user.role);
+    const canUpdateStatus =
+      nextStatus && user?.role && ["EVM_STAFF", "ADMIN"].includes(user.role);
 
     return (
       <View style={styles.card}>
@@ -189,7 +238,12 @@ export default function EVMOrdersScreen() {
             <Text style={styles.orderNumber}>{item.orderNumber}</Text>
             <Text style={styles.dealerName}>{item.dealer?.name}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusConfig.color + "20" }]}>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: statusConfig.color + "20" },
+            ]}
+          >
             <StatusIcon size={14} color={statusConfig.color} />
             <Text style={[styles.statusText, { color: statusConfig.color }]}>
               {statusConfig.label}
@@ -210,7 +264,9 @@ export default function EVMOrdersScreen() {
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Tổng tiền:</Text>
-            <Text style={styles.detailValue}>{formatCurrency(Number(item.totalAmount))}</Text>
+            <Text style={styles.detailValue}>
+              {formatCurrency(Number(item.totalAmount))}
+            </Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Ngày đặt:</Text>
@@ -225,24 +281,28 @@ export default function EVMOrdersScreen() {
         </View>
 
         <View style={styles.cardActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, styles.viewButton]}
             onPress={() => handleViewDetail(item)}
           >
             <Eye size={16} color="#3b82f6" />
-            <Text style={[styles.actionButtonText, { color: "#3b82f6" }]}>Chi tiết</Text>
+            <Text style={[styles.actionButtonText, { color: "#3b82f6" }]}>
+              Chi tiết
+            </Text>
           </TouchableOpacity>
-          
+
           {/* Update Status Button - chỉ hiện khi có thể update */}
           {canUpdateStatus && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.updateButton]}
               onPress={() => handleUpdateStatus(item.id, nextStatus!)}
               disabled={updatingStatus === item.id}
             >
               <CheckCircle size={16} color="#10b981" />
               <Text style={[styles.actionButtonText, { color: "#10b981" }]}>
-                {updatingStatus === item.id ? '...' : getStatusConfig(nextStatus!).label}
+                {updatingStatus === item.id
+                  ? "..."
+                  : getStatusConfig(nextStatus!).label}
               </Text>
             </TouchableOpacity>
           )}
@@ -264,9 +324,10 @@ export default function EVMOrdersScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      <Header title="Quản lý đơn hàng EVM" />
+
+      {/* Subtitle */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Quản lý Đơn hàng EVM</Text>
         <Text style={styles.headerSubtitle}>
           Quản lý tất cả đơn hàng từ các đại lý
         </Text>
@@ -295,23 +356,32 @@ export default function EVMOrdersScreen() {
             onPress={() => setShowStatusFilter(!showStatusFilter)}
           >
             <Text style={styles.filterButtonText}>
-              {filterStatus ? getStatusConfig(filterStatus).label : 'Tất cả trạng thái'}
+              {filterStatus
+                ? getStatusConfig(filterStatus).label
+                : "Tất cả trạng thái"}
             </Text>
             <ChevronDown size={16} color="#6b7280" />
           </TouchableOpacity>
-          
+
           {showStatusFilter && (
             <View style={styles.filterDropdown}>
               <TouchableOpacity
                 style={styles.filterOption}
                 onPress={() => {
-                  setFilterStatus('');
+                  setFilterStatus("");
                   setShowStatusFilter(false);
                 }}
               >
                 <Text style={styles.filterOptionText}>Tất cả trạng thái</Text>
               </TouchableOpacity>
-              {['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map(status => (
+              {[
+                "PENDING",
+                "CONFIRMED",
+                "PROCESSING",
+                "SHIPPED",
+                "DELIVERED",
+                "CANCELLED",
+              ].map((status) => (
                 <TouchableOpacity
                   key={status}
                   style={styles.filterOption}
@@ -320,7 +390,9 @@ export default function EVMOrdersScreen() {
                     setShowStatusFilter(false);
                   }}
                 >
-                  <Text style={styles.filterOptionText}>{getStatusConfig(status).label}</Text>
+                  <Text style={styles.filterOptionText}>
+                    {getStatusConfig(status).label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -334,23 +406,23 @@ export default function EVMOrdersScreen() {
             onPress={() => setShowDealerFilter(!showDealerFilter)}
           >
             <Text style={styles.filterButtonText}>
-              {filterDealer ? filterDealer : 'Tất cả đại lý'}
+              {filterDealer ? filterDealer : "Tất cả đại lý"}
             </Text>
             <ChevronDown size={16} color="#6b7280" />
           </TouchableOpacity>
-          
+
           {showDealerFilter && (
             <View style={styles.filterDropdown}>
               <TouchableOpacity
                 style={styles.filterOption}
                 onPress={() => {
-                  setFilterDealer('');
+                  setFilterDealer("");
                   setShowDealerFilter(false);
                 }}
               >
                 <Text style={styles.filterOptionText}>Tất cả đại lý</Text>
               </TouchableOpacity>
-              {uniqueDealers.map(dealer => (
+              {uniqueDealers.map((dealer) => (
                 <TouchableOpacity
                   key={dealer}
                   style={styles.filterOption}
@@ -389,7 +461,7 @@ export default function EVMOrdersScreen() {
         order={selectedOrder}
         onClose={() => setShowDetailModal(false)}
         onStatusChange={handleUpdateStatus}
-        userRole={user?.role || 'EVM_STAFF'}
+        userRole={user?.role || "EVM_STAFF"}
       />
     </SafeAreaView>
   );

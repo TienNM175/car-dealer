@@ -12,6 +12,18 @@ export default function EVMLayout() {
   useEffect(() => {
     if (!isLoading && !user) {
       router.replace("/(auth)/login");
+      return;
+    }
+
+    // RouteGuard logic: Dealer users cannot access EVM routes (except DEALER_MANAGER)
+    if (user?.role) {
+      const role = user.role.toUpperCase();
+      const isDealerStaff = role === "DEALER_STAFF";
+
+      if (isDealerStaff) {
+        router.replace("/(dealer)/vehicles");
+        return;
+      }
     }
   }, [user, isLoading]);
 
@@ -25,6 +37,10 @@ export default function EVMLayout() {
 
   const userRole = user?.role?.toUpperCase() || "EVM_STAFF";
   const isAdmin = userRole === "ADMIN";
+  const isEVMStaff = userRole === "EVM_STAFF";
+  const isDealerManager = userRole === "DEALER_MANAGER";
+
+  // 5 tabs cố định cho tất cả roles
 
   return (
     <Tabs
@@ -67,31 +83,7 @@ export default function EVMLayout() {
         }}
       />
 
-      {/* Tab 2: Contracts - Hợp đồng */}
-      <Tabs.Screen
-        name="contracts"
-        options={{
-          title: "Hợp đồng",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text" size={size} color={color} />
-          ),
-        }}
-      />
-
-      {/* Tab 3: Users - Người dùng */}
-      <Tabs.Screen
-        name="users"
-        options={{
-          title: "Người dùng",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people" size={size} color={color} />
-          ),
-        }}
-      />
-
-      {/* Tab 4: Inventory - Kho */}
+      {/* Tab 2: Inventory - Kho */}
       <Tabs.Screen
         name="inventory"
         options={{
@@ -103,11 +95,35 @@ export default function EVMLayout() {
         }}
       />
 
-      {/* Tab 5: More - Menu khác */}
+      {/* Tab 3: Orders - Đơn hàng */}
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: "Đơn hàng",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="list" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Tab 4: Reports - Báo cáo */}
+      <Tabs.Screen
+        name="reports"
+        options={{
+          title: "Báo cáo",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bar-chart" size={size} color={color} />
+          ),
+        }}
+      />
+
+      {/* Tab 5: More - Menu */}
       <Tabs.Screen
         name="more"
         options={{
-          title: "Thêm",
+          title: "Menu",
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="ellipsis-horizontal" size={size} color={color} />

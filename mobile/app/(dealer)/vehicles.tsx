@@ -38,13 +38,15 @@ export default function DealerVehiclesPage() {
     try {
       setLoading(true);
       const dealerId = (user as any)?.dealerId;
+
       if (!dealerId) {
         Alert.alert("Lỗi", "Không tìm thấy thông tin đại lý");
         return;
       }
 
       const response = await vehicleApi.getDealerVehicles(dealerId);
-      const vehiclesData = response.data.data?.data || [];
+      const vehiclesData =
+        response.data.data?.data || response.data.data || response.data || [];
       setVehicles(vehiclesData);
     } catch (error) {
       console.error("Error fetching vehicles:", error);

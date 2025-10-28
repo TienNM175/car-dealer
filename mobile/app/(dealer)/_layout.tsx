@@ -12,6 +12,18 @@ export default function DealerLayout() {
   useEffect(() => {
     if (!isLoading && !user) {
       router.replace("/(auth)/login");
+      return;
+    }
+
+    // RouteGuard logic: EVM users cannot access dealer routes
+    if (user?.role) {
+      const role = user.role.toUpperCase();
+      const isEVMUser = role === "ADMIN" || role.startsWith("EVM");
+
+      if (isEVMUser) {
+        router.replace("/(evm)/products");
+        return;
+      }
     }
   }, [user, isLoading]);
 
@@ -25,6 +37,10 @@ export default function DealerLayout() {
 
   const userRole = user?.role?.toUpperCase() || "DEALER_STAFF";
   const isManager = userRole === "DEALER_MANAGER";
+  const isStaff = userRole === "DEALER_STAFF";
+
+  // Role-based access control for dealer tabs
+  const canAccessReports = isManager; // Only DEALER_MANAGER can see reports
 
   return (
     <Tabs
@@ -64,7 +80,7 @@ export default function DealerLayout() {
         },
       }}
     >
-      {/* Tab 1: Vehicles - Danh mục xe */}
+      {/* Tab 1: Vehicles - Danh mục xe (DEALER_STAFF, DEALER_MANAGER) */}
       <Tabs.Screen
         name="vehicles"
         options={{
@@ -76,7 +92,7 @@ export default function DealerLayout() {
         }}
       />
 
-      {/* Tab 2: Contracts - Hợp đồng */}
+      {/* Tab 2: Contracts - Hợp đồng (DEALER_STAFF, DEALER_MANAGER) */}
       <Tabs.Screen
         name="contracts"
         options={{
@@ -88,7 +104,7 @@ export default function DealerLayout() {
         }}
       />
 
-      {/* Tab 3: Customers - Khách hàng */}
+      {/* Tab 3: Customers - Khách hàng (DEALER_STAFF, DEALER_MANAGER) */}
       <Tabs.Screen
         name="customers"
         options={{
@@ -100,7 +116,7 @@ export default function DealerLayout() {
         }}
       />
 
-      {/* Tab 4: Inventory - Kho */}
+      {/* Tab 4: Inventory - Kho (DEALER_STAFF, DEALER_MANAGER) */}
       <Tabs.Screen
         name="inventory"
         options={{
@@ -112,11 +128,11 @@ export default function DealerLayout() {
         }}
       />
 
-      {/* Tab 5: More - Menu khác */}
+      {/* Tab 5: More - Menu */}
       <Tabs.Screen
         name="more"
         options={{
-          title: "Thêm",
+          title: "Menu",
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="ellipsis-horizontal" size={size} color={color} />

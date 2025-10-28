@@ -74,7 +74,7 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
       icon: Sparkles,
       label: "AI Insights",
       role: ["ADMIN"],
-    }
+    },
   ];
 
   const filteredMenuItems = evmMenuItems.filter((item) =>

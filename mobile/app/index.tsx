@@ -12,10 +12,21 @@ export default function IndexScreen() {
 
     if (!user) {
       router.replace("/(auth)/login");
-    } else if (user.role === "ADMIN" || user.role?.startsWith("EVM")) {
-      router.replace("/(evm)/products");
     } else {
-      router.replace("/(dealer)/vehicles");
+      const role = user.role?.toUpperCase();
+
+      // RouteGuard logic based on frontend
+      if (role === "ADMIN" || role === "EVM_STAFF") {
+        router.replace("/(evm)/products");
+      } else if (role === "DEALER_MANAGER") {
+        // DEALER_MANAGER can access both, default to dealer
+        router.replace("/(dealer)/vehicles");
+      } else if (role === "DEALER_STAFF") {
+        router.replace("/(dealer)/vehicles");
+      } else {
+        // Fallback
+        router.replace("/(dealer)/vehicles");
+      }
     }
   }, [isLoading, user]);
 

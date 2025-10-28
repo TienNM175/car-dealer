@@ -14,6 +14,12 @@ interface LoginResponse {
       lastName: string;
       email: string;
       role: "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN";
+      dealerId?: string;
+      dealer?: {
+        id: string;
+        name: string;
+        code: string;
+      };
     };
   };
 }

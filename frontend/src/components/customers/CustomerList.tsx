@@ -11,7 +11,7 @@ import {
   Phone,
   MapPin,
   FileText,
-  DollarSign,
+  Banknote,
   TestTube,
   MessageSquare,
   AlertTriangle,

@@ -3,3 +3,5 @@ declare namespace NodeJS {
     EXPO_PUBLIC_API_URL: string;
   }
 }
+
+

@@ -36,7 +36,7 @@ model Vehicle {
   // Pricing
   wholesalePrice    Decimal         @map("wholesale_price") // Giá sỉ (EVM → Dealer)
   retailPrice       Decimal         @map("retail_price")    // Giá lẻ (Dealer → Customer)
-  currency          CurrencyCode    @default(USD)
+  currency          CurrencyCode    @default(VND)
   
   status            VehicleStatus   @default(ACTIVE)
   description       String?         @db.Text
