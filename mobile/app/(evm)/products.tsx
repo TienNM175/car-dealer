@@ -40,8 +40,10 @@ export default function EVMProductsPage() {
   const fetchVehicles = async () => {
     try {
       setLoading(true);
+
       const response = await vehicleApi.getAllVehicles();
-      const vehiclesData = response.data.data?.data || [];
+      const vehiclesData =
+        response.data.data?.data || response.data.data || response.data || [];
       setVehicles(vehiclesData);
     } catch (error) {
       console.error("Error fetching vehicles:", error);
@@ -252,7 +254,7 @@ export default function EVMProductsPage() {
               </TouchableOpacity>
             </View>
 
-            {selectedVehicle && (
+            {selectedVehicle ? (
               <>
                 <ScrollView style={styles.modalScroll}>
                   <Image
@@ -356,6 +358,13 @@ export default function EVMProductsPage() {
                   )}
                 </View>
               </>
+            ) : (
+              <View style={styles.modalEmpty}>
+                <Text style={styles.modalEmptyText}>Không có dữ liệu xe</Text>
+                <Text style={styles.modalEmptySubtext}>
+                  selectedVehicle is null
+                </Text>
+              </View>
             )}
           </View>
         </View>
@@ -523,6 +532,23 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.gray400,
     marginTop: spacing.xs,
+  },
+
+  // Modal Empty State
+  modalEmpty: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
+  },
+  modalEmptyText: {
+    ...typography.h4,
+    color: colors.gray600,
+    marginBottom: spacing.sm,
+  },
+  modalEmptySubtext: {
+    ...typography.bodySmall,
+    color: colors.gray400,
   },
 
   // Modal Styles
