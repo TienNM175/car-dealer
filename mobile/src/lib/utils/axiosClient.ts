@@ -1,12 +1,13 @@
-import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import axios from "axios";
+import * as SecureStore from "expo-secure-store";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.100.125:5000/api/v1';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   timeout: 30000,
 });
@@ -15,12 +16,12 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use(
   async (config) => {
     try {
-      const token = await SecureStore.getItemAsync('auth_token');
+      const token = await SecureStore.getItemAsync("auth_token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (error) {
-      console.error('Error getting token:', error);
+      console.error("Error getting token:", error);
     }
     return config;
   },
@@ -33,7 +34,7 @@ axiosClient.interceptors.request.use(
 axiosClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    console.error('API Error:', {
+    console.error("API Error:", {
       url: error.config?.url,
       method: error.config?.method,
       status: error.response?.status,

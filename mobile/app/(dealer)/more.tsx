@@ -1,8 +1,16 @@
 // app/(dealer)/more.tsx
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
+import Header from "@/components/shared/Header";
 
 interface MenuItem {
   id: string;
@@ -17,82 +25,82 @@ interface MenuItem {
 
 export default function DealerMoreScreen() {
   const { user, logout } = useAuth();
-  const userRole = user?.role?.toUpperCase() || 'DEALER_STAFF';
-  const isManager = userRole === 'DEALER_MANAGER';
+  const userRole = user?.role?.toUpperCase() || "DEALER_STAFF";
+  const isManager = userRole === "DEALER_MANAGER";
 
   // Menu items cho dealer - tổ chức theo nhóm chức năng
   const businessMenuItems: MenuItem[] = [
     {
-      id: 'orders',
-      title: 'Đơn hàng',
-      icon: 'receipt-outline',
-      route: '/(dealer)/orders',
-      description: 'Quản lý đơn hàng từ hãng',
-      roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
-      badge: '2',
-      badgeColor: '#ef4444',
+      id: "orders",
+      title: "Đơn hàng",
+      icon: "receipt-outline",
+      route: "/(dealer)/orders",
+      description: "Quản lý đơn hàng từ hãng",
+      roles: ["DEALER_STAFF", "DEALER_MANAGER"],
+      badge: "2",
+      badgeColor: "#ef4444",
     },
     {
-      id: 'appointments',
-      title: 'Lịch hẹn',
-      icon: 'calendar-outline',
-      route: '/(dealer)/appointments',
-      description: 'Lịch hẹn xem xe & lái thử',
-      roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
-      badge: '3',
-      badgeColor: '#f59e0b',
+      id: "appointments",
+      title: "Lịch hẹn",
+      icon: "calendar-outline",
+      route: "/(dealer)/appointments",
+      description: "Lịch hẹn xem xe & lái thử",
+      roles: ["DEALER_STAFF", "DEALER_MANAGER"],
+      badge: "3",
+      badgeColor: "#f59e0b",
     },
     {
-      id: 'test-drives',
-      title: 'Lái thử',
-      icon: 'car-outline',
-      route: '/(dealer)/test-drive',
-      description: 'Quản lý lịch lái thử xe',
-      roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
+      id: "test-drives",
+      title: "Lái thử",
+      icon: "car-outline",
+      route: "/(dealer)/test-drive",
+      description: "Quản lý lịch lái thử xe",
+      roles: ["DEALER_STAFF", "DEALER_MANAGER"],
     },
     {
-      id: 'promotions',
-      title: 'Khuyến mãi',
-      icon: 'pricetag-outline',
-      route: '/(dealer)/promotion',
-      description: 'Chương trình ưu đãi hiện có',
-      roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
+      id: "promotions",
+      title: "Khuyến mãi",
+      icon: "pricetag-outline",
+      route: "/(dealer)/promotion",
+      description: "Chương trình ưu đãi hiện có",
+      roles: ["DEALER_STAFF", "DEALER_MANAGER"],
     },
     {
-      id: 'orders',
-      title: 'Đơn đặt hàng',
-      icon: 'cart-outline',
-      route: '/(dealer)/orders',
-      description: 'Quản lý đơn đặt xe từ EVM',
-      roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
-      badgeColor: '#ef4444',
+      id: "dealer-orders",
+      title: "Đơn đặt hàng",
+      icon: "cart-outline",
+      route: "/(dealer)/orders",
+      description: "Quản lý đơn đặt xe từ EVM",
+      roles: ["DEALER_STAFF", "DEALER_MANAGER"],
+      badgeColor: "#ef4444",
     },
     {
-      id: 'inventory',
-      title: 'Tồn kho',
-      icon: 'cube-outline',
-      route: '/(dealer)/inventory',
-      description: 'Quản lý tồn kho xe tại đại lý',
-      roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
+      id: "inventory",
+      title: "Tồn kho",
+      icon: "cube-outline",
+      route: "/(dealer)/inventory",
+      description: "Quản lý tồn kho xe tại đại lý",
+      roles: ["DEALER_STAFF", "DEALER_MANAGER"],
     },
   ];
 
   const managementMenuItems: MenuItem[] = [
     {
-      id: 'reports',
-      title: 'Báo cáo',
-      icon: 'bar-chart-outline',
-      route: '/(dealer)/reports',
-      description: 'Thống kê và báo cáo doanh số',
-      roles: ['DEALER_MANAGER'],
+      id: "reports",
+      title: "Báo cáo",
+      icon: "bar-chart-outline",
+      route: "/(dealer)/reports",
+      description: "Thống kê và báo cáo doanh số",
+      roles: ["DEALER_MANAGER"],
     },
     {
-      id: 'quotations',
-      title: 'Báo giá',
-      icon: 'calculator-outline',
-      route: '/(dealer)/quotations',
-      description: 'Tạo và quản lý báo giá',
-      roles: ['DEALER_STAFF', 'DEALER_MANAGER'],
+      id: "quotations",
+      title: "Báo giá",
+      icon: "calculator-outline",
+      route: "/(dealer)/quotations",
+      description: "Tạo và quản lý báo giá",
+      roles: ["DEALER_STAFF", "DEALER_MANAGER"],
     },
   ];
 
@@ -101,22 +109,20 @@ export default function DealerMoreScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        { 
-          text: 'Đăng xuất', 
-          style: 'destructive',
-          onPress: logout 
-        },
-      ]
-    );
+    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Đăng xuất",
+        style: "destructive",
+        onPress: logout,
+      },
+    ]);
   };
 
   return (
     <ScrollView style={styles.container}>
+      <Header title="Menu" />
+
       {/* User Info Card */}
       <View style={styles.userCard}>
         <View style={styles.avatarContainer}>
@@ -129,13 +135,15 @@ export default function DealerMoreScreen() {
             </View>
           )}
         </View>
-        
+
         <View style={styles.userInfo}>
           <Text style={styles.userName}>
             {user?.firstName} {user?.lastName}
           </Text>
           <Text style={styles.userRole}>
-            {userRole === 'DEALER_MANAGER' ? 'Quản lý đại lý' : 'Nhân viên đại lý'}
+            {userRole === "DEALER_MANAGER"
+              ? "Quản lý đại lý"
+              : "Nhân viên đại lý"}
           </Text>
           {user?.dealer && (
             <View style={styles.dealerTag}>
@@ -171,36 +179,38 @@ export default function DealerMoreScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>NGHIỆP VỤ</Text>
         {businessMenuItems
-          .filter(item => item.roles.includes(userRole))
+          .filter((item) => item.roles.includes(userRole))
           .map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.menuItem}
-            onPress={() => handlePress(item.route)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuIconContainer}>
-              <Ionicons name={item.icon} size={24} color="#2563eb" />
-            </View>
-            
-            <View style={styles.menuContent}>
-              <View style={styles.menuTitleRow}>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                {item.badge && (
-                  <View style={[
-                    styles.badge, 
-                    { backgroundColor: item.badgeColor || '#2563eb' }
-                  ]}>
-                    <Text style={styles.badgeText}>{item.badge}</Text>
-                  </View>
-                )}
+            <TouchableOpacity
+              key={item.id}
+              style={styles.menuItem}
+              onPress={() => handlePress(item.route)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuIconContainer}>
+                <Ionicons name={item.icon} size={24} color="#2563eb" />
               </View>
-              <Text style={styles.menuDescription}>{item.description}</Text>
-            </View>
-            
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-          </TouchableOpacity>
-        ))}
+
+              <View style={styles.menuContent}>
+                <View style={styles.menuTitleRow}>
+                  <Text style={styles.menuTitle}>{item.title}</Text>
+                  {item.badge && (
+                    <View
+                      style={[
+                        styles.badge,
+                        { backgroundColor: item.badgeColor || "#2563eb" },
+                      ]}
+                    >
+                      <Text style={styles.badgeText}>{item.badge}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.menuDescription}>{item.description}</Text>
+              </View>
+
+              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+            </TouchableOpacity>
+          ))}
       </View>
 
       {/* Management Section - chỉ hiện cho Manager */}
@@ -217,22 +227,24 @@ export default function DealerMoreScreen() {
               <View style={styles.menuIconContainer}>
                 <Ionicons name={item.icon} size={24} color="#10b981" />
               </View>
-              
+
               <View style={styles.menuContent}>
                 <View style={styles.menuTitleRow}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
                   {item.badge && (
-                    <View style={[
-                      styles.badge, 
-                      { backgroundColor: item.badgeColor || '#10b981' }
-                    ]}>
+                    <View
+                      style={[
+                        styles.badge,
+                        { backgroundColor: item.badgeColor || "#10b981" },
+                      ]}
+                    >
                       <Text style={styles.badgeText}>{item.badge}</Text>
                     </View>
                   )}
                 </View>
                 <Text style={styles.menuDescription}>{item.description}</Text>
               </View>
-              
+
               <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
             </TouchableOpacity>
           ))}
@@ -242,13 +254,14 @@ export default function DealerMoreScreen() {
       {/* Support Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>HỖ TRỢ</Text>
-        
-        <TouchableOpacity 
-          style={styles.menuItem} 
-          activeOpacity={0.7}
-        >
+
+        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
           <View style={styles.menuIconContainer}>
-            <Ionicons name="chatbubble-ellipses-outline" size={24} color="#6b7280" />
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={24}
+              color="#6b7280"
+            />
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Liên hệ hỗ trợ</Text>
@@ -257,30 +270,32 @@ export default function DealerMoreScreen() {
           <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.menuItem} 
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
           <View style={styles.menuIconContainer}>
             <Ionicons name="book-outline" size={24} color="#6b7280" />
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Hướng dẫn sử dụng</Text>
-            <Text style={styles.menuDescription}>Tài liệu và video hướng dẫn</Text>
+            <Text style={styles.menuDescription}>
+              Tài liệu và video hướng dẫn
+            </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.menuItem} 
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
           <View style={styles.menuIconContainer}>
-            <Ionicons name="information-circle-outline" size={24} color="#6b7280" />
+            <Ionicons
+              name="information-circle-outline"
+              size={24}
+              color="#6b7280"
+            />
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Thông tin</Text>
-            <Text style={styles.menuDescription}>Về ứng dụng và điều khoản</Text>
+            <Text style={styles.menuDescription}>
+              Về ứng dụng và điều khoản
+            </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
         </TouchableOpacity>
@@ -289,11 +304,8 @@ export default function DealerMoreScreen() {
       {/* Settings Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>CÀI ĐẶT</Text>
-        
-        <TouchableOpacity 
-          style={styles.menuItem} 
-          activeOpacity={0.7}
-        >
+
+        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
           <View style={styles.menuIconContainer}>
             <Ionicons name="notifications-outline" size={24} color="#6b7280" />
           </View>
@@ -308,10 +320,7 @@ export default function DealerMoreScreen() {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.menuItem} 
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
           <View style={styles.menuIconContainer}>
             <Ionicons name="lock-closed-outline" size={24} color="#6b7280" />
           </View>
@@ -322,8 +331,8 @@ export default function DealerMoreScreen() {
           <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.menuItem, styles.lastMenuItem]} 
+        <TouchableOpacity
+          style={[styles.menuItem, styles.lastMenuItem]}
           onPress={handleLogout}
           activeOpacity={0.7}
         >
@@ -331,9 +340,7 @@ export default function DealerMoreScreen() {
             <Ionicons name="log-out-outline" size={24} color="#ef4444" />
           </View>
           <View style={styles.menuContent}>
-            <Text style={[styles.menuTitle, styles.logoutText]}>
-              Đăng xuất
-            </Text>
+            <Text style={[styles.menuTitle, styles.logoutText]}>Đăng xuất</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -350,40 +357,40 @@ export default function DealerMoreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
   },
   userCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
+    backgroundColor: "#fff",
+    alignItems: "center",
     marginBottom: 12,
   },
   avatarContainer: {
-    position: 'relative',
+    position: "relative",
   },
   avatar: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#dbeafe',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#dbeafe",
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 3,
-    borderColor: '#2563eb',
+    borderColor: "#2563eb",
   },
   managerBadge: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: '#2563eb',
+    backgroundColor: "#2563eb",
     width: 24,
     height: 24,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
   },
   userInfo: {
     marginLeft: 16,
@@ -391,75 +398,75 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
     marginBottom: 4,
   },
   userRole: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
     marginBottom: 6,
   },
   dealerTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#dbeafe',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#dbeafe",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   dealerName: {
     fontSize: 12,
-    color: '#2563eb',
-    fontWeight: '600',
+    color: "#2563eb",
+    fontWeight: "600",
     marginLeft: 4,
   },
   statsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginBottom: 12,
     gap: 12,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
     padding: 12,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statValue: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
     marginTop: 8,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: "#6b7280",
     marginTop: 4,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginBottom: 12,
     paddingTop: 12,
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#6b7280',
+    fontWeight: "700",
+    color: "#6b7280",
     letterSpacing: 0.5,
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: "#f3f4f6",
   },
   lastMenuItem: {
     borderBottomWidth: 0,
@@ -468,74 +475,74 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 14,
   },
   logoutIcon: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: "#fee2e2",
   },
   menuContent: {
     flex: 1,
   },
   menuTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   menuTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   logoutText: {
-    color: '#ef4444',
+    color: "#ef4444",
   },
   menuDescription: {
     fontSize: 13,
-    color: '#6b7280',
+    color: "#6b7280",
     marginTop: 3,
   },
   badge: {
-    backgroundColor: '#2563eb',
+    backgroundColor: "#2563eb",
     minWidth: 20,
     height: 20,
     borderRadius: 10,
     paddingHorizontal: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 8,
   },
   badgeText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   switchContainer: {
-    marginLeft: 'auto',
+    marginLeft: "auto",
   },
   switchOn: {
     width: 44,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#2563eb',
-    justifyContent: 'center',
+    backgroundColor: "#2563eb",
+    justifyContent: "center",
     paddingHorizontal: 2,
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   switchThumb: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   footer: {
     padding: 24,
-    alignItems: 'center',
+    alignItems: "center",
   },
   footerText: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: "#9ca3af",
     marginBottom: 4,
   },
 });

@@ -7,7 +7,7 @@ import {
   Zap,
   Gauge,
   Users,
-  DollarSign,
+  Banknote,
   Calendar,
   Globe,
   Info,
@@ -184,7 +184,7 @@ export default function VehicleDetailModal({
           {/* Giá cả */}
           <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-6 border-2 border-emerald-200 shadow-sm">
             <h5 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-emerald-600" />
+              <Banknote className="w-5 h-5 text-emerald-600" />
               Thông tin giá cả
             </h5>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

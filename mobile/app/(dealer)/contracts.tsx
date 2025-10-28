@@ -42,7 +42,11 @@ export default function DealerContractsPage() {
 
       const filters = filterStatus ? { status: filterStatus } : undefined;
       const response = await contractApi.getAllContracts(filters);
-      const contractsData = response.data.data?.data || [];
+      const contractsData = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response.data?.data)
+        ? response.data.data
+        : [];
       setContracts(contractsData);
     } catch (error) {
       console.error("Error fetching contracts:", error);

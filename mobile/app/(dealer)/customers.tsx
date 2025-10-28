@@ -1,23 +1,30 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, FlatList, RefreshControl, ActivityIndicator, Text } from 'react-native';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
+  Text,
+} from "react-native";
+import { useAuth } from "@/contexts/AuthContext";
+import Header from "@/components/shared/Header";
 
-import CustomerCard from '@/components/customers/CustomerCard';
-import CustomerDetailModal from '@/components/customers/CustomerDetailModal';
-import CustomerFormModal from '@/components/customers/CustomerFormModal';
-import DeleteConfirmModal from '@/components/customers/DeleteConfirmModal';
-import FeedbackModal from '@/components/customers/FeedbackModal';
-import ComplaintModal from '@/components/customers/ComplaintModal';
-import { styles } from '@/components/customers/styles';
-import { useCustomerLogic } from '@/hooks/useCustomerLogic';
-import CustomerSearchWithFilter from '@/components/customers/CustomerSearchWithFilter';
+import CustomerCard from "@/components/customers/CustomerCard";
+import CustomerDetailModal from "@/components/customers/CustomerDetailModal";
+import CustomerFormModal from "@/components/customers/CustomerFormModal";
+import DeleteConfirmModal from "@/components/customers/DeleteConfirmModal";
+import FeedbackModal from "@/components/customers/FeedbackModal";
+import ComplaintModal from "@/components/customers/ComplaintModal";
+import { styles } from "@/components/customers/styles";
+import { useCustomerLogic } from "@/hooks/useCustomerLogic";
+import CustomerSearchWithFilter from "@/components/customers/CustomerSearchWithFilter";
 
 export default function CustomersScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
   const {
     customers,
@@ -69,8 +76,14 @@ export default function CustomersScreen() {
     <CustomerCard
       customer={item}
       onViewDetail={() => handleViewDetail(item)}
-      onEdit={() => { handleEditCustomer(item); setShowFormModal(true); }}
-      onDelete={() => { setCustomerToDelete(item); setShowDeleteModal(true); }}
+      onEdit={() => {
+        handleEditCustomer(item);
+        setShowFormModal(true);
+      }}
+      onDelete={() => {
+        setCustomerToDelete(item);
+        setShowDeleteModal(true);
+      }}
       onViewFeedbacks={() => handleViewFeedbacks(item)}
       onViewComplaints={() => handleViewComplaints(item)}
     />
@@ -78,7 +91,8 @@ export default function CustomersScreen() {
 
   return (
     <View style={styles.container}>
-      
+      <Header title="Danh sách khách hàng" />
+
       <CustomerSearchWithFilter
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
@@ -101,15 +115,46 @@ export default function CustomersScreen() {
           renderItem={renderCustomerCard}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         />
       )}
 
-      <CustomerDetailModal visible={showDetailModal} customer={selectedCustomer} onClose={() => setShowDetailModal(false)} />
-      <CustomerFormModal visible={showFormModal} customer={editingCustomer} loading={formLoading} onClose={() => { setShowFormModal(false); resetForm(); }} onSave={handleSaveCustomer} />
-      <DeleteConfirmModal visible={showDeleteModal} customer={customerToDelete} loading={formLoading} onConfirm={() => handleDeleteCustomer()} onCancel={() => setShowDeleteModal(false)} />
-      <FeedbackModal visible={showFeedbackModal} customer={selectedCustomer} feedbacks={feedbacks} onClose={() => setShowFeedbackModal(false)} />
-      <ComplaintModal visible={showComplaintModal} customer={selectedCustomer} complaints={complaints} onClose={() => setShowComplaintModal(false)} />
+      <CustomerDetailModal
+        visible={showDetailModal}
+        customer={selectedCustomer}
+        onClose={() => setShowDetailModal(false)}
+      />
+      <CustomerFormModal
+        visible={showFormModal}
+        customer={editingCustomer}
+        loading={formLoading}
+        onClose={() => {
+          setShowFormModal(false);
+          resetForm();
+        }}
+        onSave={handleSaveCustomer}
+      />
+      <DeleteConfirmModal
+        visible={showDeleteModal}
+        customer={customerToDelete}
+        loading={formLoading}
+        onConfirm={() => handleDeleteCustomer()}
+        onCancel={() => setShowDeleteModal(false)}
+      />
+      <FeedbackModal
+        visible={showFeedbackModal}
+        customer={selectedCustomer}
+        feedbacks={feedbacks}
+        onClose={() => setShowFeedbackModal(false)}
+      />
+      <ComplaintModal
+        visible={showComplaintModal}
+        customer={selectedCustomer}
+        complaints={complaints}
+        onClose={() => setShowComplaintModal(false)}
+      />
     </View>
   );
 }

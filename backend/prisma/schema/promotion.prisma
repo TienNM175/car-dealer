@@ -32,7 +32,7 @@ model DealerDiscount {
 
 enum DiscountType {
   PERCENTAGE  // Chiết khấu theo %
-  FIXED       // Chiết khấu cố định (VND/USD)
+  FIXED       // Chiết khấu cố định (VND)
 }
 
 enum PromotionSource {

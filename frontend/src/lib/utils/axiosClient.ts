@@ -1,12 +1,12 @@
 import axios from "axios";
 
-console.log(
-  "🌐 API Base URL:",
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"
-);
+const baseURL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+
+console.log("🌐 API Base URL:", baseURL);
 
 const axiosClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1",
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },

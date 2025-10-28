@@ -1,94 +1,87 @@
-// app/(dealer)/orders.tsx
 import React, { useEffect, useState } from "react";
 import {
-  View, Text, FlatList, ActivityIndicator, SafeAreaView,
-  RefreshControl, TextInput, TouchableOpacity, Modal,
-  ScrollView, KeyboardAvoidingView, Platform, Alert
+  View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+  SafeAreaView,
+  RefreshControl,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  StyleSheet,
 } from "react-native";
-import { Search, Filter, Plus, Eye, Edit, Trash2, Package, Truck, CheckCircle, Clock, Ban } from "lucide-react-native";
+import {
+  Search,
+  Filter,
+  Eye,
+  ChevronDown,
+  CheckCircle,
+  Package,
+  Truck,
+  Clock,
+  Ban,
+} from "lucide-react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
+import Header from "@/components/shared/Header";
 import { dealerOrderApi, DealerOrder } from "@/lib/api/dealerOrderApi";
-import { styles } from "@/components/orders/styles";
 import OrderDetailModal from "@/components/orders/OrderDetailModal";
-import CreateOrderModal from '@/components/orders/CreateOrderModal';
 
 export default function DealerOrdersScreen() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
   const [orders, setOrders] = useState<DealerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  
-  // Filters & Search
+  // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  
-  // Pagination
-  const itemsPerPage = 10;
-  const [currentPage, setCurrentPage] = useState(0);
-  
-  // Selected order for actions
+  const [showStatusFilter, setShowStatusFilter] = useState(false);
+
+  // Selected order
   const [selectedOrder, setSelectedOrder] = useState<DealerOrder | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  // Fetch orders
-  const fetchOrders = async () => {
-  if (!user?.dealerId) return;
-
-  try {
-    setLoading(true);
-    
-    // Log để debug
-    console.log('🔄 Fetching orders with params:', {
-      search: searchTerm,
-      status: filterStatus,
-      dealerId: user.dealerId,
-      page: currentPage + 1,
-      limit: itemsPerPage
-    });
-
-    const response = await dealerOrderApi.getAllDealerOrders(
-      {
-        search: searchTerm,
-        status: filterStatus,
-        dealerId: user.dealerId,
-      },
-      { page: currentPage + 1, limit: itemsPerPage }
-    );
-    
-    console.log('✅ API Response:', response.data);
-    
-    const responseData = response.data.data || response.data;
-    const orders = Array.isArray(responseData) ? responseData : responseData.data || [];
-    setOrders(orders);
-  } catch (err: any) {
-    console.error('❌ API Error Details:', {
-      url: err.config?.url,
-      method: err.config?.method,
-      status: err.response?.status,
-      data: err.response?.data
-    });
-    
-    Alert.alert("Lỗi", err.response?.data?.message || "Không thể tải danh sách đơn hàng");
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
+  const statusOptions = [
+    { label: "Tất cả", value: "" },
+    { label: "Chờ xử lý", value: "PENDING" },
+    { label: "Đã xác nhận", value: "CONFIRMED" },
+    { label: "Đang sản xuất", value: "IN_PRODUCTION" },
+    { label: "Đã hoàn thành", value: "COMPLETED" },
+    { label: "Đã giao hàng", value: "DELIVERED" },
+    { label: "Đã hủy", value: "CANCELLED" },
+  ];
 
   useEffect(() => {
-    if (user?.dealerId) {
+    if (isAuthenticated && user?.dealerId) {
       fetchOrders();
     }
-  }, [user?.dealerId, currentPage, searchTerm, filterStatus]);
+  }, [isAuthenticated, user?.dealerId]);
 
-  const handleRefresh = () => {
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await dealerOrderApi.getAllDealerOrders({
+        dealerId: user?.dealerId,
+        status: filterStatus || undefined,
+        search: searchTerm || undefined,
+      });
+      setOrders(response.data || []);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      Alert.alert("Lỗi", "Không thể tải danh sách đơn hàng");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchOrders();
+    await fetchOrders();
+    setRefreshing(false);
   };
 
   const handleViewDetail = (order: DealerOrder) => {
@@ -96,55 +89,35 @@ export default function DealerOrdersScreen() {
     setShowDetailModal(true);
   };
 
-  const handleCancelOrder = async (order: DealerOrder) => {
-    if (order.status !== 'PENDING') {
-      Alert.alert("Lỗi", "Chỉ có thể hủy đơn hàng ở trạng thái Chờ xác nhận");
-      return;
-    }
-
-    Alert.alert(
-      "Xác nhận hủy",
-      `Bạn có chắc muốn hủy đơn hàng ${order.orderNumber}?`,
-      [
-        { text: "Hủy", style: "cancel" },
-        { 
-          text: "Xác nhận", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await dealerOrderApi.cancelDealerOrder(order.id, "Hủy từ mobile app");
-              Alert.alert("Thành công", "Đã hủy đơn hàng thành công");
-              fetchOrders();
-            } catch (err: any) {
-              Alert.alert("Lỗi", err.response?.data?.message || "Không thể hủy đơn hàng");
-            }
-          }
-        },
-      ]
-    );
-  };
-
   const getStatusConfig = (status: string) => {
     const config = {
-      PENDING: { label: "Chờ xác nhận", color: "#f59e0b", icon: Clock },
+      PENDING: { label: "Chờ xử lý", color: "#f59e0b", icon: Clock },
       CONFIRMED: { label: "Đã xác nhận", color: "#3b82f6", icon: CheckCircle },
-      PROCESSING: { label: "Đang xử lý", color: "#8b5cf6", icon: Package },
-      SHIPPED: { label: "Đang giao", color: "#f97316", icon: Truck },
-      DELIVERED: { label: "Đã giao", color: "#10b981", icon: CheckCircle },
+      IN_PRODUCTION: {
+        label: "Đang sản xuất",
+        color: "#8b5cf6",
+        icon: Package,
+      },
+      COMPLETED: {
+        label: "Đã hoàn thành",
+        color: "#10b981",
+        icon: CheckCircle,
+      },
+      DELIVERED: { label: "Đã giao hàng", color: "#059669", icon: Truck },
       CANCELLED: { label: "Đã hủy", color: "#ef4444", icon: Ban },
     };
     return config[status as keyof typeof config] || config.PENDING;
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN');
+    return new Date(dateString).toLocaleDateString("vi-VN");
   };
 
   const renderOrderCard = ({ item }: { item: DealerOrder }) => {
@@ -152,66 +125,61 @@ export default function DealerOrdersScreen() {
     const StatusIcon = statusConfig.icon;
 
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View>
-            <Text style={styles.orderNumber}>{item.orderNumber}</Text>
-            <Text style={styles.vehicleName}>
-              {item.vehicle?.manufacturer?.name} {item.vehicle?.model}
-            </Text>
+      <TouchableOpacity
+        style={styles.orderCard}
+        onPress={() => handleViewDetail(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.orderHeader}>
+          <Text style={styles.orderNumber}>#{item.orderNumber}</Text>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: statusConfig.color },
+            ]}
+          >
+            <StatusIcon size={12} color="#fff" />
+            <Text style={styles.statusText}>{statusConfig.label}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusConfig.color + "20" }]}>
-            <StatusIcon size={14} color={statusConfig.color} />
-            <Text style={[styles.statusText, { color: statusConfig.color }]}>
-              {statusConfig.label}
+        </View>
+
+        <View style={styles.orderContent}>
+          <Text style={styles.orderTitle}>{item.vehicle?.model || "N/A"}</Text>
+          <Text style={styles.orderSubtitle}>
+            {item.vehicle?.manufacturer?.name || "N/A"}
+          </Text>
+
+          <View style={styles.orderDetails}>
+            <Text style={styles.orderDetail}>Số lượng: {item.quantity}</Text>
+            <Text style={styles.orderDetail}>
+              Tổng tiền: {formatPrice(item.totalAmount)}
+            </Text>
+            <Text style={styles.orderDetail}>
+              Ngày đặt: {formatDate(item.createdAt)}
             </Text>
           </View>
         </View>
 
-        <View style={styles.orderDetails}>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Số lượng:</Text>
-            <Text style={styles.detailValue}>{item.quantity} xe</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Tổng tiền:</Text>
-            <Text style={styles.detailValue}>{formatCurrency(Number(item.totalAmount))}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Ngày đặt:</Text>
-            <Text style={styles.detailValue}>{formatDate(item.orderedAt)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.cardActions}>
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.viewButton]}
+        <View style={styles.orderActions}>
+          <TouchableOpacity
+            style={styles.viewButton}
             onPress={() => handleViewDetail(item)}
           >
-            <Eye size={16} color="#3b82f6" />
-            <Text style={[styles.actionButtonText, { color: "#3b82f6" }]}>Chi tiết</Text>
+            <Eye size={16} color="#2563eb" />
+            <Text style={styles.actionButtonText}>Xem chi tiết</Text>
           </TouchableOpacity>
-          
-          {item.status === 'PENDING' && (
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.cancelButton]}
-              onPress={() => handleCancelOrder(item)}
-            >
-              <Trash2 size={16} color="#ef4444" />
-              <Text style={[styles.actionButtonText, { color: "#ef4444" }]}>Hủy</Text>
-            </TouchableOpacity>
-          )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <SafeAreaView style={styles.container}>
+        <Header title="Đơn hàng" />
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>Đang tải đơn hàng...</Text>
+          <ActivityIndicator size="large" color="#2563eb" />
+          <Text style={styles.loadingText}>Đang tải...</Text>
         </View>
       </SafeAreaView>
     );
@@ -219,55 +187,87 @@ export default function DealerOrdersScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Đơn đặt hàng</Text>
-        <Text style={styles.headerSubtitle}>
-          Quản lý đơn đặt xe từ đại lý
-        </Text>
+      <Header title="Đơn hàng của tôi" />
+
+      {/* Subtitle */}
+      <View style={styles.subtitleContainer}>
+        <Text style={styles.subtitleText}>Quản lý đơn hàng từ hãng xe</Text>
       </View>
 
-      {/* Search & Filter */}
+      {/* Search & Filters */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-            <Search size={18} color="#6b7280" />
-            <TextInput
+          <Search size={18} color="#6b7280" />
+          <TextInput
             style={styles.searchInput}
             placeholder="Tìm kiếm đơn hàng..."
             value={searchTerm}
             onChangeText={setSearchTerm}
             placeholderTextColor="#9ca3af"
-            />
+          />
         </View>
-        
-        {/* Nút Tạo đơn hàng - Chỉ hiện cho Manager */}
-        {(user?.role === 'DEALER_MANAGER' || user?.role === 'ADMIN') && (
-            <TouchableOpacity 
-            style={styles.createOrderButton}
-            onPress={() => setShowCreateModal(true)}
+
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowStatusFilter(!showStatusFilter)}
+        >
+          <Filter size={18} color="#6b7280" />
+          <Text style={styles.filterButtonText}>Trạng thái</Text>
+          <ChevronDown size={16} color="#6b7280" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Status Filter Dropdown */}
+      {showStatusFilter && (
+        <View style={styles.filterDropdown}>
+          {statusOptions.map((option) => (
+            <TouchableOpacity
+              key={option.value}
+              style={[
+                styles.filterOption,
+                filterStatus === option.value && styles.filterOptionSelected,
+              ]}
+              onPress={() => {
+                setFilterStatus(option.value);
+                setShowStatusFilter(false);
+                fetchOrders();
+              }}
             >
-            <Plus size={18} color="#fff" />
-            <Text style={styles.createOrderButtonText}>Tạo đơn</Text>
+              <Text
+                style={[
+                  styles.filterOptionText,
+                  filterStatus === option.value &&
+                    styles.filterOptionTextSelected,
+                ]}
+              >
+                {option.label}
+              </Text>
             </TouchableOpacity>
-        )}
+          ))}
         </View>
+      )}
 
-
-      {/* Order List */}
-      <FlatList
-        data={orders}
-        keyExtractor={(item) => item.id}
-        renderItem={renderOrderCard}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-        ListEmptyComponent={
-          <View style={styles.centerContainer}>
-            <Text style={styles.emptyText}>Không có đơn hàng nào</Text>
-          </View>
-        }
-      />
+      {/* Orders List */}
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#2563eb" />
+          <Text style={styles.loadingText}>Đang tải đơn hàng...</Text>
+        </View>
+      ) : orders.length === 0 ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyText}>Không có đơn hàng nào</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={orders}
+          renderItem={renderOrderCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        />
+      )}
 
       {/* Order Detail Modal */}
       <OrderDetailModal
@@ -275,11 +275,183 @@ export default function DealerOrdersScreen() {
         order={selectedOrder}
         onClose={() => setShowDetailModal(false)}
       />
-      <CreateOrderModal
-        visible={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={fetchOrders}
-        />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#f8fafc",
+  },
+  subtitleContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+  },
+  subtitleText: {
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    padding: 12,
+    gap: 8,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f9fafb",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    fontSize: 14,
+  },
+  filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#3b82f6",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  filterButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+    marginRight: 4,
+  },
+  filterDropdown: {
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingHorizontal: 12,
+  },
+  filterOption: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+  },
+  filterOptionSelected: {
+    backgroundColor: "#eff6ff",
+  },
+  filterOptionText: {
+    fontSize: 14,
+    color: "#374151",
+  },
+  filterOptionTextSelected: {
+    color: "#2563eb",
+    fontWeight: "600",
+  },
+  listContent: {
+    padding: 12,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: "#6b7280",
+    fontSize: 14,
+  },
+  emptyText: {
+    color: "#6b7280",
+    fontSize: 16,
+    textAlign: "center",
+  },
+  orderCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  orderHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  orderNumber: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#fff",
+    marginLeft: 4,
+  },
+  orderContent: {
+    marginBottom: 12,
+  },
+  orderTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111827",
+    marginBottom: 4,
+  },
+  orderSubtitle: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginBottom: 8,
+  },
+  orderDetails: {
+    gap: 4,
+  },
+  orderDetail: {
+    fontSize: 13,
+    color: "#6b7280",
+  },
+  orderActions: {
+    flexDirection: "row",
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingTop: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  viewButton: {
+    borderColor: "#3b82f6",
+    backgroundColor: "#eff6ff",
+  },
+  actionButtonText: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+});
