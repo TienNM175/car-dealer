@@ -143,12 +143,12 @@ router.put(
 /**
  * @route   PATCH /api/v1/promotions/:id/toggle
  * @desc    Toggle promotion active status
- * @access  Private - Dealer Manager and above
+ * @access  Private - Dealer Staff and above (updated to include DEALER_STAFF)
  */
 router.patch(
   "/:id/toggle",
   AuthMiddleware.authenticate,
-  RoleMiddleware.requireDealerManager,
+  RoleMiddleware.requireDealerStaff,
   promotionsController.toggleStatus
 );
 
