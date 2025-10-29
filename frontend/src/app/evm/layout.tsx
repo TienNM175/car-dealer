@@ -52,12 +52,6 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
     { id: "dealers", icon: Users, label: "Quản lý đại lý", role: ["ADMIN"] },
     { id: "users", icon: UserCog, label: "Quản lý Users", role: ["ADMIN"] },
     {
-      id: "promotions",
-      icon: Tag,
-      label: "Quản lý Khuyến mãi",
-      role: ["ADMIN", "EVM_STAFF"],
-    },
-    {
       id: "pricing",
       icon: FileText,
       label: "Giá & Chiết khấu",
