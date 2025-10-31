@@ -1,23 +1,24 @@
+// ============================================
+// 3. tsconfig.json
+// ============================================
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "baseUrl": ".",
-    "jsx": "react-native",
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "paths": {
-      "@/*": ["src/*"]
-    },
-    
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "jsx": "react-native",
+    "lib": ["ES2019"],
+    "target": "ES2019"
   },
   "include": [
-    "app/**/*",
-    "src/**/*",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "env.d.ts"
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }
