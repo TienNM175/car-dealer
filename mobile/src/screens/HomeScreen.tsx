@@ -1,7 +1,7 @@
 // ============================================
-// 1. src/screens/HomeScreen.tsx
+// Enhanced src/screens/HomeScreen.tsx
 // ============================================
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,10 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Animated,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { VehicleCard } from '../components/VehicleCard';
@@ -21,6 +24,8 @@ import { manufacturerApi } from '../api/manufacturers';
 import { Vehicle, Manufacturer } from '../types/vehicle';
 import { COLORS } from '../constants/config';
 import { RootStackParamList } from '../navigation/RootNavigator';
+
+const { width, height } = Dimensions.get('window');
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -36,9 +41,37 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
   useEffect(() => {
     loadData();
+    startAnimations();
   }, []);
+
+  const startAnimations = () => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  };
 
   const loadData = async () => {
     try {
@@ -70,7 +103,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   if (loading) {
-    return <Loading message="Đang tải dữ liệu..." />;
+    return <Loading message="Khởi động EVM..." />;
   }
 
   if (error && !refreshing) {
@@ -80,195 +113,644 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <ScrollView
       style={styles.container}
+      showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Xin chào! 👋</Text>
-          <Text style={styles.title}>Khám phá xe điện EVM</Text>
-        </View>
+      {/* Hero Section */}
+      <Animated.View
+        style={[
+          styles.heroSection,
+          {
+            opacity: fadeAnim,
+            transform: [
+              { translateY: slideAnim },
+              { scale: scaleAnim },
+            ],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={['#1976D2', '#1565C0', '#0D47A1']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroGradient}
+        >
+          <View style={styles.heroContent}>
+            <Ionicons name="flash" size={48} color="#FFD700" style={styles.heroIcon} />
+            <Text style={styles.heroTitle}>EVM</Text>
+            <Text style={styles.heroSubtitle}>Electric Vehicle Market</Text>
+            <Text style={styles.heroDescription}>
+              Khám phá tương lai giao thông xanh
+            </Text>
+
+            <View style={styles.heroStats}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>500+</Text>
+                <Text style={styles.statLabel}>Xe</Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>100+</Text>
+                <Text style={styles.statLabel}>Đại lý</Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>24/7</Text>
+                <Text style={styles.statLabel}>Hỗ trợ</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.heroWave}>
+            <Text style={styles.waveEmoji}>⚡</Text>
+          </View>
+        </LinearGradient>
+      </Animated.View>
+
+      {/* Search Section */}
+      <View style={styles.searchWrapper}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Tìm xe điện yêu thích..."
+          onSubmit={handleSearch}
+        />
       </View>
 
-      {/* Search */}
-      <SearchBar
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholder="Tìm kiếm xe..."
-        onSubmit={handleSearch}
-      />
+      {/* Quick Filters */}
+      <View style={styles.quickFilters}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterList}>
+          <FilterButton
+            icon="flash"
+            label="Tất cả"
+            onPress={() => navigation.navigate('VehicleList', {})}
+          />
+          <FilterButton
+            icon="pulse"
+            label="Xe Hot"
+            onPress={() => navigation.navigate('VehicleList', {})}
+          />
+          <FilterButton
+            icon="trending-up"
+            label="Giá Rẻ"
+            onPress={() => navigation.navigate('VehicleList', {})}
+          />
+          <FilterButton
+            icon="car-sport"
+            label="SUV"
+            onPress={() => navigation.navigate('VehicleList', { bodyType: 'SUV' })}
+          />
+        </ScrollView>
+      </View>
 
-      {/* Manufacturers */}
+      {/* Manufacturers Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Hãng xe</Text>
+          <View>
+            <Text style={styles.sectionTitle}>Các Hãng Xe</Text>
+            <Text style={styles.sectionSubtitle}>Hàng đầu toàn cầu</Text>
+          </View>
+          <View style={styles.sectionBadge}>
+            <Text style={styles.badgeText}>{manufacturers.length}</Text>
+          </View>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryList}>
-          {manufacturers.map((manufacturer) => (
-            <TouchableOpacity
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoryList}
+          scrollEventThrottle={16}
+        >
+          {manufacturers.map((manufacturer, index) => (
+            <ManufacturerCard
               key={manufacturer.id}
-              style={styles.categoryCard}
+              manufacturer={manufacturer}
+              index={index}
               onPress={() =>
                 navigation.navigate('VehicleList', { manufacturerId: manufacturer.id })
               }
-            >
-              <View style={styles.categoryIcon}>
-                <Ionicons name="car-sport" size={24} color={COLORS.primary} />
-              </View>
-              <Text style={styles.categoryName}>{manufacturer.name}</Text>
-              <Text style={styles.categoryCountry}>{manufacturer.country}</Text>
-            </TouchableOpacity>
+            />
           ))}
         </ScrollView>
       </View>
 
-      {/* Featured Vehicles */}
+      {/* Featured Vehicles Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Xe nổi bật</Text>
+          <View>
+            <Text style={styles.sectionTitle}>Xe Nổi Bật</Text>
+            <Text style={styles.sectionSubtitle}>Sản phẩm mới nhất</Text>
+          </View>
           <TouchableOpacity onPress={() => navigation.navigate('VehicleList', {})}>
-            <Text style={styles.seeAll}>Xem tất cả →</Text>
+            <Text style={styles.seeAll}>Xem tất cả</Text>
+            <Ionicons
+              name="arrow-forward"
+              size={16}
+              color={COLORS.primary}
+              style={styles.seeAllIcon}
+            />
           </TouchableOpacity>
         </View>
-        {vehicles.map((vehicle) => (
-          <VehicleCard
+
+        {vehicles.map((vehicle, index) => (
+          <VehicleCardWithAnimation
             key={vehicle.id}
             vehicle={vehicle}
+            index={index}
             onPress={() => navigation.navigate('VehicleDetail', { vehicleId: vehicle.id })}
           />
         ))}
       </View>
 
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        <TouchableOpacity
-          style={styles.actionCard}
-          onPress={() => navigation.navigate('VehicleList', {})}
-        >
-          <Ionicons name="car" size={32} color={COLORS.primary} />
-          <Text style={styles.actionTitle}>Tất cả xe</Text>
-          <Text style={styles.actionSubtitle}>Xem danh sách đầy đủ</Text>
-        </TouchableOpacity>
+      {/* Benefits Section */}
+      <View style={styles.benefitsSection}>
+        <Text style={styles.benefitsTitle}>Tại sao chọn EVM?</Text>
 
-        <TouchableOpacity
-          style={styles.actionCard}
-          onPress={() => navigation.navigate('VehicleList', { bodyType: 'SUV' })}
-        >
-          <Ionicons name="compass" size={32} color={COLORS.primary} />
-          <Text style={styles.actionTitle}>SUV</Text>
-          <Text style={styles.actionSubtitle}>Xe thể thao đa dụng</Text>
-        </TouchableOpacity>
+        <BenefitItem
+          icon="leaf"
+          title="Thân Thiện Môi Trường"
+          description="Giảm khí thải, bảo vệ trái đất"
+          color="#4CAF50"
+        />
+        <BenefitItem
+          icon="flash-outline"
+          title="Công Nghệ Tiên Tiến"
+          description="Pin dung lượng cao, sạc nhanh"
+          color="#FFC107"
+        />
+        <BenefitItem
+          icon="wallet"
+          title="Tiết Kiệm Chi Phí"
+          description="Giá điện rẻ, bảo hành toàn diện"
+          color="#2196F3"
+        />
+        <BenefitItem
+          icon="checkmark-circle"
+          title="Hỗ Trợ Tận Tình"
+          description="Đội ngũ chuyên nghiệp 24/7"
+          color="#9C27B0"
+        />
       </View>
+
+      {/* CTA Section */}
+      <View style={styles.ctaSection}>
+        <LinearGradient
+          colors={['#1976D2', '#1565C0']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.ctaGradient}
+        >
+          <Text style={styles.ctaTitle}>Sẵn Sàng Lái Thử?</Text>
+          <Text style={styles.ctaDescription}>
+            Đặt lịch lái thử xe của bạn ngay hôm nay
+          </Text>
+          <TouchableOpacity
+            style={styles.ctaButton}
+            onPress={() => navigation.navigate('VehicleList', {})}
+          >
+            <Text style={styles.ctaButtonText}>Khám Phá Ngay</Text>
+            <Ionicons name="arrow-forward" size={20} color="#1976D2" />
+          </TouchableOpacity>
+        </LinearGradient>
+      </View>
+
+      <View style={styles.footer} />
     </ScrollView>
   );
 };
 
+interface FilterButtonProps {
+  icon: string;
+  label: string;
+  onPress: () => void;
+}
+
+const FilterButton: React.FC<FilterButtonProps> = ({ icon, label, onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        activeOpacity={0.7}
+        style={styles.filterButton}
+      >
+        <Ionicons name={icon as any} size={20} color={COLORS.primary} />
+        <Text style={styles.filterLabel}>{label}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+interface ManufacturerCardProps {
+  manufacturer: Manufacturer;
+  index: number;
+  onPress: () => void;
+}
+
+const ManufacturerCard: React.FC<ManufacturerCardProps> = ({
+  manufacturer,
+  index,
+  onPress,
+}) => {
+  const translateAnim = useRef(new Animated.Value(100)).current;
+
+  useEffect(() => {
+    Animated.timing(translateAnim, {
+      toValue: 0,
+      duration: 500,
+      delay: index * 100,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ transform: [{ translateX: translateAnim }] }}>
+      <TouchableOpacity
+        style={styles.manufacturerCard}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <LinearGradient
+          colors={[COLORS.primary, COLORS.primary + 'DD']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.manufacturerGradient}
+        >
+          <View style={styles.manufacturerIcon}>
+            <Ionicons name="car-sport" size={32} color="#FFFFFF" />
+          </View>
+          <Text style={styles.manufacturerName} numberOfLines={1}>
+            {manufacturer.name}
+          </Text>
+          <Text style={styles.manufacturerCountry}>{manufacturer.country}</Text>
+          <View style={styles.arrowIcon}>
+            <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+interface VehicleCardWithAnimationProps {
+  vehicle: Vehicle;
+  index: number;
+  onPress: () => void;
+}
+
+const VehicleCardWithAnimation: React.FC<VehicleCardWithAnimationProps> = ({
+  vehicle,
+  index,
+  onPress,
+}) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      delay: index * 100,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity: fadeAnim }}>
+      <VehicleCard vehicle={vehicle} onPress={onPress} />
+    </Animated.View>
+  );
+};
+
+interface BenefitItemProps {
+  icon: string;
+  title: string;
+  description: string;
+  color: string;
+}
+
+const BenefitItem: React.FC<BenefitItemProps> = ({
+  icon,
+  title,
+  description,
+  color,
+}) => (
+  <View style={styles.benefitItem}>
+    <View style={[styles.benefitIcon, { backgroundColor: color + '20' }]}>
+      <Ionicons name={icon as any} size={28} color={color} />
+    </View>
+    <View style={styles.benefitContent}>
+      <Text style={styles.benefitTitle}>{title}</Text>
+      <Text style={styles.benefitDescription}>{description}</Text>
+    </View>
+    <Ionicons name="chevron-forward" size={20} color={COLORS.border} />
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FAFAFA',
   },
-  header: {
-    padding: 20,
+  heroSection: {
+    marginBottom: 20,
+  },
+  heroGradient: {
     paddingTop: 60,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroContent: {
     alignItems: 'center',
   },
-  greeting: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+  heroIcon: {
+    marginBottom: 12,
   },
-  title: {
-    fontSize: 24,
+  heroTitle: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 2,
+  },
+  heroSubtitle: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginTop: 8,
+    opacity: 0.9,
+  },
+  heroDescription: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    marginTop: 12,
+    opacity: 0.85,
+  },
+  heroStats: {
+    flexDirection: 'row',
+    marginTop: 32,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 20,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#FFD700',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#FFFFFF',
     marginTop: 4,
+    opacity: 0.8,
+  },
+  divider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  heroWave: {
+    position: 'absolute',
+    right: 20,
+    top: 20,
+    fontSize: 64,
+    opacity: 0.1,
+  },
+  waveEmoji: {
+    fontSize: 80,
+  },
+  searchWrapper: {
+    paddingHorizontal: 0,
+    marginBottom: 16,
+  },
+  quickFilters: {
+    marginBottom: 24,
+    paddingHorizontal: 16,
+  },
+  filterList: {
+    flexDirection: 'row',
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginRight: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary + '30',
+  },
+  filterLabel: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   section: {
-    marginTop: 24,
+    marginBottom: 32,
+    paddingHorizontal: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: COLORS.text,
+    letterSpacing: 0.5,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  sectionBadge: {
+    backgroundColor: COLORS.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
   },
   seeAll: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  seeAllIcon: {
+    marginTop: 2,
   },
   categoryList: {
+    marginLeft: -16,
     paddingLeft: 16,
   },
-  categoryCard: {
-    width: 120,
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
+  manufacturerCard: {
+    width: 140,
     marginRight: 12,
-    alignItems: 'center',
-    elevation: 2,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 3,
   },
-  categoryIcon: {
-    width: 56,
-    height: 56,
-    backgroundColor: COLORS.primary + '20',
-    borderRadius: 28,
+  manufacturerGradient: {
+    padding: 16,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  manufacturerIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
-  categoryName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
+  manufacturerName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
     textAlign: 'center',
   },
-  categoryCountry: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
+  manufacturerCountry: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    opacity: 0.8,
     marginTop: 4,
   },
-  quickActions: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-    marginBottom: 24,
+  arrowIcon: {
+    position: 'absolute',
+    right: 8,
+    top: 8,
+    opacity: 0.6,
   },
-  actionCard: {
-    flex: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 20,
+  benefitsSection: {
+    paddingHorizontal: 16,
+    marginBottom: 32,
+  },
+  benefitsTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginBottom: 20,
+    letterSpacing: 0.5,
+  },
+  benefitItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    elevation: 2,
+    backgroundColor: COLORS.card,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
   },
-  actionTitle: {
-    fontSize: 16,
+  benefitIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  benefitContent: {
+    flex: 1,
+  },
+  benefitTitle: {
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.text,
-    marginTop: 12,
   },
-  actionSubtitle: {
-    fontSize: 12,
+  benefitDescription: {
+    fontSize: 13,
     color: COLORS.textSecondary,
     marginTop: 4,
-    textAlign: 'center',
+  },
+  ctaSection: {
+    paddingHorizontal: 16,
+    marginBottom: 32,
+  },
+  ctaGradient: {
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  ctaTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  ctaDescription: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    marginTop: 8,
+    opacity: 0.9,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 20,
+    gap: 8,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  ctaButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1976D2',
+  },
+  footer: {
+    height: 20,
   },
 });
