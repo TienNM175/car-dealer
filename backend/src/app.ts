@@ -19,6 +19,7 @@ import quotationRoutes from "./modules/quotations/quotations.routes";
 import promotionRoutes from "./modules/promotions/promotions.routes";
 import aiAdminRoutes from "./modules/ai/ai-admin.routes";
 import userRoutes from "./modules/users/users.routes";
+import publicRoutes from "./modules/public/public.routes";
 // ... other routes
 
 class App {
@@ -90,6 +91,7 @@ class App {
     apiRouter.use("/promotions", promotionRoutes);
     apiRouter.use("/ai/admin", aiAdminRoutes);
     apiRouter.use("/users", userRoutes);
+    apiRouter.use('/public', publicRoutes);
 
     // Debug middleware
     this.app.use("/api/v1", (req, _res, next) => {
