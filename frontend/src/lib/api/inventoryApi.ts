@@ -127,6 +127,7 @@ export interface InventorySummary {
     totalReserved: number;
     totalAvailable: number;
     vehicleTypes: number;
+    totalSold?: number; 
   };
   dealers: {
     totalQuantity: number;

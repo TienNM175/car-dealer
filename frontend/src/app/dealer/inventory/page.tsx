@@ -7,10 +7,6 @@ import {
   Clock,
   XCircle,
   Eye,
-  Edit,
-  ShoppingCart,
-  CheckSquare,
-  X,
   ChevronLeft,
   ChevronRight,
   X as CloseIcon,
@@ -18,13 +14,9 @@ import {
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import inventoryApi, {
-  UpdateDealerInventoryInput,
-  ReserveInventoryInput,
-  CompleteSaleInput,
-  CancelReservationInput,
   DealerInventory,
 } from "@/lib/api/inventoryApi";
-import { useAuth } from "@/contexts/AuthContext"; // Adjust path nếu cần
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function DealerInventoryPage() {
@@ -38,34 +30,21 @@ export default function DealerInventoryPage() {
     null
   );
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showReserveModal, setShowReserveModal] = useState(false);
-  const [showCompleteSaleModal, setShowCompleteSaleModal] = useState(false);
-  const [showCancelReserveModal, setShowCancelReserveModal] = useState(false);
-
-  const [editForm, setEditForm] = useState<UpdateDealerInventoryInput>({});
-  const [reserveForm, setReserveForm] = useState<ReserveInventoryInput>({
-    quantity: 0,
-  });
-  const [saleForm, setSaleForm] = useState<CompleteSaleInput>({ quantity: 0 });
-  const [cancelForm, setCancelForm] = useState<CancelReservationInput>({
-    quantity: 0,
-  });
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Thêm states cho search và filters
+  // Search và filters
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [filterTotal, setFilterTotal] = useState(""); // Exact number for Tổng
-  const [filterReserved, setFilterReserved] = useState(""); // Exact number for Reserved
-  const [filterSold, setFilterSold] = useState(""); // Exact number for Sold
-  const [filterAvailable, setFilterAvailable] = useState(""); // Exact number for Khả dụng
-  const [filterStatus, setFilterStatus] = useState(""); // '', 'low', 'normal', 'high'
+  const [filterTotal, setFilterTotal] = useState("");
+  const [filterReserved, setFilterReserved] = useState("");
+  const [filterSold, setFilterSold] = useState("");
+  const [filterAvailable, setFilterAvailable] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
-  // Kiểm tra auth và role (staff/manager đều được xem, nhưng có thể giới hạn export cho staff)
+  // Check auth
   useEffect(() => {
     if (!authLoading && (!user || !user.dealerId)) {
       toast.error("Bạn không có quyền truy cập trang này.");
@@ -82,7 +61,6 @@ export default function DealerInventoryPage() {
         setError(null);
         setCurrentPage(1);
 
-        // API 1: getDealerInventory
         const response = await inventoryApi.getDealerInventory(user.dealerId);
         setDealerInventory(response.data.data);
       } catch (err) {
@@ -96,7 +74,7 @@ export default function DealerInventoryPage() {
     if (user?.dealerId) fetchData();
   }, [user?.dealerId]);
 
-  // Reset page to 1 when filters or search change
+  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -108,37 +86,30 @@ export default function DealerInventoryPage() {
     filterStatus,
   ]);
 
-  // Pagination logic
-  // Lọc dữ liệu dựa trên search và filters
+  // Filter data
   const filteredData = dealerInventory.filter((item) => {
-    // Search theo model
     const matchesSearch = item.vehicle.model
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
 
-    // Filter theo Tổng (exact)
     const totalFilter = parseInt(filterTotal) || NaN;
     const matchesTotal = !isNaN(totalFilter)
       ? item.quantity === totalFilter
       : true;
 
-    // Filter theo Reserved (exact)
     const reservedFilter = parseInt(filterReserved) || NaN;
     const matchesReserved = !isNaN(reservedFilter)
       ? item.reserved === reservedFilter
       : true;
 
-    // Filter theo Sold (exact)
     const soldFilter = parseInt(filterSold) || NaN;
     const matchesSold = !isNaN(soldFilter) ? item.sold === soldFilter : true;
 
-    // Filter theo Khả dụng (exact)
     const availableFilter = parseInt(filterAvailable) || NaN;
     const matchesAvailable = !isNaN(availableFilter)
       ? item.available === availableFilter
       : true;
 
-    // Filter theo trạng thái (dựa trên available: low <5, normal 5-20, high >20)
     let itemStatus = "";
     if (item.available < 5) itemStatus = "low";
     else if (item.available <= 20) itemStatus = "normal";
@@ -180,7 +151,7 @@ export default function DealerInventoryPage() {
     return pages;
   };
 
-  // Thống kê (dựa trên filtered data? No, keep original for stats)
+  // Stats
   const totalStock = dealerInventory.reduce(
     (sum, item) => sum + item.quantity,
     0
@@ -198,7 +169,7 @@ export default function DealerInventoryPage() {
     (item) => item.available < 5
   ).length;
 
-  // Xóa bộ lọc
+  // Clear filters
   const clearFilters = () => {
     setFilterTotal("");
     setFilterReserved("");
@@ -206,8 +177,6 @@ export default function DealerInventoryPage() {
     setFilterAvailable("");
     setFilterStatus("");
   };
-
-  // Xem chi tiết (API 2: getDealerInventoryItem)
   const handleViewDetail = async (vehicleId: string) => {
     try {
       const response = await inventoryApi.getDealerInventoryItem(
@@ -221,154 +190,7 @@ export default function DealerInventoryPage() {
     }
   };
 
-  // Mở edit modal
-  const handleEdit = (item: DealerInventory) => {
-    setSelectedItem(item);
-    setEditForm({
-      quantity: item.quantity,
-      reserved: item.reserved,
-      sold: item.sold,
-      location: item.location,
-    });
-    setShowEditModal(true);
-  };
-
-  // Cập nhật tồn kho (API 3: updateDealerInventory)
-  const handleUpdateInventory = async () => {
-    if (!selectedItem) return;
-
-    if (editForm.quantity !== undefined && editForm.quantity < 0) {
-      toast.error("Số lượng không hợp lệ!");
-      return;
-    }
-    if (editForm.reserved !== undefined && editForm.reserved < 0) {
-      toast.error("Reserved không hợp lệ!");
-      return;
-    }
-    if (editForm.sold !== undefined && editForm.sold < 0) {
-      toast.error("Sold không hợp lệ!");
-      return;
-    }
-    if (
-      (editForm.reserved || 0) + (editForm.sold || 0) >
-      (editForm.quantity || 0)
-    ) {
-      toast.error("Reserved + Sold không được vượt quá quantity!");
-      return;
-    }
-
-    try {
-      await inventoryApi.updateDealerInventory(
-        user!.dealerId!,
-        selectedItem.vehicleId,
-        editForm
-      );
-      toast.success("Cập nhật thành công!");
-      setShowEditModal(false);
-      const res = await inventoryApi.getDealerInventory(user!.dealerId!);
-      setDealerInventory(res.data.data);
-    } catch (err) {
-      toast.error("Cập nhật thất bại.");
-    }
-  };
-
-  // Mở modal đặt trước
-  const handleOpenReserve = (item: DealerInventory) => {
-    setSelectedItem(item);
-    setReserveForm({ quantity: 1 });
-    setShowReserveModal(true);
-  };
-
-  // Đặt trước (API 4: reserveInventory)
-  const handleReserve = async () => {
-    if (!reserveForm.quantity || reserveForm.quantity <= 0) {
-      toast.error("Số lượng phải > 0!");
-      return;
-    }
-    if (reserveForm.quantity > selectedItem!.available) {
-      toast.error("Không đủ hàng khả dụng!");
-      return;
-    }
-    try {
-      await inventoryApi.reserveInventory(
-        user!.dealerId!,
-        selectedItem!.vehicleId,
-        reserveForm
-      );
-      toast.success("Đặt trước thành công!");
-      setShowReserveModal(false);
-      const res = await inventoryApi.getDealerInventory(user!.dealerId!);
-      setDealerInventory(res.data.data);
-    } catch (err) {
-      toast.error("Đặt trước thất bại.");
-    }
-  };
-
-  // Mở modal bán hàng
-  const handleOpenCompleteSale = (item: DealerInventory) => {
-    setSelectedItem(item);
-    setSaleForm({ quantity: 1 });
-    setShowCompleteSaleModal(true);
-  };
-
-  // Hoàn tất bán (API 5: completeSale)
-  const handleCompleteSale = async () => {
-    if (!saleForm.quantity || saleForm.quantity <= 0) {
-      toast.error("Số lượng phải > 0!");
-      return;
-    }
-    if (saleForm.quantity > selectedItem!.available) {
-      toast.error("Không đủ hàng khả dụng!");
-      return;
-    }
-    try {
-      await inventoryApi.completeSale(
-        user!.dealerId!,
-        selectedItem!.vehicleId,
-        saleForm
-      );
-      toast.success("Bán hàng thành công!");
-      setShowCompleteSaleModal(false);
-      const res = await inventoryApi.getDealerInventory(user!.dealerId!);
-      setDealerInventory(res.data.data);
-    } catch (err) {
-      toast.error("Bán hàng thất bại.");
-    }
-  };
-
-  // Mở modal hủy đặt trước
-  const handleOpenCancelReserve = (item: DealerInventory) => {
-    setSelectedItem(item);
-    setCancelForm({ quantity: 1 });
-    setShowCancelReserveModal(true);
-  };
-
-  // Hủy đặt trước (API 6: cancelReservation)
-  const handleCancelReservation = async () => {
-    if (!cancelForm.quantity || cancelForm.quantity <= 0) {
-      toast.error("Số lượng phải > 0!");
-      return;
-    }
-    if (cancelForm.quantity > selectedItem!.reserved) {
-      toast.error("Số lượng hủy vượt quá reserved!");
-      return;
-    }
-    try {
-      await inventoryApi.cancelReservation(
-        user!.dealerId!,
-        selectedItem!.vehicleId,
-        cancelForm
-      );
-      toast.success("Hủy đặt trước thành công!");
-      setShowCancelReserveModal(false);
-      const res = await inventoryApi.getDealerInventory(user!.dealerId!);
-      setDealerInventory(res.data.data);
-    } catch (err) {
-      toast.error("Hủy thất bại.");
-    }
-  };
-
-  // Export CSV (chỉ manager mới export được, staff chỉ xem)
+  // Export CSV
   const handleExportReport = () => {
     if (user?.role !== "DEALER_MANAGER") {
       toast.error("Bạn không có quyền xuất báo cáo. Vui lòng liên hệ quản lý.");
@@ -423,7 +245,7 @@ export default function DealerInventoryPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -435,17 +257,7 @@ export default function DealerInventoryPage() {
             {totalStock.toLocaleString()} xe
           </p>
         </div>
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-yellow-600" />
-            </div>
-          </div>
-          <p className="text-gray-600 text-sm">Đã đặt trước</p>
-          <p className="text-2xl font-bold text-yellow-900 mt-1">
-            {totalReserved.toLocaleString()} xe
-          </p>
-        </div>
+
         <div className="bg-white rounded-xl shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -460,7 +272,6 @@ export default function DealerInventoryPage() {
         <div className="bg-white rounded-xl shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              {/* ShoppingCart className="w-6 h-6 text-purple-600" */}
             </div>
           </div>
           <p className="text-gray-600 text-sm">Khả dụng</p>
@@ -481,10 +292,9 @@ export default function DealerInventoryPage() {
         </div>
       </div>
 
-      {/* Phần Search và Nút Bộ lọc */}
+      {/* Search và Filters */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-4">
-          {/* Search */}
           <div className="flex-1 relative">
             <input
               type="text"
@@ -508,7 +318,6 @@ export default function DealerInventoryPage() {
             </svg>
           </div>
 
-          {/* Nút Bộ lọc */}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 text-gray-700"
@@ -520,11 +329,9 @@ export default function DealerInventoryPage() {
           </button>
         </div>
 
-        {/* Chi tiết Bộ lọc (xổ xuống) */}
         {showFilters && (
           <div className="space-y-4 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {/* Filter Tổng tồn kho (exact) */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tổng tồn kho
@@ -539,22 +346,8 @@ export default function DealerInventoryPage() {
                 />
               </div>
 
-              {/* Filter Reserved (exact) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reserved
-                </label>
-                <input
-                  type="number"
-                  placeholder="Nhập số lượng"
-                  value={filterReserved}
-                  onChange={(e) => setFilterReserved(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500"
-                  min="0"
-                />
-              </div>
 
-              {/* Filter Sold (exact) */}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Sold
@@ -569,7 +362,6 @@ export default function DealerInventoryPage() {
                 />
               </div>
 
-              {/* Filter Khả dụng (exact) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Khả dụng
@@ -584,7 +376,6 @@ export default function DealerInventoryPage() {
                 />
               </div>
 
-              {/* Filter Trạng thái */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Trạng thái
@@ -627,9 +418,6 @@ export default function DealerInventoryPage() {
                   Tổng
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Reserved
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Sold
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -647,54 +435,24 @@ export default function DealerInventoryPage() {
                     <span className="font-semibold">{item.vehicle.model}</span>
                   </td>
                   <td className="px-6 py-4">{item.quantity}</td>
-                  <td className="px-6 py-4 flex items-center gap-1">
-                    <Clock className="w-4 h-4 text-yellow-600" />
-                    {item.reserved}
-                  </td>
                   <td className="px-6 py-4">{item.sold}</td>
                   <td className="px-6 py-4 text-green-600 font-semibold">
                     {item.available}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleViewDetail(item.vehicleId)}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="text-green-600 hover:text-green-700"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleOpenReserve(item)}
-                        className="text-yellow-600 hover:text-yellow-700"
-                      >
-                        <Clock className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleOpenCompleteSale(item)}
-                        className="text-purple-600 hover:text-purple-700"
-                      >
-                        <CheckSquare className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleOpenCancelReserve(item)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleViewDetail(item.vehicleId)}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
               {paginatedData.length === 0 && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={5}
                     className="px-6 py-4 text-center text-gray-500"
                   >
                     Không tìm thấy dữ liệu phù hợp.
@@ -745,13 +503,12 @@ export default function DealerInventoryPage() {
         )}
       </div>
 
-      {/* Modals */}
-      {/* Chi tiết */}
+      {/* Detail Modal - Fixed Header, Scrollable Content */}
       {showDetailModal && selectedItem && (
         <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-border border-gray-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col">
+            {/* Fixed Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
               <h3 className="text-2xl font-bold text-gray-900">Chi tiết xe</h3>
               <button
                 onClick={() => setShowDetailModal(false)}
@@ -760,8 +517,9 @@ export default function DealerInventoryPage() {
                 <CloseIcon className="w-5 h-5" />
               </button>
             </div>
-            {/* Body */}
-            <div className="p-6 space-y-6">
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-4 bg-blue-50 rounded-xl">
                   <span className="text-sm font-medium text-gray-700">
@@ -821,234 +579,15 @@ export default function DealerInventoryPage() {
                 </div>
               </div>
             </div>
-            {/* Footer */}
-            <div className="p-6 border-t border-gray-200">
+
+            {/* Fixed Footer */}
+            <div className="p-6 border-t border-gray-200 flex-shrink-0">
               <button
                 onClick={() => setShowDetailModal(false)}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 <CloseIcon className="w-4 h-4" />
                 Đóng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Edit (Update) */}
-      {showEditModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
-            <h3 className="text-xl font-bold mb-4">
-              Chỉnh sửa - {selectedItem.vehicle.model}
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Tổng số lượng
-                </label>
-                <input
-                  type="number"
-                  value={editForm.quantity ?? ""}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      quantity: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full border border-gray-300 rounded-lg p-2 text-black"
-                  min="0"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Đã đặt trước (Reserved)
-                </label>
-                <input
-                  type="number"
-                  value={editForm.reserved ?? ""}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      reserved: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full border border-gray-300 rounded-lg p-2 text-black"
-                  min="0"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Đã bán (Sold)
-                </label>
-                <input
-                  type="number"
-                  value={editForm.sold ?? ""}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      sold: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full border border-gray-300 rounded-lg p-2 text-black"
-                  min="0"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Vị trí
-                </label>
-                <input
-                  type="text"
-                  value={editForm.location ?? ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, location: e.target.value })
-                  }
-                  className="w-full border border-gray-300 rounded-lg p-2 text-black"
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleUpdateInventory}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-              >
-                Lưu
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Reserve */}
-      {showReserveModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
-            <h3 className="text-xl font-bold mb-4">
-              Đặt trước - {selectedItem.vehicle.model}
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Khả dụng: {selectedItem.available}
-            </p>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Số lượng đặt trước
-              </label>
-              <input
-                type="number"
-                value={reserveForm.quantity ?? ""}
-                onChange={(e) =>
-                  setReserveForm({ quantity: parseInt(e.target.value) || 0 })
-                }
-                className="w-full border border-gray-300 rounded-lg p-2 text-black"
-                min="1"
-                max={selectedItem.available}
-              />
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => setShowReserveModal(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleReserve}
-                className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700"
-              >
-                Đặt trước
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Complete Sale */}
-      {showCompleteSaleModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
-            <h3 className="text-xl font-bold mb-4">
-              Hoàn tất bán - {selectedItem.vehicle.model}
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Khả dụng: {selectedItem.available}
-            </p>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Số lượng bán
-              </label>
-              <input
-                type="number"
-                value={saleForm.quantity ?? ""}
-                onChange={(e) =>
-                  setSaleForm({ quantity: parseInt(e.target.value) || 0 })
-                }
-                className="w-full border border-gray-300 rounded-lg p-2 text-black"
-                min="1"
-                max={selectedItem.available}
-              />
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => setShowCompleteSaleModal(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleCompleteSale}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-              >
-                Bán
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Cancel Reservation */}
-      {showCancelReserveModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
-            <h3 className="text-xl font-bold mb-4">
-              Hủy đặt trước - {selectedItem.vehicle.model}
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Đã đặt trước: {selectedItem.reserved}
-            </p>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Số lượng hủy
-              </label>
-              <input
-                type="number"
-                value={cancelForm.quantity ?? ""}
-                onChange={(e) =>
-                  setCancelForm({ quantity: parseInt(e.target.value) || 0 })
-                }
-                className="w-full border border-gray-300 rounded-lg p-2 text-black"
-                min="1"
-                max={selectedItem.reserved}
-              />
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => setShowCancelReserveModal(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleCancelReservation}
-                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-              >
-                Hủy đặt trước
               </button>
             </div>
           </div>

@@ -389,7 +389,7 @@ model Vehicle {
   bodyType          VehicleBodyType @default(SUV)
   wholesalePrice    Decimal         @map("wholesale_price")
   retailPrice       Decimal         @map("retail_price")
-  currency          CurrencyCode    @default(USD)
+  currency          CurrencyCode    @default(VND)
   status            VehicleStatus   @default(ACTIVE)
   description       String?
   specifications    String?

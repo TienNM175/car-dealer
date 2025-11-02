@@ -14,7 +14,7 @@ import {
   Zap,
   Gauge,
   Users,
-  DollarSign,
+  Banknote,
   Package,
   ChevronDown,
   Grid3X3,
@@ -309,7 +309,7 @@ export default function VehicleList({
               {/* Price Min Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Giá từ (USD)
+                  Giá từ (VNĐ)
                 </label>
                 <input
                   type="number"
@@ -323,7 +323,7 @@ export default function VehicleList({
               {/* Price Max Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Giá đến (USD)
+                  Giá đến (VNĐ)
                 </label>
                 <input
                   type="number"
@@ -495,7 +495,7 @@ export default function VehicleList({
                           </span>
                         )}
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
-                          <DollarSign className="w-3 h-3" />
+                          <Banknote className="w-3 h-3" />
                           {vehicle._count?.contracts || 0} HĐ
                         </span>
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">
@@ -716,7 +716,7 @@ export default function VehicleList({
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
-                        <DollarSign className="w-3 h-3" />
+                        <Banknote className="w-3 h-3" />
                         {vehicle._count?.contracts || 0}
                       </span>
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">

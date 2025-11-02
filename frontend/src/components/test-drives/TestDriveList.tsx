@@ -12,6 +12,8 @@ interface TestDriveListProps {
     loading: boolean;
     pagination: { page: number; limit: number; total: number; totalPages: number; sortBy?: string; sortOrder?: 'asc' | 'desc' };
     onPageChange: (page: number) => void;
+    onSort?: (sortBy: string) => void; 
+
 }
 
 export const TestDriveList: React.FC<TestDriveListProps> = ({ testDrives, loading, pagination, onPageChange }) => {
@@ -86,7 +88,7 @@ export const TestDriveList: React.FC<TestDriveListProps> = ({ testDrives, loadin
                                         <Car className="w-6 h-6 text-blue-600" />
                                     </div>
                                     <div>
-                                        <p className="font-semibold">{d.customer.firstName} {d.customer.lastName}</p>
+                                        <p className="font-semibold">{d.customer?.firstName ?? 'Ẩn danh'} {d.customer?.lastName ?? ''}</p>
                                         <p className="text-sm text-gray-600">{d.vehicle.manufacturer.name} {d.vehicle.model}</p>
                                     </div>
                                 </div>
