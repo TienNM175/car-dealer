@@ -112,8 +112,11 @@ export default function ContractDetailModal({
     try {
       await onStatusChange(contract.id, newStatus);
       setShowStatusChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating status:", error);
+      const errorMessage =
+        error?.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái";
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -340,6 +343,14 @@ export default function ContractDetailModal({
                       </span>
                       <span className="font-medium text-red-600">
                         -{formatMoney(contract.discount || 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">
+                        Thuế VAT:
+                      </span>
+                      <span className="font-medium text-blue-600">
+                        {formatMoney(contract.tax || 0)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center border-t border-gray-200 pt-3">

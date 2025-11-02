@@ -36,6 +36,11 @@ export const createContractValidation = [
       return true;
     }),
 
+  body('tax')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Tax must be a non-negative number'),
+
   body('paymentType')
     .notEmpty()
     .withMessage('Payment type is required')
@@ -91,6 +96,11 @@ export const updateContractValidation = [
     .optional()
     .isFloat({ min: 0 })
     .withMessage('Discount must be a non-negative number'),
+
+  body('tax')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Tax must be a non-negative number'),
 
   body('paymentType')
     .optional()

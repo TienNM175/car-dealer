@@ -125,9 +125,11 @@ export default function ContractsPage() {
       } else {
         fetchContracts();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error deleting contract:", err);
-      alert("Có lỗi xảy ra khi xóa hợp đồng");
+      const errorMessage =
+        err?.response?.data?.message || "Có lỗi xảy ra khi xóa hợp đồng";
+      alert(errorMessage);
     }
   };
 
@@ -152,8 +154,11 @@ export default function ContractsPage() {
       await contractApi.updateContractStatus(contractId, { status: newStatus });
       fetchContracts();
       fetchStatistics();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating contract status:", err);
+      const errorMessage =
+        err?.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái";
+      alert(errorMessage);
     }
   };
 

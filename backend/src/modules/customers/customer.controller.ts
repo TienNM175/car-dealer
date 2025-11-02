@@ -110,6 +110,15 @@ export class CustomerController {
       const { id } = req.params;
       const userDealerId = req.user?.dealerId;
 
+      // Debug log to check if address is received
+      console.log('🔍 Update customer request body:', {
+        id,
+        address: req.body.address,
+        city: req.body.city,
+        phone: req.body.phone,
+        fullBody: req.body,
+      });
+
       const customer = await customerService.updateCustomer(
         id,
         req.body,

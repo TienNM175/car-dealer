@@ -244,11 +244,25 @@ export default function CustomerList({
                     </td>
 
                     <td className="px-6 py-4">
-                      {customer.city && (
-                        <div className="text-sm flex items-center gap-1">
+                      {customer.address ? (
+                        <div className="text-sm">
+                          <div className="flex items-center gap-1 text-gray-900">
+                            <MapPin className="w-3 h-3 text-gray-400" />
+                            <span>{customer.address}</span>
+                          </div>
+                          {customer.city && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {customer.city}
+                            </div>
+                          )}
+                        </div>
+                      ) : customer.city ? (
+                        <div className="text-sm flex items-center gap-1 text-gray-600">
                           <MapPin className="w-3 h-3 text-gray-400" />
                           <span>{customer.city}</span>
                         </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
                       )}
                     </td>
 

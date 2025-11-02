@@ -27,6 +27,7 @@ interface CreateContractInput {
   promotionId?: string;
   basePrice: number;
   discount?: number;
+  tax?: number; // Deprecated - không dùng nữa, luôn tính 10% VAT tự động
   paymentType: PaymentType;
   installmentMonths?: number;
   interestRate?: number;
@@ -39,6 +40,7 @@ interface UpdateContractInput {
   promotionId?: string;
   basePrice?: number;
   discount?: number;
+  tax?: number; // Deprecated - không dùng nữa, luôn tính 10% VAT tự động
   paymentType?: PaymentType;
   installmentMonths?: number;
   interestRate?: number;
@@ -64,15 +66,24 @@ export class ContractService {
 
   /**
    * Calculate contract financial details
+   * Theo quy định Việt Nam:
+   * - VAT (Thuế giá trị gia tăng): 10% cố định trên giá sau giảm giá
    */
   private calculateFinancials(
     basePrice: number,
-    discount: number = 0,
+    discount: number,
     paymentType: PaymentType,
     installmentMonths?: number,
     interestRate?: number
   ) {
-    const finalPrice = basePrice - discount;
+    // Tính giá sau giảm giá
+    const priceAfterDiscount = basePrice - discount;
+
+    // Tính thuế VAT: 10% cố định trên giá sau giảm giá (theo quy định Việt Nam)
+    const taxAmount = priceAfterDiscount * 0.1; // 10% VAT
+
+    // Giá cuối cùng = giá sau giảm giá + thuế VAT
+    const finalPrice = priceAfterDiscount + taxAmount;
 
     let monthlyPayment = null;
 
@@ -95,6 +106,7 @@ export class ContractService {
     return {
       finalPrice,
       monthlyPayment,
+      taxAmount,
     };
   }
 
@@ -195,6 +207,7 @@ export class ContractService {
             lastName: true,
             email: true,
             phone: true,
+            address: true,
           },
         },
         vehicle: {
@@ -250,17 +263,18 @@ export class ContractService {
   /**
    * Get contract by ID
    */
-  async getContractById(id: string) {
+  async getContractById(id: string, userDealerId?: string, userRole?: string) {
     const contract = await prisma.contract.findUnique({
       where: { id },
       include: {
         customer: {
-          include: {
-            _count: {
-              select: {
-                contracts: true,
-              },
-            },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            address: true,
           },
         },
         vehicle: {
@@ -276,6 +290,7 @@ export class ContractService {
             lastName: true,
             email: true,
             phone: true,
+            dealerId: true,
             dealer: {
               select: {
                 id: true,
@@ -303,6 +318,13 @@ export class ContractService {
 
     if (!contract) {
       throw new Error("Contract not found");
+    }
+
+    // Check dealerId for DEALER roles (ADMIN/EVM_STAFF can access all)
+    if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
+      if (contract.staff.dealerId !== userDealerId) {
+        throw new Error("You can only access contracts from your own dealer");
+      }
     }
 
     return this.mapContractResponse(contract);
@@ -356,8 +378,15 @@ export class ContractService {
     }
 
     // Check inventory availability
-    const dealerInventory = vehicle.dealerInventories[0];
-    if (!dealerInventory || dealerInventory.available < 1) {
+    // Nếu không có inventory record, sẽ tự tạo khi tạo contract
+    // Chỉ check nếu có inventory record và available < 1
+    let dealerInventory = vehicle.dealerInventories[0];
+
+    if (!dealerInventory) {
+      // Không có inventory record - sẽ tạo mới khi tạo contract
+      // Cho phép tạo contract (có thể là order trước, nhập kho sau)
+    } else if (dealerInventory.available < 1) {
+      // Có inventory record nhưng không còn available
       throw new Error("Vehicle not available in inventory");
     }
 
@@ -397,10 +426,19 @@ export class ContractService {
       if (!promotion.isActive) {
         throw new Error("Promotion is not active");
       }
+      // Check minPurchase requirement
+      if (
+        promotion.minPurchase &&
+        data.basePrice < Number(promotion.minPurchase)
+      ) {
+        throw new Error(
+          `Minimum purchase amount is ${promotion.minPurchase.toLocaleString()} VNĐ. Your order value is ${data.basePrice.toLocaleString()} VNĐ.`
+        );
+      }
     }
 
-    // Calculate financials
-    const { finalPrice, monthlyPayment } = this.calculateFinancials(
+    // Calculate financials (VAT 10% tự động)
+    const { finalPrice, monthlyPayment, taxAmount } = this.calculateFinancials(
       data.basePrice,
       data.discount || 0,
       data.paymentType,
@@ -424,6 +462,7 @@ export class ContractService {
           ...(data.promotionId && { promotionId: data.promotionId }),
           basePrice: data.basePrice,
           discount: data.discount || 0,
+          tax: taxAmount,
           finalPrice,
           paymentType: data.paymentType,
           installmentMonths: data.installmentMonths,
@@ -434,7 +473,16 @@ export class ContractService {
           notes: data.notes,
         },
         include: {
-          customer: true,
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              address: true,
+            },
+          },
           vehicle: {
             include: {
               manufacturer: true,
@@ -451,18 +499,34 @@ export class ContractService {
       });
 
       // Reserve inventory (don't reduce quantity, just reserve)
-      await tx.inventory.update({
-        where: {
-          dealerId_vehicleId: {
-            dealerId: dealerInventory.dealerId,
+      // Nếu chưa có inventory record, tạo mới
+      if (!dealerInventory) {
+        // Tạo inventory record mới
+        await tx.inventory.create({
+          data: {
+            dealerId: staff.dealerId,
             vehicleId: data.vehicleId,
+            quantity: 1,
+            reserved: 1,
+            sold: 0,
+            available: 0, // Sau khi reserve, available = 0
           },
-        },
-        data: {
-          reserved: { increment: 1 }, // Tăng số đã đặt
-          available: { decrement: 1 }, // Giảm số có sẵn
-        },
-      });
+        });
+      } else {
+        // Cập nhật inventory record hiện có
+        await tx.inventory.update({
+          where: {
+            dealerId_vehicleId: {
+              dealerId: dealerInventory.dealerId,
+              vehicleId: data.vehicleId,
+            },
+          },
+          data: {
+            reserved: { increment: 1 }, // Tăng số đã đặt
+            available: { decrement: 1 }, // Giảm số có sẵn
+          },
+        });
+      }
 
       // Update customer status to PURCHASED if not already
       if (customer.status !== "PURCHASED") {
@@ -495,14 +559,41 @@ export class ContractService {
   /**
    * Update contract
    */
-  async updateContract(id: string, data: UpdateContractInput) {
+  async updateContract(
+    id: string,
+    data: UpdateContractInput,
+    userDealerId?: string,
+    userRole?: string
+  ) {
     // Check if contract exists
     const existingContract = await prisma.contract.findUnique({
       where: { id },
+      select: {
+        id: true,
+        status: true,
+        basePrice: true,
+        discount: true,
+        tax: true,
+        paymentType: true,
+        installmentMonths: true,
+        interestRate: true,
+        staff: {
+          select: {
+            dealerId: true,
+          },
+        },
+      },
     });
 
     if (!existingContract) {
       throw new Error("Contract not found");
+    }
+
+    // Check dealerId for DEALER roles (ADMIN/EVM_STAFF can access all)
+    if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
+      if (existingContract.staff.dealerId !== userDealerId) {
+        throw new Error("You can only update contracts from your own dealer");
+      }
     }
 
     // Can only update DRAFT or PENDING contracts
@@ -513,17 +604,36 @@ export class ContractService {
       throw new Error("Can only update draft or pending contracts");
     }
 
-    // Calculate new financials if price/discount changed
-    const basePrice = data.basePrice ?? existingContract.basePrice;
-    const discount = data.discount ?? existingContract.discount;
+    // Calculate new financials if price/discount changed (VAT 10% tự động)
+    const basePrice = data.basePrice ?? Number(existingContract.basePrice);
+
+    // Validate promotion if provided or changed
+    if (data.promotionId) {
+      const promotion = await prisma.dealerDiscount.findUnique({
+        where: { id: data.promotionId },
+      });
+      if (!promotion) {
+        throw new Error("Promotion not found");
+      }
+      if (!promotion.isActive) {
+        throw new Error("Promotion is not active");
+      }
+      // Check minPurchase requirement
+      if (promotion.minPurchase && basePrice < Number(promotion.minPurchase)) {
+        throw new Error(
+          `Minimum purchase amount is ${promotion.minPurchase.toLocaleString()} VNĐ. Your order value is ${basePrice.toLocaleString()} VNĐ.`
+        );
+      }
+    }
+    const discount = data.discount ?? Number(existingContract.discount);
     const paymentType = data.paymentType ?? existingContract.paymentType;
     const installmentMonths =
       data.installmentMonths ?? existingContract.installmentMonths;
     const interestRate = data.interestRate ?? existingContract.interestRate;
 
-    const { finalPrice, monthlyPayment } = this.calculateFinancials(
-      Number(basePrice),
-      Number(discount),
+    const { finalPrice, monthlyPayment, taxAmount } = this.calculateFinancials(
+      basePrice,
+      discount,
       paymentType,
       installmentMonths || undefined,
       interestRate ? Number(interestRate) : undefined
@@ -534,6 +644,7 @@ export class ContractService {
       data: {
         ...(data.basePrice !== undefined && { basePrice: data.basePrice }),
         ...(data.discount !== undefined && { discount: data.discount }),
+        tax: taxAmount, // Luôn cập nhật VAT 10%
         finalPrice,
         ...(data.paymentType && { paymentType: data.paymentType }),
         ...(data.installmentMonths !== undefined && {
@@ -547,7 +658,16 @@ export class ContractService {
         ...(data.notes !== undefined && { notes: data.notes }),
       },
       include: {
-        customer: true,
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            address: true,
+          },
+        },
         vehicle: {
           include: {
             manufacturer: true,
@@ -570,7 +690,9 @@ export class ContractService {
   async updateContractStatus(
     id: string,
     status: ContractStatus,
-    _userId: string
+    _userId: string,
+    userDealerId?: string,
+    userRole?: string
   ) {
     const contract = await prisma.contract.findUnique({
       where: { id },
@@ -586,6 +708,13 @@ export class ContractService {
 
     if (!contract) {
       throw new Error("Contract not found");
+    }
+
+    // Check dealerId for DEALER roles (ADMIN/EVM_STAFF can access all)
+    if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
+      if (contract.staff.dealerId !== userDealerId) {
+        throw new Error("You can only update contracts from your own dealer");
+      }
     }
 
     // Validate status transitions
@@ -611,7 +740,16 @@ export class ContractService {
           ...(status === "COMPLETED" && { deliveredAt: new Date() }),
         },
         include: {
-          customer: true,
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              address: true,
+            },
+          },
           vehicle: {
             include: {
               manufacturer: true,
@@ -734,11 +872,13 @@ export class ContractService {
       _sum: {
         basePrice: true,
         discount: true,
+        tax: true,
         finalPrice: true,
       },
       _avg: {
         finalPrice: true,
         discount: true,
+        tax: true,
       },
     });
 

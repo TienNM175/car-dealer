@@ -363,21 +363,49 @@
         }
       }
 
+      // Debug log
+      console.log('🔍 Update customer data received:', {
+        id,
+        address: data.address,
+        addressUndefined: data.address === undefined,
+        addressEmpty: data.address === '',
+        city: data.city,
+        phone: data.phone,
+      });
+
       // Update customer
       const customer = await prisma.$transaction(async (tx) => {
+        const updateData: any = {
+          ...(data.firstName && { firstName: data.firstName }),
+          ...(data.lastName && { lastName: data.lastName }),
+          ...(data.email && { email: data.email }),
+        };
+
+        // Handle optional fields - allow empty string to be updated
+        if ('phone' in data) {
+          updateData.phone = data.phone || null;
+        }
+        if ('address' in data) {
+          updateData.address = data.address || null;
+        }
+        if ('city' in data) {
+          updateData.city = data.city || null;
+        }
+        if ('identityCard' in data) {
+          updateData.identityCard = data.identityCard || null;
+        }
+        if (data.status) {
+          updateData.status = data.status;
+        }
+
+        console.log('🔍 Update data to save:', updateData);
+
         const updated = await tx.customer.update({
           where: { id },
-          data: {
-            ...(data.firstName && { firstName: data.firstName }),
-            ...(data.lastName && { lastName: data.lastName }),
-            ...(data.email && { email: data.email }),
-            ...(data.phone !== undefined && { phone: data.phone }),
-            ...(data.address !== undefined && { address: data.address }),
-            ...(data.city !== undefined && { city: data.city }),
-            ...(data.identityCard !== undefined && { identityCard: data.identityCard }),
-            ...(data.status && { status: data.status }),
-          },
+          data: updateData,
         });
+
+        console.log('✅ Customer updated:', { id, address: updated.address });
 
         // Add lifecycle record if status changed
         if (data.status && data.status !== existingCustomer.status) {
@@ -838,7 +866,9 @@
           lastName: true,
           email: true,
           phone: true,
+          address: true,
           city: true,
+          identityCard: true,
           status: true,
           createdAt: true,
         },
