@@ -12,6 +12,7 @@ export interface Contract {
   contractNumber: string; // Alias for contractCode (display purpose)
   basePrice: number;
   discount: number;
+  tax: number; // Thuế VAT
   finalPrice: number;
   paymentType: "FULL" | "INSTALLMENT";
   installmentMonths?: number;
@@ -108,6 +109,7 @@ export interface CreateContractInput {
   promotionId?: string;
   basePrice: number; // Backend expects basePrice
   discount?: number;
+  tax?: number; // Thuế VAT (mặc định 10%)
   paymentType: Contract["paymentType"];
   installmentMonths?: number;
   interestRate?: number; // Required for installment calculation

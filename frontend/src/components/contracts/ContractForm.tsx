@@ -82,6 +82,7 @@ export default function ContractForm({
     promotionId: "",
     basePrice: 0, // Changed from totalAmount
     discount: 0,
+    tax: undefined, // Deprecated - không dùng nữa, VAT luôn tự động 10%
     paymentType: "FULL",
     installmentMonths: 24,
     interestRate: 12, // Default 12% annual rate
@@ -95,7 +96,10 @@ export default function ContractForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Calculated values
-  const finalPrice = formData.basePrice - (formData.discount || 0);
+  const priceAfterDiscount = formData.basePrice - (formData.discount || 0);
+  // Tính thuế VAT: 10% cố định trên giá sau giảm giá (theo quy định Việt Nam)
+  const taxAmount = priceAfterDiscount * 0.1; // 10% VAT
+  const finalPrice = priceAfterDiscount + taxAmount;
 
   // Proper installment calculation with interest (matching backend logic)
   const calculateMonthlyPayment = () => {
@@ -157,6 +161,7 @@ export default function ContractForm({
           staffId: contract.staffId,
           basePrice: contract.basePrice,
           discount: contract.discount || 0,
+          tax: contract.tax,
           paymentType: contract.paymentType,
           installmentMonths: contract.installmentMonths || 24,
           interestRate: contract.interestRate || 12,
@@ -191,6 +196,25 @@ export default function ContractForm({
             `Tạo từ báo giá ${selectedQuotation.quoteNumber}`,
         }));
         setSelectedPromotionId("");
+        
+        // Fetch customer info from quotation's customerId
+        if (selectedQuotation.customerId) {
+          // If quotation has customer object, use it directly (but still fetch full info for address)
+          if (selectedQuotation.customer) {
+            setCustomerInfo({
+              firstName: selectedQuotation.customer.firstName || "",
+              lastName: selectedQuotation.customer.lastName || "",
+              email: selectedQuotation.customer.email || "",
+              phone: selectedQuotation.customer.phone || "",
+              address: "", // Quotation interface doesn't have address, need to fetch
+            });
+            // Fetch full customer info to get address
+            fetchCustomerInfo(selectedQuotation.customerId);
+          } else {
+            // Otherwise fetch from API
+            fetchCustomerInfo(selectedQuotation.customerId);
+          }
+        }
       } else {
         // Create mode - set selected vehicle if provided
         setFormData((prev) => ({
@@ -359,6 +383,19 @@ export default function ContractForm({
       }
     }
 
+    // Validate promotion minPurchase requirement
+    if (selectedPromotionId && formData.basePrice > 0) {
+      const selectedPromotion = promotions.find(
+        (p) => p.id === selectedPromotionId
+      );
+      if (
+        selectedPromotion?.minPurchase &&
+        formData.basePrice < Number(selectedPromotion.minPurchase)
+      ) {
+        newErrors.promotion = `Đơn hàng tối thiểu: ${formatMoney(selectedPromotion.minPurchase)}`;
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -372,8 +409,20 @@ export default function ContractForm({
       let customerId = formData.customerId;
 
       // Create or Update customer
-      if (!contract) {
-        // Create mode: Create new customer
+      if (customerId) {
+        // Already have customerId (from quotation or edit mode) - Update customer
+        console.log("👤 Updating customer with info:", customerInfo);
+        console.log("👤 Customer ID:", customerId);
+
+        try {
+          await customerApi.updateCustomer(customerId, customerInfo);
+          console.log("✅ Customer updated successfully");
+        } catch (error) {
+          console.error("❌ Error updating customer:", error);
+          // Continue with existing customerId if update fails
+        }
+      } else {
+        // No customerId - Create new customer
         console.log("👤 Creating customer with info:", customerInfo);
         const customerRes = await customerApi.createCustomer(customerInfo);
         console.log("✅ Customer created:", customerRes.data);
@@ -386,20 +435,6 @@ export default function ContractForm({
         if (!customerId) {
           throw new Error("Không thể tạo khách hàng, vui lòng thử lại");
         }
-      } else {
-        // Edit mode: Update existing customer
-        console.log("👤 Updating customer with info:", customerInfo);
-        console.log("👤 Customer ID:", contract.customerId);
-
-        try {
-          await customerApi.updateCustomer(contract.customerId, customerInfo);
-          console.log("✅ Customer updated successfully");
-          customerId = contract.customerId;
-        } catch (error) {
-          console.error("❌ Error updating customer:", error);
-          // Continue with existing customerId if update fails
-          customerId = contract.customerId;
-        }
       }
 
       // Create/Update contract with customer ID
@@ -409,6 +444,7 @@ export default function ContractForm({
         staffId: formData.staffId,
         basePrice: Number(formData.basePrice),
         discount: Number(formData.discount) || 0,
+        // tax: removed - VAT tự động tính 10% ở backend
         paymentType: formData.paymentType,
         installmentMonths: Number(formData.installmentMonths),
         interestRate: Number(formData.interestRate),
@@ -1034,7 +1070,7 @@ export default function ContractForm({
                       );
                       if (
                         selectedPromotion?.minPurchase &&
-                        finalPrice < selectedPromotion.minPurchase
+                        formData.basePrice < Number(selectedPromotion.minPurchase)
                       ) {
                         return (
                           <p className="text-red-600">
@@ -1050,6 +1086,9 @@ export default function ContractForm({
                       );
                     })()}
                   </div>
+                )}
+                {errors.promotion && (
+                  <p className="text-red-500 text-sm mt-1">{errors.promotion}</p>
                 )}
               </div>
 
@@ -1069,6 +1108,32 @@ export default function ContractForm({
                 {errors.discount && (
                   <p className="text-red-500 text-sm">{errors.discount}</p>
                 )}
+              </div>
+
+              {/* Tax - VAT tự động 10% */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Thuế VAT (10% tự động)
+                </label>
+                <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-black">
+                  {formatMoney(taxAmount)} (10% trên giá sau giảm giá)
+                </div>
+                <p className="text-xs text-gray-500">
+                  Thuế VAT tự động tính theo quy định Việt Nam: 10% trên giá sau giảm giá
+                </p>
+              </div>
+
+              {/* Final Price Display */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Tổng thanh toán
+                </label>
+                <div className="w-full px-4 py-3 border-2 border-blue-500 rounded-lg bg-blue-50 text-black font-bold text-lg">
+                  {formatMoney(finalPrice)}
+                </div>
+                <p className="text-xs text-gray-500">
+                  = Giá niêm yết - Chiết khấu + Thuế VAT
+                </p>
               </div>
             </div>
 

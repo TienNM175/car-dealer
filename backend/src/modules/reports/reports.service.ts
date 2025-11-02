@@ -260,6 +260,9 @@ export class ReportsService {
     // Monthly trend (last 12 months)
     const monthlyTrend = await this.getMonthlySalesTrend(filters);
 
+    // Vehicle sales by dealer - breakdown xe bán ở đại lý nào
+    const vehiclesByDealer = await this.getVehicleSalesByDealer(where);
+
     return {
       byStatus: byStatus.map((item) => ({
         status: item.status,
@@ -278,7 +281,109 @@ export class ReportsService {
         (a, b) => Number(b.totalRevenue) - Number(a.totalRevenue)
       ),
       monthlyTrend,
+      vehiclesByDealer, // Danh sách xe và breakdown theo đại lý
     };
+  }
+
+  /**
+   * Get vehicle sales breakdown by dealer
+   * Trả về danh sách xe và mỗi xe bán ở đại lý nào, bao nhiêu hợp đồng
+   */
+  private async getVehicleSalesByDealer(where: Prisma.ContractWhereInput) {
+    // Lấy tất cả contracts COMPLETED với vehicle và dealer info
+    const contracts = await prisma.contract.findMany({
+      where: {
+        ...where,
+        status: "COMPLETED",
+      },
+      select: {
+        vehicleId: true,
+        vehicle: {
+          select: {
+            id: true,
+            model: true,
+            variant: true,
+            manufacturer: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        staff: {
+          select: {
+            dealerId: true,
+            dealer: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Group theo vehicleId và dealerId
+    const vehicleDealerMap = new Map<string, Map<string, number>>();
+    const vehicleInfoMap = new Map<string, any>();
+
+    contracts.forEach((contract) => {
+      const vehicleId = contract.vehicleId;
+      const dealerId = contract.staff.dealerId || "";
+      const dealer = contract.staff.dealer;
+
+      // Lưu thông tin vehicle (lần đầu gặp)
+      if (!vehicleInfoMap.has(vehicleId)) {
+        vehicleInfoMap.set(vehicleId, contract.vehicle);
+      }
+
+      // Khởi tạo map cho vehicle nếu chưa có
+      if (!vehicleDealerMap.has(vehicleId)) {
+        vehicleDealerMap.set(vehicleId, new Map());
+      }
+
+      const dealerMap = vehicleDealerMap.get(vehicleId)!;
+      const currentCount = dealerMap.get(dealerId) || 0;
+      dealerMap.set(dealerId, currentCount + 1);
+    });
+
+    // Chuyển đổi sang format response
+    const result = Array.from(vehicleDealerMap.entries()).map(
+      ([vehicleId, dealerMap]) => {
+        const vehicle = vehicleInfoMap.get(vehicleId);
+        const dealers = Array.from(dealerMap.entries())
+          .map(([dealerId, contractCount]) => {
+            // Tìm dealer info từ contracts
+            const contract = contracts.find(
+              (c) => c.vehicleId === vehicleId && c.staff.dealerId === dealerId
+            );
+            return {
+              dealer: contract?.staff.dealer || {
+                id: dealerId,
+                name: "Unknown Dealer",
+              },
+              contractCount,
+            };
+          })
+          .sort((a, b) => b.contractCount - a.contractCount); // Sort theo số lượng hợp đồng giảm dần
+
+        const totalContracts = Array.from(dealerMap.values()).reduce(
+          (sum, count) => sum + count,
+          0
+        );
+
+        return {
+          vehicle,
+          dealers,
+          totalContracts,
+        };
+      }
+    );
+
+    // Sort theo totalContracts giảm dần
+    return result.sort((a, b) => b.totalContracts - a.totalContracts);
   }
 
   /**
@@ -341,7 +446,6 @@ export class ReportsService {
    * Customer Report
    */
   async getCustomerReport(filters: DealerFilter) {
-
     const where: Prisma.ContractWhereInput = {
       ...(filters.fromDate && { createdAt: { gte: filters.fromDate } }),
       ...(filters.toDate && { createdAt: { lte: filters.toDate } }),
@@ -354,9 +458,7 @@ export class ReportsService {
       where,
     });
 
-    const customerIds = [
-      ...new Set(listContract.map((c) => c.customerId)),
-    ];
+    const customerIds = [...new Set(listContract.map((c) => c.customerId))];
 
     // Customer by status
     const byStatus = await prisma.customer.groupBy({
@@ -389,7 +491,7 @@ export class ReportsService {
           gte: startDate,
           lte: endDate,
         },
-        id: { in: customerIds }
+        id: { in: customerIds },
       },
       select: {
         createdAt: true,
@@ -662,23 +764,313 @@ export class ReportsService {
           staffCount,
           target: target
             ? {
-              targetAmount: target.targetAmount,
-              achievedAmount: target.achievedAmount,
-              achievementRate:
-                Number(target.targetAmount) > 0
-                  ? (Number(target.achievedAmount) /
-                    Number(target.targetAmount)) *
-                  100
-                  : 0,
-            }
+                targetAmount: target.targetAmount,
+                achievedAmount: target.achievedAmount,
+                achievementRate:
+                  Number(target.targetAmount) > 0
+                    ? (Number(target.achievedAmount) /
+                        Number(target.targetAmount)) *
+                      100
+                    : 0,
+              }
             : null,
         };
       })
     );
 
-    return performance.sort(
-      (a, b) => Number(b.sales.revenue) - Number(a.sales.revenue)
+    // Get vehicle sales breakdown by dealer - danh sách xe và breakdown theo đại lý
+    const where: Prisma.ContractWhereInput = {
+      ...(filters.fromDate && { createdAt: { gte: filters.fromDate } }),
+      ...(filters.toDate && { createdAt: { lte: filters.toDate } }),
+    };
+    const vehiclesByDealer = await this.getVehicleSalesByDealer(where);
+
+    return {
+      dealers: performance.sort(
+        (a, b) => Number(b.sales.revenue) - Number(a.sales.revenue)
+      ),
+      vehiclesByDealer, // Danh sách xe và breakdown theo đại lý
+    };
+  }
+
+  /**
+   * Get vehicles by dealer - Danh sách xe với inventory và sales breakdown
+   * Trả về danh sách tất cả xe, mỗi xe có:
+   * - Inventory: đang có ở những đại lý nào
+   * - Sales: đã bán ở những đại lý nào
+   */
+  async getVehiclesByDealerReport(filters?: DateRangeFilter) {
+    // Lấy tất cả vehicles
+    const vehicles = await prisma.vehicle.findMany({
+      where: {
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+        model: true,
+        variant: true,
+        manufacturer: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        model: "asc",
+      },
+    });
+
+    // Lấy inventory và sales cho từng vehicle
+    const vehiclesWithDetails = await Promise.all(
+      vehicles.map(async (vehicle) => {
+        // EVM Inventory
+        const evmInventory = await prisma.eVMInventory.findUnique({
+          where: { vehicleId: vehicle.id },
+          select: {
+            quantity: true,
+            reserved: true,
+            available: true,
+          },
+        });
+
+        // Inventory: đang có ở những đại lý nào (lấy tất cả, không filter available)
+        const inventories = await prisma.inventory.findMany({
+          where: {
+            vehicleId: vehicle.id,
+          },
+          select: {
+            dealerId: true,
+            quantity: true,
+            available: true,
+            reserved: true,
+            sold: true,
+            dealer: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                city: true,
+              },
+            },
+          },
+        });
+
+        // Sales: đã bán ở những đại lý nào (TẤT CẢ contracts, không filter thời gian)
+        const salesContracts = await prisma.contract.findMany({
+          where: {
+            vehicleId: vehicle.id,
+          },
+          select: {
+            id: true,
+            staff: {
+              select: {
+                dealerId: true,
+                dealer: {
+                  select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                    city: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        // Group sales by dealer
+        const salesByDealerMap = new Map<
+          string,
+          { dealer: any; count: number }
+        >();
+        salesContracts.forEach((contract) => {
+          const dealerId = contract.staff.dealerId || "";
+          const dealer = contract.staff.dealer;
+          if (dealerId && dealer) {
+            const existing = salesByDealerMap.get(dealerId);
+            if (existing) {
+              existing.count += 1;
+            } else {
+              salesByDealerMap.set(dealerId, { dealer, count: 1 });
+            }
+          }
+        });
+
+        const salesByDealer = Array.from(salesByDealerMap.values());
+
+        // Tính tổng inventory: EVM + tất cả dealers
+        const totalInventory =
+          (evmInventory?.quantity || 0) +
+          inventories.reduce((sum, inv) => sum + Number(inv.quantity || 0), 0);
+
+        return {
+          vehicle,
+          evmInventory: evmInventory || {
+            quantity: 0,
+            reserved: 0,
+            available: 0,
+          },
+          inventory: inventories.map((inv) => ({
+            dealer: inv.dealer,
+            quantity: inv.quantity,
+            available: inv.available,
+            reserved: inv.reserved,
+            sold: inv.sold,
+            total: inv.quantity,
+          })),
+          sales: salesByDealer,
+          totalSales: salesContracts.length,
+          totalInventory, // Tổng số xe trong hệ thống
+        };
+      })
     );
+
+    return vehiclesWithDetails;
+  }
+
+  /**
+   * Get vehicle detail report - Chi tiết một xe cụ thể
+   * Trả về:
+   * - Thông tin xe
+   * - EVM Inventory (tồn kho tại kho trung tâm)
+   * - Dealer Inventory (tồn kho tại từng đại lý)
+   * - Danh sách hợp đồng đã ký (với đầy đủ thông tin: ngày ký, ngày bán, đại lý, khách hàng, giá...)
+   */
+  async getVehicleDetailReport(vehicleId: string, filters?: DateRangeFilter) {
+    // Lấy thông tin vehicle
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: {
+        id: true,
+        model: true,
+        variant: true,
+        year: true,
+        bodyType: true,
+        retailPrice: true,
+        manufacturer: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+    });
+
+    if (!vehicle) {
+      throw new Error("Vehicle not found");
+    }
+
+    // EVM Inventory (tồn kho tại kho trung tâm)
+    const evmInventory = await prisma.eVMInventory.findUnique({
+      where: { vehicleId },
+      select: {
+        quantity: true,
+        reserved: true,
+        available: true,
+      },
+    });
+
+    // Dealer Inventory (tồn kho tại từng đại lý)
+    const dealerInventories = await prisma.inventory.findMany({
+      where: { vehicleId },
+      select: {
+        dealerId: true,
+        quantity: true,
+        available: true,
+        reserved: true,
+        sold: true,
+        dealer: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            city: true,
+          },
+        },
+      },
+      orderBy: {
+        dealer: {
+          name: "asc",
+        },
+      },
+    });
+
+    // Danh sách hợp đồng đã ký (TẤT CẢ, không filter thời gian)
+    const contracts = await prisma.contract.findMany({
+      where: {
+        vehicleId,
+      },
+      select: {
+        id: true,
+        contractCode: true,
+        status: true,
+        basePrice: true,
+        discount: true,
+        tax: true,
+        finalPrice: true,
+        createdAt: true,
+        updatedAt: true,
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            address: true,
+            city: true,
+          },
+        },
+        staff: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            dealerId: true,
+            dealer: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                city: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // Thống kê hợp đồng
+    const contractsStats = {
+      total: contracts.length,
+      byStatus: {
+        DRAFT: contracts.filter((c) => c.status === "DRAFT").length,
+        PENDING: contracts.filter((c) => c.status === "PENDING").length,
+        SIGNED: contracts.filter((c) => c.status === "SIGNED").length,
+        COMPLETED: contracts.filter((c) => c.status === "COMPLETED").length,
+        CANCELLED: contracts.filter((c) => c.status === "CANCELLED").length,
+      },
+      totalRevenue: contracts
+        .filter((c) => c.status === "COMPLETED")
+        .reduce((sum, c) => sum + Number(c.finalPrice || 0), 0),
+    };
+
+    return {
+      vehicle,
+      evmInventory: evmInventory || {
+        quantity: 0,
+        reserved: 0,
+        available: 0,
+      },
+      dealerInventories,
+      contracts,
+      contractsStats,
+    };
   }
 
   /**

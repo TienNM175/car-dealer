@@ -282,7 +282,7 @@ async function main() {
   // 6. VEHICLES (CHỈ 10 XE)
   console.log('🚗 Creating 10 vehicles for 2025...');
   const vehicles = [];
-
+  
   vehicles.push(await prisma.vehicle.create({
     data: {
       manufacturerId: tesla.id,

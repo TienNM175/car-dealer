@@ -23,6 +23,7 @@ router.get(
   "/dealer/:dealerId",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
+  RoleMiddleware.requireSameDealer,
   vehicleController.getDealerVehicles
 );
 
