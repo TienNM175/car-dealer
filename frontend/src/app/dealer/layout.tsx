@@ -42,7 +42,7 @@ export default function DealerLayout({
       id: "orders",
       icon: ShoppingCart,
       label: "Đơn hàng",
-      role: ["DEALER_STAFF", "DEALER_MANAGER"],
+      role: ["DEALER_MANAGER", "ADMIN"],
     },
     {
       id: "contracts",

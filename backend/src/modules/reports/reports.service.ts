@@ -764,15 +764,15 @@ export class ReportsService {
           staffCount,
           target: target
             ? {
-                targetAmount: target.targetAmount,
-                achievedAmount: target.achievedAmount,
-                achievementRate:
-                  Number(target.targetAmount) > 0
-                    ? (Number(target.achievedAmount) /
-                        Number(target.targetAmount)) *
-                      100
-                    : 0,
-              }
+              targetAmount: target.targetAmount,
+              achievedAmount: target.achievedAmount,
+              achievementRate:
+                Number(target.targetAmount) > 0
+                  ? (Number(target.achievedAmount) /
+                    Number(target.targetAmount)) *
+                  100
+                  : 0,
+            }
             : null,
         };
       })
@@ -787,7 +787,7 @@ export class ReportsService {
 
     return {
       dealers: performance.sort(
-        (a, b) => Number(b.sales.revenue) - Number(a.sales.revenue)
+      (a, b) => Number(b.sales.revenue) - Number(a.sales.revenue)
       ),
       vehiclesByDealer, // Danh sách xe và breakdown theo đại lý
     };

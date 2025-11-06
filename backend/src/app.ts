@@ -22,6 +22,8 @@ import aiAdminRoutes from "./modules/ai/ai-admin.routes";
 import userRoutes from "./modules/users/users.routes";
 import publicRoutes from "./modules/public/public.routes";
 import chatbotRoutes from "./modules/chatbot/chatbot.routes";
+import vehicleUnitRoutes from "./modules/vehicle-units/vehicle-unit.routes";
+import vehicleExportDocumentRoutes from "./modules/vehicle-export-documents/vehicle-export-document.routes";
 import debtsRoutes from "./modules/debts/debts.routes";
 
 class App {
@@ -147,8 +149,11 @@ console.log("✅ Debts routes mounted DIRECTLY at /api/v1/debts");
     apiRouter.use("/users", userRoutes);
     console.log("✅ /users routes mounted");
     
-    apiRouter.use('/public', publicRoutes);
-    apiRouter.use('/public/chatbot', chatbotRoutes);
+    apiRouter.use("/public", publicRoutes);
+    apiRouter.use("/public/chatbot", chatbotRoutes);
+    apiRouter.use("/vehicle-units", vehicleUnitRoutes);
+    apiRouter.use("/vehicle-export-documents", vehicleExportDocumentRoutes);
+    apiRouter.use("/export-documents", vehicleExportDocumentRoutes);
     console.log("✅ /public routes mounted");
     
     apiRouter.use("/debts", debtsRoutes);

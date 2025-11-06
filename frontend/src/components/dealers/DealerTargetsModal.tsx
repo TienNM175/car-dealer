@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { dealerApi } from "@/lib/api/dealerApi";
 import type { Dealer, DealerTarget } from "./types";
+import { toast } from "react-hot-toast";
 
 interface DealerTargetsModalProps {
   dealer: Dealer;
@@ -363,7 +364,7 @@ export default function DealerTargetsModal({
       }
     } catch (error: any) {
       console.error("Failed to save target:", error);
-      alert(error.message || "Có lỗi xảy ra khi lưu chỉ tiêu");
+      toast.error(error.message || "Có lỗi xảy ra khi lưu chỉ tiêu");
     }
   };
 
