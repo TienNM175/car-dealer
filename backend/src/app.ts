@@ -21,6 +21,7 @@ import promotionRoutes from "./modules/promotions/promotions.routes";
 import aiAdminRoutes from "./modules/ai/ai-admin.routes";
 import userRoutes from "./modules/users/users.routes";
 import publicRoutes from "./modules/public/public.routes";
+import chatbotRoutes from "./modules/chatbot/chatbot.routes";
 import debtsRoutes from "./modules/debts/debts.routes";
 
 class App {
@@ -147,6 +148,7 @@ console.log("✅ Debts routes mounted DIRECTLY at /api/v1/debts");
     console.log("✅ /users routes mounted");
     
     apiRouter.use('/public', publicRoutes);
+    apiRouter.use('/public/chatbot', chatbotRoutes);
     console.log("✅ /public routes mounted");
     
     apiRouter.use("/debts", debtsRoutes);
