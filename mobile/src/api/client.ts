@@ -19,11 +19,11 @@ class ApiClient {
     // Request interceptor
     this.client.interceptors.request.use(
       (config) => {
-        console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        console.log(` API Request: ${config.method?.toUpperCase()} ${config.url}`);
         return config;
       },
       (error) => {
-        console.error('❌ Request Error:', error);
+        console.error(' Request Error:', error);
         return Promise.reject(error);
       }
     );
@@ -31,11 +31,11 @@ class ApiClient {
     // Response interceptor
     this.client.interceptors.response.use(
       (response) => {
-        console.log(`✅ API Response: ${response.config.url}`, response.status);
+        console.log(` API Response: ${response.config.url}`, response.status);
         return response;
       },
       (error: AxiosError) => {
-        console.error('❌ Response Error:', error.response?.status, error.message);
+        console.error(' Response Error:', error.response?.status, error.message);
         
         // Handle common errors
         if (error.response?.status === 404) {
