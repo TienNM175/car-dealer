@@ -9,7 +9,8 @@ export type AnyReportType =
   | "dealer-performance"
   | "vehicles-by-dealer"
   | "dashboard"
-  | "executive-summary";
+  | "executive-summary"
+  | "debts";
 
 export interface ReportPayload {
   title?: string;
@@ -180,8 +181,6 @@ export async function fetchReport(
         0
       ) ?? 0;
 
-    // const totalCustomers = data.byStatus?.find((item) => item.status === "SIGNED")?.count ?? 0;
-
     return {
       title: "Báo cáo khách hàng",
       unit: "khách",
@@ -189,6 +188,19 @@ export async function fetchReport(
       ...data,
     };
   }
+
+  // THÊM CASE XỬ LÝ CHO "debts" - ĐẶT Ở ĐÂY, NGOÀI BLOCK "dealer-performance"
+  if (type === "debts") {
+  const res = await axiosClient.get(`/debts/customers`, { params });
+  const data = res.data?.data || res.data;
+  
+  return {
+    title: "Công nợ khách hàng",
+    unit: "VND",
+    total: data.summary?.totalDebt || 0,
+    ...data
+  };
+}
 
   if (type === "dealer-performance") {
     const res = await axiosClient.get(`/reports/dealer-performance`, {
