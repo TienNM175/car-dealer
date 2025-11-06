@@ -13,6 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { toast } from "react-hot-toast";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 
 export default function ContractsPage() {
   const { user } = useAuth();
@@ -38,6 +40,12 @@ export default function ContractsPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);
+  const [viewingContractLoading, setViewingContractLoading] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    contract: Contract | null;
+    loading: boolean;
+  }>({ open: false, contract: null, loading: false });
 
   const fetchContracts = async () => {
     try {
@@ -103,9 +111,31 @@ export default function ContractsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, searchTerm, filterStatus]);
 
-  const handleView = (contract: Contract) => {
-    setViewingContract(contract);
+  const fetchContractDetail = async (contractId: string) => {
+    try {
+      setViewingContractLoading(true);
+      const res = await contractApi.getContractById(contractId);
+      const data = res.data.data || res.data;
+      setViewingContract(data);
+      return data;
+    } catch (err) {
+      console.error("Error fetching contract detail:", err);
+      throw err;
+    } finally {
+      setViewingContractLoading(false);
+    }
+  };
+
+  const handleView = async (contract: Contract) => {
     setShowDetailModal(true);
+    setViewingContract(contract);
+    try {
+      await fetchContractDetail(contract.id);
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || "Không thể tải chi tiết hợp đồng."
+      );
+    }
   };
 
   const handleEdit = (contract: Contract) => {
@@ -113,23 +143,34 @@ export default function ContractsPage() {
     setShowForm(true);
   };
 
-  const handleDelete = async (contract: Contract) => {
-    if (!confirm(`Bạn có chắc muốn xóa hợp đồng ${contract.contractCode}?`)) {
-      return;
-    }
+  const openDeleteDialog = (contract: Contract) => {
+    setDeleteDialog({ open: true, contract, loading: false });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ open: false, contract: null, loading: false });
+  };
+
+  const confirmDeleteContract = async () => {
+    const target = deleteDialog.contract;
+    if (!target) return;
 
     try {
-      await contractApi.deleteContract(contract.id);
+      setDeleteDialog((prev) => ({ ...prev, loading: true }));
+      await contractApi.deleteContract(target.id);
       if (contracts.length === 1 && page > 1) {
         setPage(page - 1);
       } else {
         fetchContracts();
       }
+      toast.success(`Đã xóa hợp đồng ${target.contractCode}.`);
     } catch (err: any) {
       console.error("Error deleting contract:", err);
       const errorMessage =
         err?.response?.data?.message || "Có lỗi xảy ra khi xóa hợp đồng";
-      alert(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      closeDeleteDialog();
     }
   };
 
@@ -154,11 +195,14 @@ export default function ContractsPage() {
       await contractApi.updateContractStatus(contractId, { status: newStatus });
       fetchContracts();
       fetchStatistics();
+      if (viewingContract?.id === contractId) {
+        await fetchContractDetail(contractId);
+      }
     } catch (err: any) {
       console.error("Error updating contract status:", err);
       const errorMessage =
         err?.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái";
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -214,7 +258,7 @@ export default function ContractsPage() {
         onCreateClick={handleCreate}
         onViewClick={handleView}
         onEditClick={handleEdit}
-        onDeleteClick={handleDelete}
+        onDeleteClick={openDeleteDialog}
         onExportClick={handleExport}
         userRole={userRole || "DEALER_STAFF"}
         pagination={{
@@ -252,6 +296,21 @@ export default function ContractsPage() {
         />
       )}
 
+      <ConfirmDialog
+        open={deleteDialog.open}
+        title="Xóa hợp đồng"
+        message={
+          deleteDialog.contract
+            ? `Bạn có chắc muốn xóa hợp đồng ${deleteDialog.contract.contractCode}? Hành động này không thể hoàn tác.`
+            : "Bạn có chắc muốn xóa hợp đồng này?"
+        }
+        confirmLabel="Xóa hợp đồng"
+        confirmButtonClassName="bg-red-600 hover:bg-red-700"
+        isProcessing={deleteDialog.loading}
+        onClose={closeDeleteDialog}
+        onConfirm={confirmDeleteContract}
+      />
+
       {/* Contract Detail Modal */}
       {showDetailModal && (
         <ContractDetailModal
@@ -261,9 +320,16 @@ export default function ContractsPage() {
             setViewingContract(null);
           }}
           contract={viewingContract}
+          isLoading={viewingContractLoading}
           onStatusChange={handleStatusChange}
           onEditClick={handleEdit}
           userRole={userRole || "DEALER_STAFF"}
+          onRefreshContract={async (id) => {
+            const updated = await fetchContractDetail(id);
+            fetchContracts();
+            fetchStatistics();
+            return updated;
+          }}
         />
       )}
     </div>

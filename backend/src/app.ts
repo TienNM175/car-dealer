@@ -21,6 +21,8 @@ import aiAdminRoutes from "./modules/ai/ai-admin.routes";
 import userRoutes from "./modules/users/users.routes";
 import publicRoutes from "./modules/public/public.routes";
 import chatbotRoutes from "./modules/chatbot/chatbot.routes";
+import vehicleUnitRoutes from "./modules/vehicle-units/vehicle-unit.routes";
+import vehicleExportDocumentRoutes from "./modules/vehicle-export-documents/vehicle-export-document.routes";
 // ... other routes
 
 class App {
@@ -92,8 +94,11 @@ class App {
     apiRouter.use("/promotions", promotionRoutes);
     apiRouter.use("/ai/admin", aiAdminRoutes);
     apiRouter.use("/users", userRoutes);
-    apiRouter.use('/public', publicRoutes);
-    apiRouter.use('/public/chatbot', chatbotRoutes);
+    apiRouter.use("/public", publicRoutes);
+    apiRouter.use("/public/chatbot", chatbotRoutes);
+    apiRouter.use("/vehicle-units", vehicleUnitRoutes);
+    apiRouter.use("/vehicle-export-documents", vehicleExportDocumentRoutes);
+    apiRouter.use("/export-documents", vehicleExportDocumentRoutes);
 
     // Debug middleware
     this.app.use("/api/v1", (req, _res, next) => {

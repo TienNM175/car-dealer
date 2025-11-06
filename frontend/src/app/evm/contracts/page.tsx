@@ -13,6 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { toast } from "react-hot-toast";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 
 export default function EVMContractsPage() {
   const { user } = useAuth();
@@ -29,6 +31,11 @@ export default function EVMContractsPage() {
   // Modal states
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    contract: Contract | null;
+    loading: boolean;
+  }>({ open: false, contract: null, loading: false });
 
   const fetchContracts = async () => {
     try {
@@ -94,23 +101,34 @@ export default function EVMContractsPage() {
 
   // EVM/ADMIN cannot edit contracts - only view and delete
 
-  const handleDelete = async (contract: Contract) => {
-    if (!confirm(`Bạn có chắc muốn xóa hợp đồng ${contract.contractCode}?`)) {
-      return;
-    }
+  const openDeleteDialog = (contract: Contract) => {
+    setDeleteDialog({ open: true, contract, loading: false });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ open: false, contract: null, loading: false });
+  };
+
+  const confirmDeleteContract = async () => {
+    const target = deleteDialog.contract;
+    if (!target) return;
 
     try {
-      await contractApi.deleteContract(contract.id);
+      setDeleteDialog((prev) => ({ ...prev, loading: true }));
+      await contractApi.deleteContract(target.id);
       if (contracts.length === 1 && page > 1) {
         setPage(page - 1);
       } else {
         fetchContracts();
       }
+      toast.success("Đã xóa hợp đồng thành công.");
     } catch (err: any) {
       console.error("Error deleting contract:", err);
       const errorMessage =
         err?.response?.data?.message || "Có lỗi xảy ra khi xóa hợp đồng";
-      alert(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      closeDeleteDialog();
     }
   };
 
@@ -124,11 +142,12 @@ export default function EVMContractsPage() {
       await contractApi.updateContractStatus(contractId, { status: newStatus });
       fetchContracts();
       fetchStatistics();
+      toast.success("Cập nhật trạng thái hợp đồng thành công.");
     } catch (err: any) {
       console.error("Error updating contract status:", err);
       const errorMessage =
         err?.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái";
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -191,7 +210,7 @@ export default function EVMContractsPage() {
         // onCreateClick not provided - EVM/ADMIN cannot create contracts
         onViewClick={handleView}
         // onEditClick not provided - EVM/ADMIN cannot edit contracts
-        onDeleteClick={handleDelete}
+        onDeleteClick={openDeleteDialog}
         onExportClick={handleExport}
         userRole={userRole || "EVM_STAFF"}
         pagination={{
@@ -220,6 +239,21 @@ export default function EVMContractsPage() {
           userRole={userRole || "EVM_STAFF"}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteDialog.open}
+        title="Xóa hợp đồng"
+        message={
+          deleteDialog.contract
+            ? `Bạn có chắc muốn xóa hợp đồng ${deleteDialog.contract.contractCode}? Hành động này không thể hoàn tác.`
+            : "Bạn có chắc muốn xóa hợp đồng này?"
+        }
+        confirmLabel="Xóa hợp đồng"
+        confirmButtonClassName="bg-red-600 hover:bg-red-700"
+        isProcessing={deleteDialog.loading}
+        onClose={closeDeleteDialog}
+        onConfirm={confirmDeleteContract}
+      />
     </div>
   );
 }
