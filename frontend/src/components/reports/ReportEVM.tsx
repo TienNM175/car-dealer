@@ -462,7 +462,14 @@ export default function ReportEVM({
 
   const renderVehiclesByDealer = (d: ReportPayload) => {
     const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
-    const router = require("next/navigation").useRouter();
+
+    const openVehicleDetail = (vehicleId?: string) => {
+      if (!vehicleId) return;
+      const url = `/evm/reports/vehicles/${vehicleId}`;
+      if (typeof window !== "undefined") {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+    };
 
     return (
       <div className="space-y-4">
@@ -498,11 +505,7 @@ export default function ReportEVM({
               <div
                 key={index}
                 className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-5 border border-gray-200 cursor-pointer"
-                onClick={() => {
-                  if (item.vehicle?.id) {
-                    window.location.href = `/evm/reports/vehicles/${item.vehicle.id}`;
-                  }
-                }}
+                onClick={() => openVehicleDetail(item.vehicle?.id)}
               >
                 <div className="flex items-start justify-between mb-3">
                   <h4 className="font-semibold text-gray-900 text-base leading-tight">
@@ -541,9 +544,16 @@ export default function ReportEVM({
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-gray-100">
-                  <span className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openVehicleDetail(item.vehicle?.id);
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
                     Xem chi tiết →
-                  </span>
+                  </button>
                 </div>
               </div>
             );
