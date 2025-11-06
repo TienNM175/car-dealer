@@ -8,6 +8,7 @@ import {
   updateContractValidation,
   updateContractStatusValidation,
   contractIdValidation,
+  assignVehicleUnitValidation,
 } from "./contract.validation";
 
 const router = Router();
@@ -93,6 +94,15 @@ router.put(
   updateContractValidation,
   ValidationMiddleware.validate,
   contractController.updateContract
+);
+
+router.patch(
+  "/:id/assign-vehicle-unit",
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireDealerManager,
+  assignVehicleUnitValidation,
+  ValidationMiddleware.validate,
+  contractController.assignVehicleUnit
 );
 
 /**

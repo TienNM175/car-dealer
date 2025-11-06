@@ -103,10 +103,12 @@ export class ContractController {
         "Contract created successfully"
       );
     } catch (error: any) {
+      const message = error.message?.toLowerCase?.() || "";
       if (
-        error.message.includes("not found") ||
-        error.message.includes("not available") ||
-        error.message.includes("is required")
+        message.includes("not found") ||
+        message.includes("not available") ||
+        message.includes("is required") ||
+        message.includes("vehicle unit")
       ) {
         return ResponseUtil.badRequest(res, error.message);
       }
@@ -139,6 +141,42 @@ export class ContractController {
         return ResponseUtil.badRequest(res, error.message);
       }
       if (error.message.includes("can only update")) {
+        return ResponseUtil.forbidden(res, error.message);
+      }
+      return next(error);
+    }
+  }
+
+  async assignVehicleUnit(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const { vehicleUnitId } = req.body as {
+        vehicleUnitId?: string | null;
+      };
+
+      const contract = await contractService.assignVehicleUnit(
+        id,
+        vehicleUnitId ?? null,
+        req.user?.userId || "",
+        req.user?.dealerId,
+        req.user?.role
+      );
+
+      return ResponseUtil.success(
+        res,
+        contract,
+        vehicleUnitId
+          ? "Vehicle unit assigned successfully"
+          : "Vehicle unit released successfully"
+      );
+    } catch (error: any) {
+      if (error.message === "Contract not found") {
+        return ResponseUtil.notFound(res, error.message);
+      }
+      if (error.message.includes("vehicle unit")) {
+        return ResponseUtil.badRequest(res, error.message);
+      }
+      if (error.message.includes("only assign")) {
         return ResponseUtil.forbidden(res, error.message);
       }
       return next(error);
