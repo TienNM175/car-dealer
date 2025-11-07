@@ -81,9 +81,6 @@ class App {
       });
     });
 
-    this.app.use("/api/v1/debts", debtsRoutes);
-console.log("✅ Debts routes mounted DIRECTLY at /api/v1/debts");
-
     // ✅ TEST DIRECT ROUTE
     this.app.get("/api/v1/direct", (_req, res) => {
       console.log("✅ /api/v1/direct route called");

@@ -39,37 +39,86 @@ export class GeminiClient {
       quotaExceeded: false,
     });
 
-    // Validate keys on startup
+    // SỬA: Không throw error nữa, chỉ cảnh báo
     if (!this.apiKeys.PRIMARY && !this.apiKeys.SECONDARY) {
-      throw new Error(
-        'Missing Gemini API keys! Set GEMINI_API_KEY_PRIMARY and GEMINI_API_KEY_SECONDARY in .env'
-      );
+      console.warn('⚠️  Gemini API keys not found! Running in limited mode.');
+      console.warn('⚠️  Set GEMINI_API_KEY_PRIMARY and GEMINI_API_KEY_SECONDARY in .env for AI features');
+    } else {
+      if (!this.apiKeys.PRIMARY) {
+        console.warn('⚠️  GEMINI_API_KEY_PRIMARY not found, using SECONDARY only');
+      }
+      if (!this.apiKeys.SECONDARY) {
+        console.warn('⚠️  GEMINI_API_KEY_SECONDARY not found, using PRIMARY only');
+      }
+      console.log('✅ GeminiClient initialized with dual-account support');
+    }
+  }
+
+  /**
+   * Check if any API key is available
+   */
+  private static hasValidKeys(): boolean {
+    return !!(this.apiKeys.PRIMARY || this.apiKeys.SECONDARY);
+  }
+
+  /**
+   * Fallback response khi không có API keys
+   */
+  private static getFallbackResponse(prompt: string): any {
+    console.warn('🔧 Gemini AI: Running in fallback mode (no API keys)');
+    
+    const mockResponses: Record<string, any> = {
+      "phân tích": { 
+        analysis: "Tính năng AI tạm thời không khả dụng", 
+        recommendations: ["Vui lòng cấu hình API keys trong .env"] 
+      },
+      "báo cáo": { 
+        report: "Báo cáo AI tạm thời không khả dụng",
+        summary: "Vui lòng cấu hình GEMINI_API_KEY_PRIMARY và GEMINI_API_KEY_SECONDARY"
+      },
+      "khách hàng": {
+        insights: ["Tính năng phân tích khách hàng AI tạm thời không khả dụng"],
+        trends: []
+      },
+      "dự đoán": {
+        prediction: "Tính năng dự đoán AI tạm thời không khả dụng",
+        confidence: 0
+      }
+    };
+
+    const lowerPrompt = prompt.toLowerCase();
+    for (const [key, response] of Object.entries(mockResponses)) {
+      if (lowerPrompt.includes(key)) {
+        return response;
+      }
     }
 
-    if (!this.apiKeys.PRIMARY) {
-      console.warn(' GEMINI_API_KEY_PRIMARY not found, using SECONDARY only');
-    }
-    if (!this.apiKeys.SECONDARY) {
-      console.warn(' GEMINI_API_KEY_SECONDARY not found, using PRIMARY only');
-    }
-
-    console.log(' GeminiClient initialized with dual-account support');
+    return { 
+      message: "Tính năng AI tạm thời không khả dụng",
+      instruction: "Vui lòng cấu hình GEMINI_API_KEY_PRIMARY và GEMINI_API_KEY_SECONDARY trong file .env để sử dụng đầy đủ tính năng AI",
+      status: "fallback_mode"
+    };
   }
 
   /**
    * Chọn key tốt nhất (health check)
    */
   private static selectBestKey(): string {
+    // SỬA: Nếu không có key nào thì trả về PRIMARY (dù không có key)
+    if (!this.hasValidKeys()) {
+      return 'PRIMARY';
+    }
+
     const primary = this.keyStats.get('PRIMARY');
     const secondary = this.keyStats.get('SECONDARY');
 
     // Nếu 1 trong 2 hết quota, dùng cái còn lại
     if (primary?.quotaExceeded && !secondary?.quotaExceeded) {
-      console.log(' PRIMARY quota exceeded, switching to SECONDARY');
+      console.log('🔄 PRIMARY quota exceeded, switching to SECONDARY');
       return 'SECONDARY';
     }
     if (secondary?.quotaExceeded && !primary?.quotaExceeded) {
-      console.log(' SECONDARY quota exceeded, switching to PRIMARY');
+      console.log('🔄 SECONDARY quota exceeded, switching to PRIMARY');
       return 'PRIMARY';
     }
 
@@ -91,6 +140,13 @@ export class GeminiClient {
    * Get Gemini instance với key được chọn
    */
   static getInstance(keyId?: string): GoogleGenerativeAI {
+    // SỬA: Check nếu không có API keys
+    if (!this.hasValidKeys()) {
+      // Tạo một mock instance để không bị lỗi
+      const mockAI = new GoogleGenerativeAI('mock-key-for-fallback');
+      return mockAI;
+    }
+
     const selectedKey = keyId || this.selectBestKey();
     const apiKey = this.apiKeys[selectedKey as keyof typeof this.apiKeys];
 
@@ -152,12 +208,17 @@ export class GeminiClient {
   ): Promise<any> {
     const { systemInstruction, useCache = true, periodKey } = options || {};
 
+    // SỬA: Check nếu không có API keys thì trả về fallback
+    if (!this.hasValidKeys()) {
+      return this.getFallbackResponse(prompt);
+    }
+
     // Check cache first
     if (useCache) {
       const cacheKey = this.getCacheKey(prompt, systemInstruction, periodKey);
       const cached = this.getFromCache(cacheKey);
       if (cached) {
-        console.log(' Cache hit:', cacheKey.slice(0, 8) + '...');
+        console.log('💾 Cache hit:', cacheKey.slice(0, 8) + '...');
         return cached;
       }
     }
@@ -183,7 +244,7 @@ export class GeminiClient {
         primaryStats.failCount++;
         if (error.message.includes('quota')) {
           primaryStats.quotaExceeded = true;
-          console.error(' PRIMARY key quota exceeded!');
+          console.error('❌ PRIMARY key quota exceeded!');
         }
       }
 
@@ -198,7 +259,7 @@ export class GeminiClient {
           'SECONDARY'
         );
       } catch (secondaryError: any) {
-        console.error(' SECONDARY key also failed:', secondaryError.message);
+        console.error('❌ SECONDARY key also failed:', secondaryError.message);
 
         const secondaryStats = this.keyStats.get('SECONDARY');
         if (secondaryStats) {
@@ -208,9 +269,9 @@ export class GeminiClient {
           }
         }
 
-        throw new Error(
-          `Both API keys failed:\nPRIMARY: ${lastError.message}\nSECONDARY: ${secondaryError.message}`
-        );
+        // SỬA: Thay vì throw error, trả về fallback response
+        console.warn('🔧 Both API keys failed, returning fallback response');
+        return this.getFallbackResponse(prompt);
       }
     }
   }
@@ -245,13 +306,13 @@ export class GeminiClient {
       if (useCache) {
         const cacheKey = this.getCacheKey(prompt, systemInstruction, periodKey);
         this.setCache(cacheKey, jsonData);
-        console.log(` Cached (${keyId}):`, cacheKey.slice(0, 8) + '...');
+        console.log(`💾 Cached (${keyId}):`, cacheKey.slice(0, 8) + '...');
       }
 
       // Reset fail count on success
       const stats = this.keyStats.get(keyId);
       if (stats && stats.failCount > 0) {
-        console.log(` ${keyId} recovered! Fail count reset.`);
+        console.log(`✅ ${keyId} recovered! Fail count reset.`);
         stats.failCount = 0;
       }
 
@@ -331,6 +392,8 @@ export class GeminiClient {
       },
       cacheSize: this.cache.size,
       lastKeyUsed: this.lastKeyUsed,
+      hasValidKeys: this.hasValidKeys(),
+      mode: this.hasValidKeys() ? 'full' : 'fallback'
     };
   }
 
@@ -343,5 +406,24 @@ export class GeminiClient {
       stats.quotaExceeded = false;
     });
     console.log('🔄 Key stats reset');
+  }
+
+  /**
+   * Simple text generation (fallback compatible)
+   */
+  static async generateText(prompt: string): Promise<string> {
+    if (!this.hasValidKeys()) {
+      return "Tính năng AI tạm thời không khả dụng. Vui lòng cấu hình GEMINI_API_KEY_PRIMARY và GEMINI_API_KEY_SECONDARY trong file .env.";
+    }
+
+    try {
+      const model = this.getModel();
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      return response.text();
+    } catch (error: any) {
+      console.error('❌ Gemini text generation failed:', error.message);
+      return "Lỗi khi tạo phản hồi AI. Vui lòng thử lại sau.";
+    }
   }
 }

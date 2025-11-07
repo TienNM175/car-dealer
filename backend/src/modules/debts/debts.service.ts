@@ -5,45 +5,45 @@ export class DebtsService {
    * Get customer installment debts - Công nợ trả góp của khách hàng
    */
   async getCustomerInstallmentDebts(dealerId?: string, filters?: any) {
-  try {
-    console.log("🔍 DEBTS SERVICE: Starting getCustomerInstallmentDebts");
-    console.log("🔍 DEBTS SERVICE: dealerId:", dealerId);
-    console.log("🔍 DEBTS SERVICE: filters:", filters);
+    try {
+      console.log("🔍 DEBTS SERVICE: Starting getCustomerInstallmentDebts");
+      console.log("🔍 DEBTS SERVICE: dealerId:", dealerId);
+      console.log("🔍 DEBTS SERVICE: filters:", filters);
 
-    const where: any = {
-      paymentType: "INSTALLMENT",
-      status: { in: ["SIGNED", "DELIVERING", "COMPLETED"] }
-    };
+      const where: any = {
+        paymentType: "INSTALLMENT",
+        status: { in: ["SIGNED", "DELIVERING", "COMPLETED"] }
+      };
 
-    console.log("🔍 DEBTS SERVICE: Base where clause:", where);
+      console.log("🔍 DEBTS SERVICE: Base where clause:", where);
 
-    if (dealerId) {
-      where.staff = { dealerId: dealerId };
-      console.log("🔍 DEBTS SERVICE: Added dealer filter");
-    }
+      if (dealerId) {
+        where.staff = { dealerId: dealerId };
+        console.log("🔍 DEBTS SERVICE: Added dealer filter");
+      }
 
-    // THÊM LOG ĐỂ XEM QUERY CUỐI CÙNG
-    console.log("🔍 DEBTS SERVICE: Final where clause:", JSON.stringify(where, null, 2));
+      // THÊM LOG ĐỂ XEM QUERY CUỐI CÙNG
+      console.log("🔍 DEBTS SERVICE: Final where clause:", JSON.stringify(where, null, 2));
 
-    const installmentContracts = await prisma.contract.findMany({
-      where,
-      include: {
-        customer: true,
-        vehicle: { include: { manufacturer: true } },
-        staff: { include: { dealer: true } },
-        customerDebts: true
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+      const installmentContracts = await prisma.contract.findMany({
+        where,
+        include: {
+          customer: true,
+          vehicle: { include: { manufacturer: true } },
+          staff: { include: { dealer: true } },
+          customerDebts: true
+        },
+        orderBy: { createdAt: 'desc' }
+      });
 
-    console.log("🔍 DEBTS SERVICE: Found contracts:", installmentContracts.length);
-    
-    if (installmentContracts.length === 0) {
-      console.log("🔍 DEBTS SERVICE: NO CONTRACTS FOUND - Possible issues:");
-      console.log("   - No contracts with paymentType=INSTALLMENT");
-      console.log("   - No contracts with status in [SIGNED, DELIVERING, COMPLETED]");
-      console.log("   - Dealer filter might be too restrictive");
-    }
+      console.log("🔍 DEBTS SERVICE: Found contracts:", installmentContracts.length);
+      
+      if (installmentContracts.length === 0) {
+        console.log("🔍 DEBTS SERVICE: NO CONTRACTS FOUND - Possible issues:");
+        console.log("   - No contracts with paymentType=INSTALLMENT");
+        console.log("   - No contracts with status in [SIGNED, DELIVERING, COMPLETED]");
+        console.log("   - Dealer filter might be too restrictive");
+      }
 
       const debts = installmentContracts.map(contract => {
         const customerDebt = contract.customerDebts?.[0];
@@ -189,6 +189,107 @@ export class DebtsService {
       console.error("❌ Error in getDebtOverview:", error);
       throw error;
     }
+  } // ĐÓNG getDebtOverview Ở ĐÂY
+
+  /**
+   * Get detailed dealer debts with payment history
+   */
+  async getDealerDebtsDetail(dealerId?: string, filters?: any) {
+    try {
+      console.log("🎯 getDealerDebtsDetail called with:", { dealerId, filters });
+
+      const where: any = {};
+
+      if (dealerId) {
+        where.dealerId = dealerId;
+      }
+
+      // Get dealer debts
+      const dealerDebts = await prisma.dealerDebt.findMany({
+        where,
+        include: {
+          dealer: true,
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      // Get dealer orders for detailed breakdown
+      const dealerOrdersWhere: any = {
+        status: { in: ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"] }
+      };
+
+      if (dealerId) {
+        dealerOrdersWhere.dealerId = dealerId;
+      }
+
+      const dealerOrders = await prisma.dealerOrder.findMany({
+        where: dealerOrdersWhere,
+        include: {
+          dealer: true,
+          vehicle: {
+            include: { manufacturer: true }
+          },
+          staff: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        },
+        orderBy: { orderedAt: 'desc' }
+      });
+
+      // Calculate detailed debts from orders
+      const detailedDebts = dealerOrders.map(order => {
+        const paidAmount = 0; // This would come from payment records in a real system
+        const totalAmount = Number(order.totalAmount);
+        const remainingBalance = totalAmount - paidAmount;
+        
+        const dueDate = this.calculateDealerOrderDueDate(order);
+        const isOverdue = this.checkDealerDebtOverdue(dueDate, remainingBalance);
+        
+        return {
+          order: {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            totalAmount: order.totalAmount,
+            status: order.status,
+            orderedAt: order.orderedAt,
+            deliveredAt: order.deliveredAt,
+            dueDate: dueDate
+          },
+          dealer: order.dealer,
+          vehicle: order.vehicle,
+          staff: order.staff,
+          totalAmount: totalAmount,
+          paidAmount: paidAmount,
+          remainingBalance: remainingBalance,
+          dueDate: dueDate,
+          status: remainingBalance <= 0 ? 'PAID' : (isOverdue ? 'OVERDUE' : 'UNPAID'),
+          isOverdue: isOverdue,
+          daysOverdue: isOverdue ? this.calculateDaysOverdue(dueDate) : 0
+        };
+      });
+
+      // Summary statistics
+      const summary = {
+        totalDebt: detailedDebts.reduce((sum, debt) => sum + Number(debt.remainingBalance || 0), 0),
+        totalOrders: detailedDebts.length,
+        unpaidOrders: detailedDebts.filter(d => Number(d.remainingBalance || 0) > 0).length,
+        overdueOrders: detailedDebts.filter(d => d.isOverdue).length,
+        totalPaid: detailedDebts.reduce((sum, debt) => sum + Number(debt.paidAmount || 0), 0)
+      };
+
+      return {
+        dealerDebts: dealerDebts,
+        detailedDebts: detailedDebts,
+        summary: summary
+      };
+    } catch (error) {
+      console.error("❌ Error in getDealerDebtsDetail:", error);
+      throw error;
+    }
   }
 
   // HELPER FUNCTIONS
@@ -230,5 +331,32 @@ export class DebtsService {
       activeContracts: activeDebts.length,
       overdueContracts: overdueDebts.length
     };
+  }
+
+  private calculateDealerOrderDueDate(order: any): Date {
+    if (!order.deliveredAt) {
+      // If not delivered yet, due date is 30 days after order date
+      const dueDate = new Date(order.orderedAt);
+      dueDate.setDate(dueDate.getDate() + 30);
+      return dueDate;
+    }
+    
+    // Due date is 30 days after delivery
+    const dueDate = new Date(order.deliveredAt);
+    dueDate.setDate(dueDate.getDate() + 30);
+    return dueDate;
+  }
+
+  private checkDealerDebtOverdue(dueDate: Date, remainingBalance: number): boolean {
+    if (remainingBalance <= 0) return false;
+    
+    const today = new Date();
+    return today > dueDate;
+  }
+
+  private calculateDaysOverdue(dueDate: Date): number {
+    const today = new Date();
+    const diffTime = today.getTime() - dueDate.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   }
 }

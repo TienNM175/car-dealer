@@ -52,7 +52,7 @@ const StatCard = ({
 }: { 
     label: string; 
     value: number; 
-    color?: ColorType; // SỬA TYPE NÀY
+    color?: ColorType;
     format?: "number" | "currency";
 }) => {
     const colorClasses: Record<ColorType, string> = {
@@ -169,7 +169,9 @@ export default function ReportDealer({
             setLoading(true);
             setErr(null);
             try {
-                const json = await fetchReport(activeReport, period, dealerId);
+                // GIẢI PHÁP: Sử dụng "all" làm period mặc định cho báo cáo công nợ
+                const reportPeriod = activeReport === "debts" ? "all" : period;
+                const json = await fetchReport(activeReport, reportPeriod, dealerId);
                 if (!aborted) setData(json);
             } catch (e) {
                 if (!aborted) setErr("Không thể tải dữ liệu");
@@ -396,21 +398,25 @@ export default function ReportDealer({
                         </button>
                     ))}
                 </div>
-                <div className="flex gap-2">
-                    {(["week", "month", "quarter", "year"] as const).map((p) => (
-                        <button 
-                            key={p} 
-                            onClick={() => setPeriod(p)} 
-                            className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                                period === p 
-                                    ? "bg-blue-600 text-white" 
-                                    : "border border-black/20 text-black hover:bg-black/5"
-                            }`}
-                        >
-                            {p === "week" ? "Tuần" : p === "month" ? "Tháng" : p === "quarter" ? "Quý" : "Năm"}
-                        </button>
-                    ))}
-                </div>
+                
+                {/* CHỈ HIỆN FILTER KHI KHÔNG PHẢI BÁO CÁO CÔNG NỢ */}
+                {activeReport !== "debts" && (
+                    <div className="flex gap-2">
+                        {(["week", "month", "quarter", "year"] as const).map((p) => (
+                            <button 
+                                key={p} 
+                                onClick={() => setPeriod(p)} 
+                                className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                                    period === p 
+                                        ? "bg-blue-600 text-white" 
+                                        : "border border-black/20 text-black hover:bg-black/5"
+                                }`}
+                            >
+                                {p === "week" ? "Tuần" : p === "month" ? "Tháng" : p === "quarter" ? "Quý" : "Năm"}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </header>
             
             <div className="bg-white rounded-xl shadow p-6">

@@ -75,4 +75,22 @@ export class DebtsController {
       return next(error);
     }
   }
+
+  async getDealerDebtsDetail(req: Request, res: Response, next: NextFunction) {
+    try {
+      console.log("🎯 DebtsController.getDealerDebtsDetail called");
+
+      const filters = {
+        dealerId: req.query.dealerId as string,
+        fromDate: req.query.fromDate ? new Date(req.query.fromDate as string) : undefined,
+        toDate: req.query.toDate ? new Date(req.query.toDate as string) : undefined,
+      };
+
+      const report = await debtsService.getDealerDebtsDetail(filters.dealerId, filters);
+      return ResponseUtil.success(res, report, "Detailed dealer debts retrieved successfully");
+    } catch (error: any) {
+      console.error("❌ Error in getDealerDebtsDetail:", error);
+      return next(error);
+    }
+  }
 }
