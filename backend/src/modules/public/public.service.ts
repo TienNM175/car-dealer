@@ -1,5 +1,6 @@
 // backend/src/modules/public/public.service.ts
 import prisma from '../../config/database';
+import { EmailUtil } from '../../utils/email.util';
 
 export class PublicService {
   async getVehicles(filters: any, pagination: any) {
@@ -180,6 +181,7 @@ export class PublicService {
     // Verify vehicle exists
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: data.vehicleId },
+      include: { manufacturer: true },
     });
     if (!vehicle || vehicle.status !== 'ACTIVE') {
       throw new Error('Vehicle not available');
@@ -188,6 +190,7 @@ export class PublicService {
     // Verify dealer exists
     const dealer = await prisma.dealer.findUnique({
       where: { id: data.dealerId },
+      include: { users: { take: 1 } },
     });
     if (!dealer || !dealer.isActive) {
       throw new Error('Dealer not available');
@@ -201,7 +204,7 @@ export class PublicService {
       throw new Error('No staff available at this dealer');
     }
 
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Create or get customer
       let customer = await tx.customer.findFirst({
         where: { email: data.email, dealerId: data.dealerId },
@@ -245,13 +248,51 @@ export class PublicService {
             select: {
               firstName: true,
               lastName: true,
-              dealer: { select: { name: true, city: true, phone: true } },
+              dealer: { select: { name: true, city: true, phone: true, address: true } },
             },
           },
         },
       });
 
       return testDrive;
+    });
+
+    // ✅ Gửi email xác nhận (async - không chặn response)
+    this.sendTestDriveEmailAsync(result, data);
+
+    return result;
+  }
+
+  /**
+   * ✅ Gửi email xác nhận (không chặn response)
+   */
+  private sendTestDriveEmailAsync(
+    testDrive: any,
+    bookingData: any
+  ): void {
+    // Run in background
+    setImmediate(async () => {
+      try {
+        const customerName = `${testDrive.customer.firstName} ${testDrive.customer.lastName}`;
+        
+        await EmailUtil.sendTestDriveConfirmation({
+          customerName,
+          customerEmail: testDrive.customer.email,
+          vehicleModel: testDrive.vehicle.model,
+          vehicleVariant: testDrive.vehicle.variant,
+          manufacturerName: testDrive.vehicle.manufacturer.name,
+          scheduledDate: testDrive.scheduledDate,
+          dealerName: testDrive.staff.dealer.name,
+          dealerPhone: testDrive.staff.dealer.phone,
+          dealerAddress: testDrive.staff.dealer.address,
+          dealerCity: testDrive.staff.dealer.city,
+          staffName: `${testDrive.staff.firstName} ${testDrive.staff.lastName}`,
+          notes: bookingData.notes,
+        });
+      } catch (error: any) {
+        console.error('Failed to send test drive email in background:', error.message);
+        // Không ném error vì không muốn ảnh hưởng đến booking response
+      }
     });
   }
 }

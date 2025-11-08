@@ -51,12 +51,12 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
     }, // Thêm menu đơn hàng
     { id: "dealers", icon: Users, label: "Quản lý đại lý", role: ["ADMIN"] },
     { id: "users", icon: UserCog, label: "Quản lý Users", role: ["ADMIN"] },
-    {
-      id: "pricing",
-      icon: FileText,
-      label: "Giá & Chiết khấu",
-      role: ["ADMIN"],
-    },
+    // {
+    //   id: "pricing",
+    //   icon: FileText,
+    //   label: "Giá & Chiết khấu",
+    //   role: ["ADMIN"],
+    // },
     {
       id: "reports",
       icon: BarChart3,

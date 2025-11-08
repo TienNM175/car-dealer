@@ -2,7 +2,7 @@
 // 1. src/constants/config.ts
 // ============================================
 export const API_CONFIG = {
-  BASE_URL: 'http://10.87.58.200:5000/api/v1',
+  BASE_URL: 'http://192.168.1.9:5000/api/v1',
   TIMEOUT: 15000,
 };
 

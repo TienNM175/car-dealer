@@ -37,6 +37,7 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10",
     "pdfkit": "^0.17.2",
     "prisma": "^6.17.0",
     "streamifier": "^0.1.1"
@@ -51,6 +52,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.7.2",
     "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^7.0.3",
     "@types/streamifier": "^0.1.2",
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",

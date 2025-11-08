@@ -1,7 +1,7 @@
+// backend/src/config/environment.ts (cập nhật)
 import dotenv from "dotenv";
 import path from "path";
 
-// Chỉ load .env file nếu environment không phải production
 if (process.env.NODE_ENV !== "production") {
   const envPath = path.resolve(process.cwd(), ".env");
   dotenv.config({ path: envPath });
@@ -19,9 +19,12 @@ interface EnvironmentConfig {
   BCRYPT_ROUNDS: number;
   RATE_LIMIT_WINDOW_MS: number;
   RATE_LIMIT_MAX_REQUESTS: number;
+  // ✅ Thêm config email
+  SMTP_USER: string;
+  SMTP_PASSWORD: string;
+  SMTP_REPLY_TO?: string;
 }
 
-// Validate required environment variables
 const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
 const missingEnvVars = requiredEnvVars.filter(
   (key) => !process.env[key] || process.env[key]?.trim() === ""
@@ -30,12 +33,6 @@ const missingEnvVars = requiredEnvVars.filter(
 if (missingEnvVars.length > 0) {
   console.error("❌ Missing required environment variables:");
   console.error(missingEnvVars.join(", "));
-  console.error("\n📝 Available environment variables:");
-  console.error(Object.keys(process.env)
-    .filter(key => key.includes("DATABASE") || key.includes("JWT") || key.includes("NODE_ENV"))
-    .map(key => `  ${key}=${process.env[key]?.substring(0, 20)}...`)
-    .join("\n"));
-  
   throw new Error(
     `Missing required environment variables: ${missingEnvVars.join(", ")}`
   );
@@ -59,7 +56,19 @@ const config: EnvironmentConfig = {
     process.env.RATE_LIMIT_MAX_REQUESTS || "1000",
     10
   ),
+  // ✅ Email config
+  SMTP_USER: process.env.SMTP_USER || "",
+  SMTP_PASSWORD: process.env.SMTP_PASSWORD || "",
+  SMTP_REPLY_TO: process.env.SMTP_REPLY_TO,
 };
+
+// ✅ Warn nếu email không được cấu hình
+if (!config.SMTP_USER || !config.SMTP_PASSWORD) {
+  console.warn("⚠️  Email service not configured. Test drive confirmation emails will not be sent.");
+  console.warn("ℹ️  Set SMTP_USER and SMTP_PASSWORD in .env to enable email notifications");
+} else {
+  console.log("✅ Email service configured");
+}
 
 console.log(`✅ Environment loaded: ${config.NODE_ENV}`);
 console.log(`✅ Database: ${config.DATABASE_URL?.substring(0, 50)}...`);
