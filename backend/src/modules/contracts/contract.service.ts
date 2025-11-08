@@ -1,5 +1,158 @@
 import prisma from "../../config/database";
-import { Prisma, ContractStatus, PaymentType } from "@prisma/client";
+import {
+  Prisma,
+  ContractStatus,
+  PaymentType,
+  VehicleUnitStatus,
+} from "@prisma/client";
+
+const contractListInclude = Prisma.validator<Prisma.ContractInclude>()({
+  customer: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      address: true,
+    },
+  },
+  vehicle: {
+    include: {
+      manufacturer: {
+        select: {
+          name: true,
+        },
+      },
+      images: {
+        where: { isMain: true },
+        take: 1,
+      },
+    },
+  },
+  staff: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      dealer: {
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          city: true,
+        },
+      },
+    },
+  },
+  customerDebts: true,
+  vehicleUnit: {
+    select: {
+      id: true,
+      vin: true,
+      status: true,
+      dealerId: true,
+      storageType: true,
+      reservedAt: true,
+      deliveredAt: true,
+    },
+  },
+  _count: {
+    select: {
+      feedbacks: true,
+      complaints: true,
+    },
+  },
+});
+
+const contractDetailInclude = Prisma.validator<Prisma.ContractInclude>()({
+  customer: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      address: true,
+    },
+  },
+  vehicle: {
+    include: {
+      manufacturer: true,
+      images: true,
+    },
+  },
+  staff: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      dealerId: true,
+      dealer: {
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          address: true,
+          city: true,
+          phone: true,
+          email: true,
+        },
+      },
+    },
+  },
+  vehicleUnit: {
+    select: {
+      id: true,
+      vin: true,
+      status: true,
+      dealerId: true,
+      storageType: true,
+      reservedAt: true,
+      deliveredAt: true,
+      engineNumber: true,
+      batterySerial: true,
+      color: true,
+      location: true,
+    },
+  },
+  exportDocuments: {
+    orderBy: { createdAt: "desc" },
+    include: {
+      createdBy: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+      approvedBy: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+      cancelledBy: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+    },
+  },
+  feedbacks: {
+    orderBy: { createdAt: "desc" },
+  },
+  complaints: {
+    orderBy: { createdAt: "desc" },
+  },
+  customerDebts: {
+    orderBy: { createdAt: "desc" },
+  },
+});
+
+type VehicleUnitWithContract = Prisma.VehicleUnitGetPayload<{
+  include: {
+    contract: {
+      select: {
+        id: true;
+      };
+    };
+  };
+}>;
 
 interface ContractFilters {
   search?: string;
@@ -23,6 +176,7 @@ interface CreateContractInput {
   customerId: string;
   staffId: string;
   vehicleId: string;
+  vehicleUnitId?: string | null;
   quotationId?: string;
   promotionId?: string;
   basePrice: number;
@@ -54,9 +208,14 @@ export class ContractService {
    */
   private mapContractResponse(contract: any) {
     if (!contract) return contract;
+    const dealerFromStaff = contract.staff?.dealer || contract.dealer || null;
+    const dealerId =
+      contract.dealerId || contract.staff?.dealerId || dealerFromStaff?.id;
     return {
       ...contract,
       contractNumber: contract.contractCode,
+      dealer: dealerFromStaff,
+      dealerId,
     };
   }
 
@@ -199,54 +358,7 @@ export class ContractService {
       skip,
       take: limit,
       orderBy: { [sortBy]: sortOrder },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            address: true,
-          },
-        },
-        vehicle: {
-          include: {
-            manufacturer: {
-              select: {
-                name: true,
-              },
-            },
-            images: {
-              where: { isMain: true },
-              take: 1,
-            },
-          },
-        },
-        staff: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            dealer: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-                city: true,
-              },
-            },
-          },
-        },
-        customerDebts: true,
-        _count: {
-          select: {
-            feedbacks: true,
-            complaints: true,
-          },
-        },
-      },
+      include: contractListInclude,
     });
 
     return {
@@ -266,54 +378,7 @@ export class ContractService {
   async getContractById(id: string, userDealerId?: string, userRole?: string) {
     const contract = await prisma.contract.findUnique({
       where: { id },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            address: true,
-          },
-        },
-        vehicle: {
-          include: {
-            manufacturer: true,
-            images: true,
-          },
-        },
-        staff: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            dealerId: true,
-            dealer: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-                address: true,
-                city: true,
-                phone: true,
-                email: true,
-              },
-            },
-          },
-        },
-        feedbacks: {
-          orderBy: { createdAt: "desc" },
-        },
-        complaints: {
-          orderBy: { createdAt: "desc" },
-        },
-        customerDebts: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
+      include: contractDetailInclude,
     });
 
     if (!contract) {
@@ -437,6 +502,48 @@ export class ContractService {
       }
     }
 
+    let selectedVehicleUnit: Prisma.VehicleUnitGetPayload<{
+      include: { contract: { select: { id: true } } };
+    }> | null = null;
+
+    if (data.vehicleUnitId) {
+      selectedVehicleUnit = await prisma.vehicleUnit.findUnique({
+        where: { id: data.vehicleUnitId },
+        include: {
+          contract: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      if (!selectedVehicleUnit) {
+        throw new Error("Vehicle unit not found");
+      }
+
+      if (selectedVehicleUnit.vehicleId !== data.vehicleId) {
+        throw new Error("Vehicle unit does not match the selected vehicle");
+      }
+
+      if (
+        selectedVehicleUnit.dealerId &&
+        selectedVehicleUnit.dealerId !== staff.dealerId
+      ) {
+        throw new Error("Vehicle unit does not belong to your dealer");
+      }
+
+      if (selectedVehicleUnit.contract?.id) {
+        throw new Error("Vehicle unit is already linked to another contract");
+      }
+
+      const allowedStatuses: VehicleUnitStatus[] = ["IN_STOCK", "RESERVED"];
+
+      if (!allowedStatuses.includes(selectedVehicleUnit.status)) {
+        throw new Error("Vehicle unit must be in stock or reserved");
+      }
+    }
+
     // Calculate financials (VAT 10% tự động)
     const { finalPrice, monthlyPayment, taxAmount } = this.calculateFinancials(
       data.basePrice,
@@ -450,104 +557,110 @@ export class ContractService {
     const contractCode = await this.generateContractCode();
 
     // Create contract with transaction
-    const contract = await prisma.$transaction(async (tx) => {
-      // Create contract
-      const newContract = await tx.contract.create({
-        data: {
-          contractCode,
-          customerId: data.customerId,
-          staffId: data.staffId,
-          vehicleId: data.vehicleId,
-          ...(data.quotationId && { quotationId: data.quotationId }),
-          ...(data.promotionId && { promotionId: data.promotionId }),
-          basePrice: data.basePrice,
-          discount: data.discount || 0,
-          tax: taxAmount,
-          finalPrice,
-          paymentType: data.paymentType,
-          installmentMonths: data.installmentMonths,
-          monthlyPayment,
-          interestRate: data.interestRate,
-          status: "DRAFT",
-          deliveryDate: data.deliveryDate,
-          notes: data.notes,
-        },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
-              address: true,
-            },
-          },
-          vehicle: {
-            include: {
-              manufacturer: true,
-            },
-          },
-          staff: {
-            include: {
-              dealer: true,
-            },
-          },
-          // quotation: true, // Removed - quotation relation doesn't exist
-          // promotion: true, // Removed - promotion relation doesn't exist
-        },
-      });
-
-      // Reserve inventory (don't reduce quantity, just reserve)
-      // Nếu chưa có inventory record, tạo mới
-      if (!dealerInventory) {
-        // Tạo inventory record mới
-        await tx.inventory.create({
+    const contract = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        // Create contract
+        const newContract = await tx.contract.create({
           data: {
-            dealerId: staff.dealerId,
-            vehicleId: data.vehicleId,
-            quantity: 1,
-            reserved: 1,
-            sold: 0,
-            available: 0, // Sau khi reserve, available = 0
-          },
-        });
-      } else {
-        // Cập nhật inventory record hiện có
-        await tx.inventory.update({
-          where: {
-            dealerId_vehicleId: {
-              dealerId: dealerInventory.dealerId,
-              vehicleId: data.vehicleId,
-            },
-          },
-          data: {
-            reserved: { increment: 1 }, // Tăng số đã đặt
-            available: { decrement: 1 }, // Giảm số có sẵn
-          },
-        });
-      }
-
-      // Update customer status to PURCHASED if not already
-      if (customer.status !== "PURCHASED") {
-        await tx.customer.update({
-          where: { id: data.customerId },
-          data: { status: "PURCHASED" },
-        });
-
-        // Add lifecycle event
-        await tx.customerLifecycle.create({
-          data: {
+            contractCode,
             customerId: data.customerId,
-            status: "PURCHASED",
-            notes: `Contract ${contractCode} created`,
-            changedBy: userId,
+            staffId: data.staffId,
+            vehicleId: data.vehicleId,
+            ...(data.quotationId && { quotationId: data.quotationId }),
+            ...(data.promotionId && { promotionId: data.promotionId }),
+            basePrice: data.basePrice,
+            discount: data.discount || 0,
+            tax: taxAmount,
+            finalPrice,
+            paymentType: data.paymentType,
+            installmentMonths: data.installmentMonths,
+            monthlyPayment,
+            interestRate: data.interestRate,
+            status: "DRAFT",
+            deliveryDate: data.deliveryDate,
+            notes: data.notes,
           },
+          include: contractDetailInclude,
+        });
+
+        // Reserve inventory (don't reduce quantity, just reserve)
+        // Nếu chưa có inventory record, tạo mới
+        if (!dealerInventory) {
+          // Tạo inventory record mới
+          await tx.inventory.create({
+            data: {
+              dealerId: staff.dealerId,
+              vehicleId: data.vehicleId,
+              quantity: 1,
+              reserved: 1,
+              sold: 0,
+              available: 0, // Sau khi reserve, available = 0
+            },
+          });
+        } else {
+          // Cập nhật inventory record hiện có
+          await tx.inventory.update({
+            where: {
+              dealerId_vehicleId: {
+                dealerId: dealerInventory.dealerId,
+                vehicleId: data.vehicleId,
+              },
+            },
+            data: {
+              reserved: { increment: 1 }, // Tăng số đã đặt
+              available: { decrement: 1 }, // Giảm số có sẵn
+            },
+          });
+        }
+
+        // Update customer status to PURCHASED if not already
+        if (customer.status !== "PURCHASED") {
+          await tx.customer.update({
+            where: { id: data.customerId },
+            data: { status: "PURCHASED" },
+          });
+
+          // Add lifecycle event
+          await tx.customerLifecycle.create({
+            data: {
+              customerId: data.customerId,
+              status: "PURCHASED",
+              notes: `Contract ${contractCode} created`,
+              changedBy: userId,
+            },
+          });
+        }
+
+        if (selectedVehicleUnit) {
+          await tx.contract.update({
+            where: { id: newContract.id },
+            data: {
+              vehicleUnit: {
+                connect: { id: selectedVehicleUnit.id },
+              },
+            },
+          });
+
+          await tx.vehicleUnit.update({
+            where: { id: selectedVehicleUnit.id },
+            data: {
+              status:
+                selectedVehicleUnit.status === "IN_STOCK"
+                  ? "RESERVED"
+                  : selectedVehicleUnit.status,
+              storageType: "DEALER",
+              dealer: { connect: { id: staff.dealerId } },
+              reservedAt: selectedVehicleUnit.reservedAt ?? new Date(),
+            },
+          });
+        }
+
+        return tx.contract.findUnique({
+          where: { id: newContract.id },
+          include: contractDetailInclude,
         });
       }
-
-      return newContract;
-    });
+    );
 
     // Map contractCode to contractNumber for frontend compatibility
     return {
@@ -657,31 +770,139 @@ export class ContractService {
         ...(data.deliveryDate && { deliveryDate: data.deliveryDate }),
         ...(data.notes !== undefined && { notes: data.notes }),
       },
+      include: contractDetailInclude,
+    });
+
+    return this.mapContractResponse(contract);
+  }
+
+  async assignVehicleUnit(
+    id: string,
+    vehicleUnitId: string | null,
+    userId: string,
+    userDealerId?: string,
+    userRole?: string
+  ) {
+    const contract = await prisma.contract.findUnique({
+      where: { id },
       include: {
-        customer: {
+        staff: { select: { dealerId: true } },
+        vehicle: { select: { id: true } },
+        vehicleUnit: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            address: true,
-          },
-        },
-        vehicle: {
-          include: {
-            manufacturer: true,
-          },
-        },
-        staff: {
-          include: {
-            dealer: true,
+            status: true,
+            reservedAt: true,
           },
         },
       },
     });
 
-    return this.mapContractResponse(contract);
+    if (!contract) {
+      throw new Error("Contract not found");
+    }
+
+    if (contract.status === "CANCELLED" || contract.status === "COMPLETED") {
+      throw new Error(
+        "Cannot assign vehicle unit to a cancelled or completed contract"
+      );
+    }
+
+    if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
+      if (contract.staff.dealerId !== userDealerId) {
+        throw new Error(
+          "You can only assign vehicle units for your dealer's contracts"
+        );
+      }
+    }
+
+    const requestedVehicleUnitId = vehicleUnitId ?? null;
+    const isSameUnit = contract.vehicleUnitId === requestedVehicleUnitId;
+
+    if (isSameUnit) {
+      const refreshedContract = await prisma.contract.findUnique({
+        where: { id },
+        include: contractDetailInclude,
+      });
+      return this.mapContractResponse(refreshedContract);
+    }
+
+    let targetVehicleUnit: VehicleUnitWithContract | null = null;
+
+    if (requestedVehicleUnitId) {
+      targetVehicleUnit = await prisma.vehicleUnit.findUnique({
+        where: { id: requestedVehicleUnitId },
+        include: {
+          contract: { select: { id: true } },
+        },
+      });
+
+      if (!targetVehicleUnit) {
+        throw new Error("Vehicle unit not found");
+      }
+
+      if (targetVehicleUnit.vehicleId !== contract.vehicleId) {
+        throw new Error("Vehicle unit does not match the contract vehicle");
+      }
+
+      if (
+        targetVehicleUnit.contract &&
+        targetVehicleUnit.contract.id !== contract.id
+      ) {
+        throw new Error("Vehicle unit is already linked to another contract");
+      }
+
+      if (
+        targetVehicleUnit.status !== "IN_STOCK" &&
+        targetVehicleUnit.status !== "RESERVED"
+      ) {
+        throw new Error("Vehicle unit must be available before assignment");
+      }
+    }
+
+    const now = new Date();
+
+    const updatedContract = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        if (contract.vehicleUnitId) {
+          await tx.vehicleUnit.update({
+            where: { id: contract.vehicleUnitId },
+            data: {
+              status: "IN_STOCK",
+              reservedAt: null,
+              updatedById: userId,
+            },
+          });
+        }
+
+        if (requestedVehicleUnitId) {
+          await tx.vehicleUnit.update({
+            where: { id: requestedVehicleUnitId },
+            data: {
+              status: "RESERVED",
+              dealerId: contract.staff.dealerId,
+              storageType: "DEALER",
+              reservedAt: targetVehicleUnit?.reservedAt ?? now,
+              updatedById: userId,
+            },
+          });
+        }
+
+        const result = await tx.contract.update({
+          where: { id },
+          data: {
+            vehicleUnit: requestedVehicleUnitId
+              ? { connect: { id: requestedVehicleUnitId } }
+              : { disconnect: true },
+          },
+          include: contractDetailInclude,
+        });
+
+        return result;
+      }
+    );
+
+    return this.mapContractResponse(updatedContract);
   }
 
   /**
@@ -731,73 +952,63 @@ export class ContractService {
       throw new Error(`Cannot transition from ${contract.status} to ${status}`);
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const updatedContract = await tx.contract.update({
-        where: { id },
-        data: {
+    const linkedVehicleUnitId = contract.vehicleUnitId;
+
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const updateData: Prisma.ContractUpdateInput = {
           status,
           ...(status === "SIGNED" && { signedAt: new Date() }),
           ...(status === "COMPLETED" && { deliveredAt: new Date() }),
-        },
-        include: {
-          customer: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
-              address: true,
-            },
-          },
-          vehicle: {
-            include: {
-              manufacturer: true,
-            },
-          },
-          staff: {
-            include: {
-              dealer: true,
-            },
-          },
-        },
-      });
+        };
 
-      // If completed, move from reserved to sold in inventory
-      if (status === "COMPLETED") {
-        await tx.inventory.update({
-          where: {
-            dealerId_vehicleId: {
-              dealerId: contract.staff.dealerId!,
-              vehicleId: contract.vehicleId,
-            },
-          },
-          data: {
-            reserved: { decrement: 1 },
-            sold: { increment: 1 },
-            quantity: { decrement: 1 }, // Giảm quantity khi bán thành công
-          },
+        if (status === "CANCELLED" && linkedVehicleUnitId) {
+          updateData.vehicleUnit = { disconnect: true };
+        }
+
+        const updatedContract = await tx.contract.update({
+          where: { id },
+          data: updateData,
+          include: contractDetailInclude,
         });
-      }
 
-      // If cancelled, release reserved inventory
-      if (status === "CANCELLED" && contract.status !== "COMPLETED") {
-        await tx.inventory.update({
-          where: {
-            dealerId_vehicleId: {
-              dealerId: contract.staff.dealerId!,
-              vehicleId: contract.vehicleId,
-            },
-          },
-          data: {
-            reserved: { decrement: 1 }, // Giảm số đã đặt
-            available: { increment: 1 }, // Tăng số có sẵn
-          },
-        });
-      }
+        if (linkedVehicleUnitId) {
+          if (status === "DELIVERING") {
+            await tx.vehicleUnit.update({
+              where: { id: linkedVehicleUnitId },
+              data: {
+                status: "IN_TRANSIT",
+                updatedById: _userId,
+              },
+            });
+          }
 
-      return updatedContract;
-    });
+          if (status === "COMPLETED") {
+            await tx.vehicleUnit.update({
+              where: { id: linkedVehicleUnitId },
+              data: {
+                status: "DELIVERED",
+                deliveredAt: new Date(),
+                updatedById: _userId,
+              },
+            });
+          }
+
+          if (status === "CANCELLED" && contract.status !== "COMPLETED") {
+            await tx.vehicleUnit.update({
+              where: { id: linkedVehicleUnitId },
+              data: {
+                status: "IN_STOCK",
+                reservedAt: null,
+                updatedById: _userId,
+              },
+            });
+          }
+        }
+
+        return updatedContract;
+      }
+    );
 
     return this.mapContractResponse(result);
   }
@@ -814,6 +1025,7 @@ export class ContractService {
             dealer: true,
           },
         },
+        vehicleUnit: true,
       },
     });
 
@@ -825,7 +1037,7 @@ export class ContractService {
       throw new Error("Can only delete draft contracts");
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Release reserved inventory
       await tx.inventory.update({
         where: {
@@ -839,6 +1051,17 @@ export class ContractService {
           available: { increment: 1 },
         },
       });
+
+      if (contract.vehicleUnitId) {
+        await tx.vehicleUnit.update({
+          where: { id: contract.vehicleUnitId },
+          data: {
+            status: "IN_STOCK",
+            reservedAt: null,
+            updatedById: null,
+          },
+        });
+      }
 
       // Delete contract
       await tx.contract.delete({

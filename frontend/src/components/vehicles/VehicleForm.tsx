@@ -8,6 +8,7 @@ import {
   UpdateVehicleInput,
   vehicleApi,
 } from "@/lib/api/vehicleApi";
+import { toast } from "react-hot-toast";
 
 interface Manufacturer {
   id: string;
@@ -266,21 +267,21 @@ export default function VehicleForm({
         .substring(file.name.lastIndexOf("."));
 
       if (!allowedExtensions.includes(fileExtension)) {
-        alert(
+        toast.error(
           `File ${file.name} có extension không được hỗ trợ. Chỉ cho phép: .jpg, .jpeg, .png, .gif, .webp`
         );
         return false;
       }
 
       if (!allowedTypes.includes(file.type)) {
-        alert(
+        toast.error(
           `File ${file.name} có MIME type không được hỗ trợ (${file.type}). Chỉ cho phép: JPG, PNG, GIF, WebP`
         );
         return false;
       }
 
       if (file.size > maxSize) {
-        alert(`File ${file.name} quá lớn. Giới hạn 10MB`);
+        toast.error(`File ${file.name} quá lớn. Giới hạn 10MB`);
         return false;
       }
       return true;
@@ -352,7 +353,7 @@ export default function VehicleForm({
       const errorMessage =
         error.response?.data?.message || error.message || "Upload failed";
       setError(errorMessage);
-      alert(`Upload thất bại: ${errorMessage}`);
+      toast.error(`Upload thất bại: ${errorMessage}`);
     } finally {
       setUploading(false);
     }

@@ -12,6 +12,10 @@ import {
   CreditCard,
   AlertTriangle,
   ChevronDown,
+  Truck,
+  Hash,
+  RefreshCcw,
+  Loader2,
 } from "lucide-react";
 import {
   Contract,
@@ -21,6 +25,7 @@ import {
 import { customerApi } from "@/lib/api/customerApi";
 import { vehicleApi, Vehicle } from "@/lib/api/vehicleApi";
 import { promotionApi } from "@/lib/api/promotionApi";
+import { vehicleUnitApi, VehicleUnitSummary } from "@/lib/api/vehicleUnitApi";
 import { Quotation } from "@/lib/api/quotationApi";
 import { formatMoney } from "@/lib/utils/formatMoney";
 
@@ -60,6 +65,9 @@ export default function ContractForm({
   const [loading, setLoading] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [promotions, setPromotions] = useState<any[]>([]);
+  const [vehicleUnits, setVehicleUnits] = useState<VehicleUnitSummary[]>([]);
+  const [vehicleUnitsLoading, setVehicleUnitsLoading] = useState(false);
+  const [vehicleUnitError, setVehicleUnitError] = useState("");
   const [searchVehicle, setSearchVehicle] = useState(""); // For filtering vehicle list
   const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
@@ -77,6 +85,7 @@ export default function ContractForm({
   const [formData, setFormData] = useState<CreateContractInput>({
     customerId: "",
     vehicleId: "",
+    vehicleUnitId: "",
     staffId: "", // Required by backend
     quotationId: "",
     promotionId: "",
@@ -96,7 +105,12 @@ export default function ContractForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Calculated values
-  const priceAfterDiscount = formData.basePrice - (formData.discount || 0);
+  const DOWN_PAYMENT_RATE = 0.6; // 60% trả trước bắt buộc khi trả góp
+  const FINANCED_RATE = 1 - DOWN_PAYMENT_RATE; // 40% còn lại trả góp
+  const priceAfterDiscount = Math.max(
+    formData.basePrice - (formData.discount || 0),
+    0
+  );
   // Tính thuế VAT: 10% cố định trên giá sau giảm giá (theo quy định Việt Nam)
   const taxAmount = priceAfterDiscount * 0.1; // 10% VAT
   const finalPrice = priceAfterDiscount + taxAmount;
@@ -111,8 +125,8 @@ export default function ContractForm({
       return 0;
     }
 
-    // Calculate on 90% remaining amount (after 10% down payment)
-    const principal = finalPrice * 0.9;
+    // Calculate on the remaining 40% after applying the 60% down payment
+    const principal = finalPrice * FINANCED_RATE;
     const monthlyRate = (Number(formData.interestRate) || 0) / 100 / 12;
     const numberOfPayments = Number(formData.installmentMonths);
 
@@ -129,8 +143,12 @@ export default function ContractForm({
   const monthlyPayment = calculateMonthlyPayment();
   const totalInstallmentAmount =
     formData.paymentType === "INSTALLMENT"
-      ? finalPrice * 0.1 + monthlyPayment * (formData.installmentMonths || 0)
+      ? finalPrice * DOWN_PAYMENT_RATE +
+        monthlyPayment * (formData.installmentMonths || 0)
       : finalPrice;
+
+  const downPaymentAmount = finalPrice * DOWN_PAYMENT_RATE;
+  const financedAmount = finalPrice * FINANCED_RATE;
 
   // Close dropdown when click outside
   useEffect(() => {
@@ -158,6 +176,7 @@ export default function ContractForm({
         setFormData({
           customerId: contract.customerId,
           vehicleId: contract.vehicleId,
+          vehicleUnitId: contract.vehicleUnitId || "",
           staffId: contract.staffId,
           basePrice: contract.basePrice,
           discount: contract.discount || 0,
@@ -182,6 +201,7 @@ export default function ContractForm({
           ...prev,
           customerId: selectedQuotation.customerId,
           vehicleId: selectedQuotation.vehicleId,
+          vehicleUnitId: "",
           staffId: userId || selectedQuotation.staffId,
           quotationId: selectedQuotation.id,
           promotionId: "",
@@ -196,7 +216,7 @@ export default function ContractForm({
             `Tạo từ báo giá ${selectedQuotation.quoteNumber}`,
         }));
         setSelectedPromotionId("");
-        
+
         // Fetch customer info from quotation's customerId
         if (selectedQuotation.customerId) {
           // If quotation has customer object, use it directly (but still fetch full info for address)
@@ -220,6 +240,7 @@ export default function ContractForm({
         setFormData((prev) => ({
           ...prev,
           vehicleId: selectedVehicle?.id || "",
+          vehicleUnitId: "",
           staffId: userId || "", // Set from user context
           basePrice: selectedVehicle?.retailPrice
             ? Number(selectedVehicle.retailPrice)
@@ -229,6 +250,38 @@ export default function ContractForm({
       }
     }
   }, [isOpen, contract, selectedVehicle, selectedQuotation]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (!formData.vehicleId) {
+      setVehicleUnits([]);
+      setVehicleUnitError("");
+      setFormData((prev) =>
+        prev.vehicleUnitId ? { ...prev, vehicleUnitId: "" } : prev
+      );
+      return;
+    }
+
+    if (!dealerId) {
+      setVehicleUnits([]);
+      setVehicleUnitError(
+        "Không xác định được đại lý. Vui lòng đăng nhập lại hoặc kiểm tra thông tin người dùng."
+      );
+      return;
+    }
+
+    const currentUnit =
+      contract && contract.vehicleId === formData.vehicleId
+        ? mapContractVehicleUnit(contract.vehicleUnit)
+        : undefined;
+
+    loadVehicleUnits(formData.vehicleId, {
+      currentUnit,
+      keepSelection: !!(contract?.vehicleUnitId && formData.vehicleUnitId),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.vehicleId, dealerId, isOpen]);
 
   const fetchCustomerInfo = async (customerId: string) => {
     try {
@@ -318,6 +371,101 @@ export default function ContractForm({
     }
   };
 
+  const mapContractVehicleUnit = (
+    unit: Contract["vehicleUnit"] | null | undefined
+  ): VehicleUnitSummary | undefined => {
+    if (!unit) return undefined;
+    return {
+      id: unit.id,
+      vin: unit.vin,
+      engineNumber: unit.engineNumber,
+      batterySerial: unit.batterySerial,
+      color: unit.color,
+      status: unit.status,
+      storageType: unit.storageType,
+      dealerId: unit.dealerId,
+      reservedAt: unit.reservedAt || undefined,
+      deliveredAt: unit.deliveredAt || undefined,
+      location: unit.location,
+    };
+  };
+
+  const loadVehicleUnits = async (
+    vehicleId: string,
+    options?: {
+      currentUnit?: VehicleUnitSummary;
+      keepSelection?: boolean;
+    }
+  ) => {
+    if (!dealerId) {
+      setVehicleUnits([]);
+      setVehicleUnitError(
+        "Không xác định được đại lý. Vui lòng đăng nhập lại hoặc kiểm tra thông tin người dùng."
+      );
+      return;
+    }
+
+    setVehicleUnitsLoading(true);
+    setVehicleUnitError("");
+
+    try {
+      const res = await vehicleUnitApi.getAvailableUnits(vehicleId, dealerId);
+      const payload = res.data?.data;
+      let units: VehicleUnitSummary[] = Array.isArray(payload) ? payload : [];
+
+      if (options?.currentUnit) {
+        const exists = units.some(
+          (unit) => unit.id === options.currentUnit!.id
+        );
+        if (!exists) {
+          units = [options.currentUnit, ...units];
+        }
+      }
+
+      // Remove duplicates by id
+      const uniqueMap = new Map<string, VehicleUnitSummary>();
+      units.forEach((unit) => {
+        if (!uniqueMap.has(unit.id)) {
+          uniqueMap.set(unit.id, unit);
+        }
+      });
+      const uniqueUnits = Array.from(uniqueMap.values());
+      setVehicleUnits(uniqueUnits);
+
+      setFormData((prev) => {
+        if (options?.keepSelection && prev.vehicleUnitId) {
+          const stillExists = uniqueUnits.some(
+            (unit) => unit.id === prev.vehicleUnitId
+          );
+          if (stillExists) {
+            return prev;
+          }
+        }
+
+        const firstUnitId = uniqueUnits.length > 0 ? uniqueUnits[0].id : "";
+        if (prev.vehicleUnitId === firstUnitId) return prev;
+        return {
+          ...prev,
+          vehicleUnitId: firstUnitId,
+        };
+      });
+
+      if (uniqueUnits.length === 0) {
+        setVehicleUnitError(
+          "Không có xe (VIN) nào đang khả dụng tại đại lý này. Vui lòng kiểm tra tồn kho."
+        );
+      }
+    } catch (error: any) {
+      console.error("❌ Error loading vehicle units:", error);
+      setVehicleUnitError(
+        error?.response?.data?.message || "Không thể tải danh sách xe khả dụng."
+      );
+      setVehicleUnits([]);
+    } finally {
+      setVehicleUnitsLoading(false);
+    }
+  };
+
   const handleVehicleSelect = (vehicle: Vehicle) => {
     const newBasePrice = Number(vehicle.retailPrice || 0);
 
@@ -339,9 +487,37 @@ export default function ContractForm({
     setFormData((prev) => ({
       ...prev,
       vehicleId: vehicle.id,
+      vehicleUnitId: "",
       basePrice: newBasePrice,
       discount: newDiscount,
     }));
+
+    setVehicleUnits([]);
+    setVehicleUnitError("");
+  };
+
+  const handleVehicleUnitSelect = (vehicleUnitId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      vehicleUnitId,
+    }));
+  };
+
+  const handleRefreshVehicleUnits = async () => {
+    if (!formData.vehicleId || !dealerId) return;
+
+    const currentSelection = vehicleUnits.find(
+      (unit) => unit.id === formData.vehicleUnitId
+    );
+
+    await loadVehicleUnits(formData.vehicleId, {
+      currentUnit:
+        currentSelection ||
+        (contract && contract.vehicleId === formData.vehicleId
+          ? mapContractVehicleUnit(contract.vehicleUnit)
+          : undefined),
+      keepSelection: true,
+    });
   };
 
   const validateForm = (): boolean => {
@@ -365,6 +541,8 @@ export default function ContractForm({
 
     // Validate vehicle and contract info
     if (!formData.vehicleId) newErrors.vehicleId = "Vui lòng chọn xe";
+    if (!formData.vehicleUnitId)
+      newErrors.vehicleUnitId = "Vui lòng chọn xe (VIN) cụ thể";
     if (!formData.staffId) newErrors.staffId = "Thiếu thông tin nhân viên";
     if (formData.basePrice <= 0) newErrors.basePrice = "Giá xe phải lớn hơn 0";
     if (formData.discount && formData.discount > formData.basePrice) {
@@ -392,7 +570,9 @@ export default function ContractForm({
         selectedPromotion?.minPurchase &&
         formData.basePrice < Number(selectedPromotion.minPurchase)
       ) {
-        newErrors.promotion = `Đơn hàng tối thiểu: ${formatMoney(selectedPromotion.minPurchase)}`;
+        newErrors.promotion = `Đơn hàng tối thiểu: ${formatMoney(
+          selectedPromotion.minPurchase
+        )}`;
       }
     }
 
@@ -441,6 +621,7 @@ export default function ContractForm({
       const contractData: any = {
         customerId,
         vehicleId: formData.vehicleId,
+        vehicleUnitId: formData.vehicleUnitId,
         staffId: formData.staffId,
         basePrice: Number(formData.basePrice),
         discount: Number(formData.discount) || 0,
@@ -898,73 +1079,220 @@ export default function ContractForm({
                       (v) => v.id === formData.vehicleId
                     );
                     return selectedVehicle ? (
-                      <div className="grid grid-cols-2 gap-4 text-sm text-black">
-                        <div>
-                          <p className="text-black">
-                            <span className="font-medium text-black">Xe:</span>{" "}
-                            <span className="text-black">
-                              {selectedVehicle.manufacturer?.name}{" "}
-                              {selectedVehicle.model}
-                            </span>
-                          </p>
-                          <p className="text-black">
-                            <span className="font-medium text-black">
-                              Phiên bản:
-                            </span>{" "}
-                            <span className="text-black">
-                              {selectedVehicle.variant || "N/A"}
-                            </span>
-                          </p>
-                          <p className="text-black">
-                            <span className="font-medium text-black">Năm:</span>{" "}
-                            <span className="text-black">
-                              {selectedVehicle.year}
-                            </span>
-                          </p>
-                          <p className="text-black">
-                            <span className="font-medium text-black">Màu:</span>{" "}
-                            <span className="text-black">
-                              {selectedVehicle.color}
-                            </span>
-                          </p>
+                      <>
+                        <div className="grid grid-cols-2 gap-4 text-sm text-black">
+                          <div>
+                            <p className="text-black">
+                              <span className="font-medium text-black">
+                                Xe:
+                              </span>{" "}
+                              <span className="text-black">
+                                {selectedVehicle.manufacturer?.name}{" "}
+                                {selectedVehicle.model}
+                              </span>
+                            </p>
+                            <p className="text-black">
+                              <span className="font-medium text-black">
+                                Phiên bản:
+                              </span>{" "}
+                              <span className="text-black">
+                                {selectedVehicle.variant || "N/A"}
+                              </span>
+                            </p>
+                            <p className="text-black">
+                              <span className="font-medium text-black">
+                                Năm:
+                              </span>{" "}
+                              <span className="text-black">
+                                {selectedVehicle.year}
+                              </span>
+                            </p>
+                            <p className="text-black">
+                              <span className="font-medium text-black">
+                                Màu:
+                              </span>{" "}
+                              <span className="text-black">
+                                {selectedVehicle.color}
+                              </span>
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-black">
+                              <span className="font-medium text-black">
+                                Giá niêm yết:
+                              </span>{" "}
+                              <span className="text-black">
+                                {formatMoney(
+                                  Number(selectedVehicle.retailPrice || 0)
+                                )}
+                              </span>
+                            </p>
+                            <p className="text-black">
+                              <span className="font-medium text-black">
+                                Dung lượng pin:
+                              </span>{" "}
+                              <span className="text-black">
+                                {selectedVehicle.batteryCapacity} kWh
+                              </span>
+                            </p>
+                            <p className="text-black">
+                              <span className="font-medium text-black">
+                                Tầm hoạt động:
+                              </span>{" "}
+                              <span className="text-black">
+                                {selectedVehicle.range} km
+                              </span>
+                            </p>
+                            <p className="text-black">
+                              <span className="font-medium text-black">
+                                Công suất:
+                              </span>{" "}
+                              <span className="text-black">
+                                {selectedVehicle.motorPower || "N/A"} kW
+                              </span>
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-black">
-                            <span className="font-medium text-black">
-                              Giá niêm yết:
-                            </span>{" "}
-                            <span className="text-black">
-                              {formatMoney(
-                                Number(selectedVehicle.retailPrice || 0)
+
+                        <div className="mt-6 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-800">
+                              <Truck className="w-4 h-4" /> Chọn xe (VIN) *
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleRefreshVehicleUnits}
+                              disabled={
+                                vehicleUnitsLoading ||
+                                !formData.vehicleId ||
+                                !dealerId
+                              }
+                              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                            >
+                              {vehicleUnitsLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <RefreshCcw className="w-4 h-4" />
                               )}
-                            </span>
-                          </p>
-                          <p className="text-black">
-                            <span className="font-medium text-black">
-                              Dung lượng pin:
-                            </span>{" "}
-                            <span className="text-black">
-                              {selectedVehicle.batteryCapacity} kWh
-                            </span>
-                          </p>
-                          <p className="text-black">
-                            <span className="font-medium text-black">
-                              Tầm hoạt động:
-                            </span>{" "}
-                            <span className="text-black">
-                              {selectedVehicle.range} km
-                            </span>
-                          </p>
-                          <p className="text-black">
-                            <span className="font-medium text-black">
-                              Công suất:
-                            </span>{" "}
-                            <span className="text-black">
-                              {selectedVehicle.motorPower || "N/A"} kW
-                            </span>
-                          </p>
+                              Làm mới VIN
+                            </button>
+                          </div>
+
+                          {vehicleUnitError && (
+                            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                              {vehicleUnitError}
+                            </div>
+                          )}
+
+                          {vehicleUnitsLoading ? (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                              Đang tải danh sách VIN khả dụng...
+                            </div>
+                          ) : vehicleUnits.length > 0 ? (
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                              {vehicleUnits.map((unit) => (
+                                <label
+                                  key={unit.id}
+                                  className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                                    formData.vehicleUnitId === unit.id
+                                      ? "border-blue-500 bg-blue-50 shadow-sm"
+                                      : "border-gray-200 hover:border-blue-400 hover:bg-blue-50/60"
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="vehicle-unit"
+                                    value={unit.id}
+                                    checked={formData.vehicleUnitId === unit.id}
+                                    onChange={() =>
+                                      handleVehicleUnitSelect(unit.id)
+                                    }
+                                    className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="font-semibold text-gray-900">
+                                        {unit.vin}
+                                      </span>
+                                      {(unit.vehicle?.manufacturer?.name ||
+                                        unit.vehicle?.model) && (
+                                        <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                          {unit.vehicle?.manufacturer?.name}{" "}
+                                          {unit.vehicle?.model}
+                                        </span>
+                                      )}
+                                      {unit.color && (
+                                        <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                          Màu: {unit.color}
+                                        </span>
+                                      )}
+                                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                        Trạng thái: {unit.status}
+                                      </span>
+                                    </div>
+                                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-xs text-gray-600">
+                                      {unit.engineNumber && (
+                                        <p>
+                                          <span className="text-gray-500">
+                                            Số động cơ:
+                                          </span>{" "}
+                                          <span className="text-gray-800">
+                                            {unit.engineNumber}
+                                          </span>
+                                        </p>
+                                      )}
+                                      {unit.batterySerial && (
+                                        <p>
+                                          <span className="text-gray-500">
+                                            PIN:
+                                          </span>{" "}
+                                          <span className="text-gray-800">
+                                            {unit.batterySerial}
+                                          </span>
+                                        </p>
+                                      )}
+                                      {unit.location && (
+                                        <p>
+                                          <span className="text-gray-500">
+                                            Vị trí:
+                                          </span>{" "}
+                                          <span className="text-gray-800">
+                                            {unit.location}
+                                          </span>
+                                        </p>
+                                      )}
+                                      {unit.reservedAt && (
+                                        <p>
+                                          <span className="text-gray-500">
+                                            Giữ chỗ:
+                                          </span>{" "}
+                                          <span className="text-gray-800">
+                                            {new Date(
+                                              unit.reservedAt
+                                            ).toLocaleDateString("vi-VN")}
+                                          </span>
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm rounded-lg px-3 py-3">
+                              Không có VIN khả dụng. Vui lòng kiểm tra tồn kho
+                              hoặc bổ sung xe.
+                            </div>
+                          )}
+
+                          {errors.vehicleUnitId && (
+                            <p className="text-red-500 text-sm">
+                              {errors.vehicleUnitId}
+                            </p>
+                          )}
                         </div>
-                      </div>
+                      </>
                     ) : null;
                   })()}
                 </div>
@@ -1070,7 +1398,8 @@ export default function ContractForm({
                       );
                       if (
                         selectedPromotion?.minPurchase &&
-                        formData.basePrice < Number(selectedPromotion.minPurchase)
+                        formData.basePrice <
+                          Number(selectedPromotion.minPurchase)
                       ) {
                         return (
                           <p className="text-red-600">
@@ -1088,7 +1417,9 @@ export default function ContractForm({
                   </div>
                 )}
                 {errors.promotion && (
-                  <p className="text-red-500 text-sm mt-1">{errors.promotion}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.promotion}
+                  </p>
                 )}
               </div>
 
@@ -1119,7 +1450,8 @@ export default function ContractForm({
                   {formatMoney(taxAmount)} (10% trên giá sau giảm giá)
                 </div>
                 <p className="text-xs text-gray-500">
-                  Thuế VAT tự động tính theo quy định Việt Nam: 10% trên giá sau giảm giá
+                  Thuế VAT tự động tính theo quy định Việt Nam: 10% trên giá sau
+                  giảm giá
                 </p>
               </div>
 
@@ -1132,7 +1464,7 @@ export default function ContractForm({
                   {formatMoney(finalPrice)}
                 </div>
                 <p className="text-xs text-gray-500">
-                  = Giá niêm yết - Chiết khấu + Thuế VAT
+                  = Giá sau chiết khấu + Thuế VAT (10% cố định)
                 </p>
               </div>
             </div>
@@ -1229,13 +1561,13 @@ export default function ContractForm({
                   {/* Down Payment */}
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">
-                      Trả trước (10% bắt buộc)
+                      Trả trước (60% bắt buộc)
                     </label>
                     <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-black font-medium">
-                      {formatMoney(Math.round(finalPrice * 0.1))}
+                      {formatMoney(Math.round(downPaymentAmount))}
                     </div>
                     <p className="text-xs text-gray-500">
-                      10% của số tiền sau khi trừ khuyến mãi
+                      60% của tổng giá trị sau thuế
                     </p>
                   </div>
                 </div>
@@ -1243,21 +1575,23 @@ export default function ContractForm({
                 {/* Payment Calculation */}
                 <div className="bg-white p-4 rounded-lg space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Số tiền cần trả góp:</span>
+                    <span className="text-gray-600">
+                      Giá trị hợp đồng (sau thuế):
+                    </span>
                     <span className="font-medium text-black">
                       {formatMoney(finalPrice)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Trả trước (10%):</span>
+                    <span className="text-gray-600">Trả trước (60%):</span>
                     <span className="font-medium text-blue-600">
-                      {formatMoney(Math.round(finalPrice * 0.1))}
+                      {formatMoney(Math.round(downPaymentAmount))}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Số tiền còn lại:</span>
                     <span className="font-medium text-black">
-                      {formatMoney(Math.round(finalPrice * 0.9))}
+                      {formatMoney(Math.round(financedAmount))}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -1315,6 +1649,24 @@ export default function ContractForm({
                 </div>
               )}
 
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-700">
+                  Giá sau chiết khấu (căn cứ tính VAT):
+                </span>
+                <span className="font-medium text-black">
+                  {formatMoney(priceAfterDiscount)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-700">
+                  Thuế VAT (10% trên giá sau chiết khấu):
+                </span>
+                <span className="font-medium text-blue-600">
+                  {formatMoney(taxAmount)}
+                </span>
+              </div>
+
               <div className="flex justify-between items-center py-2 border-b-2 border-gray-400">
                 <span className="text-lg font-semibold text-gray-800">
                   TỔNG CỘNG PHẢI TRẢ:
@@ -1326,6 +1678,12 @@ export default function ContractForm({
 
               {formData.paymentType === "INSTALLMENT" && (
                 <>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span className="text-gray-700">Trả trước (60%):</span>
+                    <span className="font-medium text-blue-600">
+                      {formatMoney(Math.round(downPaymentAmount))}
+                    </span>
+                  </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200">
                     <span className="text-gray-700">
                       Trả hàng tháng ({formData.installmentMonths} tháng):
