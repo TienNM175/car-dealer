@@ -50,6 +50,7 @@ model Vehicle {
   quotations        Quotation[]
   contracts         Contract[]
   testDrives  TestDrive[]
+  vehicleUnits      VehicleUnit[]
   
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
@@ -74,6 +75,73 @@ model VehicleImage {
 
   @@index([vehicleId])
   @@map("vehicle_images")
+}
+
+model VehicleUnit {
+  id             String                 @id @default(cuid())
+  vehicleId      String                 @map("vehicle_id")
+  vin            String                 @unique
+  engineNumber   String?                @map("engine_number")
+  batterySerial  String?                @map("battery_serial")
+  color          VehicleColor?
+  status         VehicleUnitStatus      @default(IN_STOCK)
+  storageType    VehicleUnitStorageType @default(EVM) @map("storage_type")
+  dealerId       String?                @map("dealer_id")
+  location       String?
+  manufacturedAt DateTime?              @map("manufactured_at")
+  importedAt     DateTime?              @map("imported_at")
+  reservedAt     DateTime?              @map("reserved_at")
+  deliveredAt    DateTime?              @map("delivered_at")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  createdById    String?                @map("created_by")
+  updatedById    String?                @map("updated_by")
+
+  vehicle        Vehicle                @relation(fields: [vehicleId], references: [id])
+  dealer         Dealer?                @relation(fields: [dealerId], references: [id])
+  contract       Contract?              @relation("ContractVehicleUnit")
+  exportDocuments VehicleExportDocument[]
+  createdBy      User?                  @relation("VehicleUnitCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?                  @relation("VehicleUnitUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([vehicleId])
+  @@index([dealerId])
+  @@index([status])
+  @@map("vehicle_units")
+}
+
+model VehicleExportDocument {
+  id               String               @id @default(cuid())
+  code             String               @unique
+  vehicleUnitId    String               @map("vehicle_unit_id")
+  dealerId         String               @map("dealer_id")
+  contractId       String?              @map("contract_id")
+  status           ExportDocumentStatus @default(DRAFT)
+  issuedAt         DateTime?            @map("issued_at")
+  approvedAt       DateTime?            @map("approved_at")
+  cancelledAt      DateTime?            @map("cancelled_at")
+  recipientName    String?              @map("recipient_name")
+  recipientPhone   String?              @map("recipient_phone")
+  recipientId      String?              @map("recipient_id_number")
+  recipientAddress String?              @map("recipient_address")
+  notes            String?
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  createdById      String?              @map("created_by")
+  approvedById     String?              @map("approved_by")
+  cancelledById    String?              @map("cancelled_by")
+
+  vehicleUnit      VehicleUnit          @relation(fields: [vehicleUnitId], references: [id])
+  dealer           Dealer               @relation(fields: [dealerId], references: [id])
+  contract         Contract?            @relation(fields: [contractId], references: [id])
+  createdBy        User?                @relation("VehicleExportDocumentCreatedBy", fields: [createdById], references: [id])
+  approvedBy       User?                @relation("VehicleExportDocumentApprovedBy", fields: [approvedById], references: [id])
+  cancelledBy      User?                @relation("VehicleExportDocumentCancelledBy", fields: [cancelledById], references: [id])
+
+  @@index([vehicleUnitId])
+  @@index([dealerId])
+  @@index([contractId])
+  @@map("vehicle_export_documents")
 }
 
 enum VehicleColor {
@@ -109,9 +177,30 @@ enum VehicleStatus {
   OUT_OF_STOCK // Hết hàng
 }
 
+enum VehicleUnitStatus {
+  IN_STOCK
+  RESERVED
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+  DAMAGED
+}
+
+enum VehicleUnitStorageType {
+  EVM
+  DEALER
+  IN_TRANSIT
+}
+
 enum CurrencyCode {
   USD
   EUR
   GBP
   VND
+}
+
+enum ExportDocumentStatus {
+  DRAFT
+  APPROVED
+  CANCELLED
 }

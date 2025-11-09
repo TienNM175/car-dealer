@@ -1,143 +1,177 @@
-import { body, param } from 'express-validator';
+import { body, param } from "express-validator";
 
 export const createContractValidation = [
-  body('customerId')
+  body("customerId")
     .notEmpty()
-    .withMessage('Customer ID is required')
+    .withMessage("Customer ID is required")
     .isString()
-    .withMessage('Customer ID must be a string'),
+    .withMessage("Customer ID must be a string"),
 
-  body('staffId')
+  body("staffId")
     .notEmpty()
-    .withMessage('Staff ID is required')
+    .withMessage("Staff ID is required")
     .isString()
-    .withMessage('Staff ID must be a string'),
+    .withMessage("Staff ID must be a string"),
 
-  body('vehicleId')
+  body("vehicleId")
     .notEmpty()
-    .withMessage('Vehicle ID is required')
+    .withMessage("Vehicle ID is required")
     .isString()
-    .withMessage('Vehicle ID must be a string'),
+    .withMessage("Vehicle ID must be a string"),
 
-  body('basePrice')
+  body("basePrice")
     .notEmpty()
-    .withMessage('Base price is required')
+    .withMessage("Base price is required")
     .isFloat({ min: 0 })
-    .withMessage('Base price must be a positive number'),
+    .withMessage("Base price must be a positive number"),
 
-  body('discount')
+  body("discount")
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Discount must be a non-negative number')
+    .withMessage("Discount must be a non-negative number")
     .custom((value, { req }) => {
       if (value && req.body.basePrice && value > req.body.basePrice) {
-        throw new Error('Discount cannot exceed base price');
+        throw new Error("Discount cannot exceed base price");
       }
       return true;
     }),
 
-  body('paymentType')
-    .notEmpty()
-    .withMessage('Payment type is required')
-    .isIn(['FULL', 'INSTALLMENT'])
-    .withMessage('Payment type must be FULL or INSTALLMENT'),
+  body("tax")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Tax must be a non-negative number"),
 
-  body('installmentMonths')
-    .if(body('paymentType').equals('INSTALLMENT'))
+  body("paymentType")
     .notEmpty()
-    .withMessage('Installment months is required for installment payment')
+    .withMessage("Payment type is required")
+    .isIn(["FULL", "INSTALLMENT"])
+    .withMessage("Payment type must be FULL or INSTALLMENT"),
+
+  body("installmentMonths")
+    .if(body("paymentType").equals("INSTALLMENT"))
+    .notEmpty()
+    .withMessage("Installment months is required for installment payment")
     .isInt({ min: 1, max: 120 })
-    .withMessage('Installment months must be between 1 and 120'),
+    .withMessage("Installment months must be between 1 and 120"),
 
-  body('interestRate')
-    .if(body('paymentType').equals('INSTALLMENT'))
+  body("interestRate")
+    .if(body("paymentType").equals("INSTALLMENT"))
     .notEmpty()
-    .withMessage('Interest rate is required for installment payment')
+    .withMessage("Interest rate is required for installment payment")
     .isFloat({ min: 0, max: 100 })
-    .withMessage('Interest rate must be between 0 and 100'),
+    .withMessage("Interest rate must be between 0 and 100"),
 
-  body('deliveryDate')
+  body("deliveryDate")
     .optional()
     .isISO8601()
-    .withMessage('Delivery date must be a valid date')
+    .withMessage("Delivery date must be a valid date")
     .custom((value) => {
       if (value && new Date(value) < new Date()) {
-        throw new Error('Delivery date cannot be in the past');
+        throw new Error("Delivery date cannot be in the past");
       }
       return true;
     }),
 
-  body('notes')
+  body("notes")
     .optional()
     .isString()
-    .withMessage('Notes must be a string')
+    .withMessage("Notes must be a string")
     .isLength({ max: 1000 })
-    .withMessage('Notes must not exceed 1000 characters'),
+    .withMessage("Notes must not exceed 1000 characters"),
+
+  body("vehicleUnitId")
+    .optional({ nullable: true })
+    .custom((value) => value === null || typeof value === "string")
+    .withMessage("vehicleUnitId must be a string or null"),
 ];
 
 export const updateContractValidation = [
-  param('id')
+  param("id")
     .isString()
-    .withMessage('Contract ID must be a string')
+    .withMessage("Contract ID must be a string")
     .notEmpty()
-    .withMessage('Contract ID is required'),
+    .withMessage("Contract ID is required"),
 
-  body('basePrice')
+  body("basePrice")
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Base price must be a positive number'),
+    .withMessage("Base price must be a positive number"),
 
-  body('discount')
+  body("discount")
     .optional()
     .isFloat({ min: 0 })
-    .withMessage('Discount must be a non-negative number'),
+    .withMessage("Discount must be a non-negative number"),
 
-  body('paymentType')
+  body("tax")
     .optional()
-    .isIn(['FULL', 'INSTALLMENT'])
-    .withMessage('Payment type must be FULL or INSTALLMENT'),
+    .isFloat({ min: 0 })
+    .withMessage("Tax must be a non-negative number"),
 
-  body('installmentMonths')
+  body("paymentType")
+    .optional()
+    .isIn(["FULL", "INSTALLMENT"])
+    .withMessage("Payment type must be FULL or INSTALLMENT"),
+
+  body("installmentMonths")
     .optional()
     .isInt({ min: 1, max: 120 })
-    .withMessage('Installment months must be between 1 and 120'),
+    .withMessage("Installment months must be between 1 and 120"),
 
-  body('interestRate')
+  body("interestRate")
     .optional()
     .isFloat({ min: 0, max: 100 })
-    .withMessage('Interest rate must be between 0 and 100'),
+    .withMessage("Interest rate must be between 0 and 100"),
 
-  body('deliveryDate')
+  body("deliveryDate")
     .optional()
     .isISO8601()
-    .withMessage('Delivery date must be a valid date'),
+    .withMessage("Delivery date must be a valid date"),
 
-  body('notes')
+  body("notes")
     .optional()
     .isString()
-    .withMessage('Notes must be a string')
+    .withMessage("Notes must be a string")
     .isLength({ max: 1000 })
-    .withMessage('Notes must not exceed 1000 characters'),
+    .withMessage("Notes must not exceed 1000 characters"),
 ];
 
 export const updateContractStatusValidation = [
-  param('id')
+  param("id")
     .isString()
-    .withMessage('Contract ID must be a string')
+    .withMessage("Contract ID must be a string")
     .notEmpty()
-    .withMessage('Contract ID is required'),
+    .withMessage("Contract ID is required"),
 
-  body('status')
+  body("status")
     .notEmpty()
-    .withMessage('Status is required')
-    .isIn(['DRAFT', 'PENDING', 'SIGNED', 'DELIVERING', 'COMPLETED', 'CANCELLED'])
-    .withMessage('Invalid contract status'),
+    .withMessage("Status is required")
+    .isIn([
+      "DRAFT",
+      "PENDING",
+      "SIGNED",
+      "DELIVERING",
+      "COMPLETED",
+      "CANCELLED",
+    ])
+    .withMessage("Invalid contract status"),
 ];
 
 export const contractIdValidation = [
-  param('id')
+  param("id")
     .isString()
-    .withMessage('Contract ID must be a string')
+    .withMessage("Contract ID must be a string")
     .notEmpty()
-    .withMessage('Contract ID is required'),
+    .withMessage("Contract ID is required"),
+];
+
+export const assignVehicleUnitValidation = [
+  param("id")
+    .isString()
+    .withMessage("Contract ID must be a string")
+    .notEmpty()
+    .withMessage("Contract ID is required"),
+  body("vehicleUnitId")
+    .optional({ nullable: true })
+    .custom((value) => value === null || typeof value === "string")
+    .withMessage("vehicleUnitId must be a string or null"),
 ];

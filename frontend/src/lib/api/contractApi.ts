@@ -6,17 +6,20 @@ export interface Contract {
   customerId: string;
   vehicleId: string;
   staffId: string;
+  dealerId?: string;
   quotationId?: string;
   promotionId?: string;
   contractCode: string; // Backend uses contractCode
   contractNumber: string; // Alias for contractCode (display purpose)
   basePrice: number;
   discount: number;
+  tax: number; // Thuế VAT
   finalPrice: number;
   paymentType: "FULL" | "INSTALLMENT";
   installmentMonths?: number;
   monthlyPayment?: number;
   interestRate?: number;
+  vehicleUnitId?: string;
   status:
     | "DRAFT"
     | "PENDING"
@@ -40,6 +43,7 @@ export interface Contract {
     email: string;
     phone?: string;
     address?: string;
+    identityCard?: string;
   };
   vehicle?: {
     id: string;
@@ -59,6 +63,7 @@ export interface Contract {
     name: string;
     address?: string;
     phone?: string;
+    city?: string;
   };
   staff?: {
     id: string;
@@ -77,6 +82,44 @@ export interface Contract {
     discountType: string;
     discountValue: number;
   };
+  vehicleUnit?: {
+    id: string;
+    vin: string;
+    engineNumber?: string | null;
+    batterySerial?: string | null;
+    color?: string | null;
+    status: string;
+    storageType: string;
+    dealerId?: string | null;
+    reservedAt?: string | null;
+    deliveredAt?: string | null;
+    location?: string | null;
+  } | null;
+  exportDocuments?: Array<{
+    id: string;
+    code: string;
+    status: string;
+    issuedAt?: string | null;
+    approvedAt?: string | null;
+    cancelledAt?: string | null;
+    recipientName?: string | null;
+    recipientPhone?: string | null;
+    recipientId?: string | null;
+    recipientAddress?: string | null;
+    notes?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    createdBy?: {
+      id: string;
+      firstName?: string | null;
+      lastName?: string | null;
+    } | null;
+    approvedBy?: {
+      id: string;
+      firstName?: string | null;
+      lastName?: string | null;
+    } | null;
+  }>;
 }
 
 export interface ContractFilters {
@@ -103,11 +146,13 @@ export interface PaginationParams {
 export interface CreateContractInput {
   customerId: string;
   vehicleId: string;
+  vehicleUnitId?: string;
   staffId: string; // Required by backend
   quotationId?: string;
   promotionId?: string;
   basePrice: number; // Backend expects basePrice
   discount?: number;
+  tax?: number; // Thuế VAT (mặc định 10%)
   paymentType: Contract["paymentType"];
   installmentMonths?: number;
   interestRate?: number; // Required for installment calculation
@@ -187,6 +232,11 @@ export const contractApi = {
 
   // Delete contract (only DRAFT)
   deleteContract: (id: string) => axiosClient.delete(`/contracts/${id}`),
+
+  assignVehicleUnit: (id: string, vehicleUnitId: string | null) =>
+    axiosClient.patch(`/contracts/${id}/assign-vehicle-unit`, {
+      vehicleUnitId,
+    }),
 
   // Get contracts by status count
   getContractsByStatus: () => axiosClient.get("/contracts/by-status"),

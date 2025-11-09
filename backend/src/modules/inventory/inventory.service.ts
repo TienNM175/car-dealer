@@ -1,5 +1,9 @@
 import prisma from "../../config/database";
-import { Prisma } from "@prisma/client";
+import {
+  Prisma,
+  VehicleUnitStatus,
+  VehicleUnitStorageType,
+} from "@prisma/client";
 
 interface InventoryFilters {
   vehicleId?: string;
@@ -318,8 +322,14 @@ export class InventoryService {
   /**
    * Transfer inventory from EVM to dealer
    */
-  async transferInventory(data: any) {
-    const { vehicleId, toDealerId, quantity, notes } = data;
+  async transferInventory(data: {
+    vehicleId: string;
+    toDealerId: string;
+    quantity: number;
+    notes?: string;
+    performedById?: string;
+  }) {
+    const { vehicleId, toDealerId, quantity, notes, performedById } = data;
 
     // Validate EVM inventory exists and has enough quantity
     const evmInventory = await prisma.eVMInventory.findUnique({
@@ -336,8 +346,40 @@ export class InventoryService {
       );
     }
 
+    const dealer = await prisma.dealer.findUnique({
+      where: { id: toDealerId },
+      select: { id: true, name: true },
+    });
+
+    if (!dealer) {
+      throw new Error("Dealer not found");
+    }
+
+    const availableUnits = await prisma.vehicleUnit.findMany({
+      where: {
+        vehicleId,
+        dealerId: null,
+        status: VehicleUnitStatus.IN_STOCK,
+        storageType: VehicleUnitStorageType.EVM,
+      },
+      orderBy: [
+        { importedAt: "asc" },
+        { createdAt: "asc" },
+        { vin: "asc" },
+      ],
+      take: quantity,
+    });
+
+    if (availableUnits.length < quantity) {
+      throw new Error(
+        `Not enough VINs available for transfer. Found ${availableUnits.length}, requested ${quantity}`
+      );
+    }
+
     // Use transaction to ensure data consistency
     return await prisma.$transaction(async (tx) => {
+      const now = new Date();
+
       // Decrease EVM inventory
       await tx.eVMInventory.update({
         where: { vehicleId },
@@ -386,11 +428,36 @@ export class InventoryService {
         });
       }
 
+      const transferredUnits = [];
+      for (const unit of availableUnits) {
+        const updatedUnit = await tx.vehicleUnit.update({
+          where: { id: unit.id },
+          data: {
+            dealerId: toDealerId,
+            storageType: VehicleUnitStorageType.DEALER,
+            location: notes || dealer.name || unit.location || null,
+            status: VehicleUnitStatus.IN_STOCK,
+            reservedAt: null,
+            deliveredAt: null,
+            importedAt: now,
+            updatedById: performedById,
+          },
+          select: {
+            id: true,
+            vin: true,
+          },
+        });
+        transferredUnits.push(updatedUnit);
+      }
+
       return {
-        message: `Successfully transferred ${quantity} units to dealer`,
+        message: `Successfully transferred ${quantity} unit(s) to dealer`,
         vehicleId,
         toDealerId,
         quantity,
+        notes,
+        transferredUnits,
+        timestamp: now.toISOString(),
       };
     });
   }

@@ -10,6 +10,7 @@ import {
   Edit,
   Truck,
   Filter,
+  Loader2,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import inventoryApi, {
@@ -21,6 +22,7 @@ import inventoryApi, {
   UpdateEVMInventoryInput,
   TransferInventoryInput,
 } from "@/lib/api/inventoryApi";
+import { vehicleUnitApi, VehicleUnitSummary } from "@/lib/api/vehicleUnitApi";
 
 export default function InventoryPage() {
   const [summary, setSummary] = useState<InventorySummary | null>(null);
@@ -47,6 +49,14 @@ export default function InventoryPage() {
     quantity: 0,
     notes: "",
   });
+  const [vehicleUnits, setVehicleUnits] = useState<VehicleUnitSummary[]>([]);
+  const [vehicleUnitsLoading, setVehicleUnitsLoading] = useState(false);
+  const [vehicleUnitsError, setVehicleUnitsError] = useState<string | null>(
+    null
+  );
+  const [vinFilter, setVinFilter] = useState<
+    "ALL" | "EVM" | "DEALER" | "IN_TRANSIT"
+  >("ALL");
 
   // Thêm states cho search và filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,6 +69,54 @@ export default function InventoryPage() {
   // Pagination states
   const [page, setPage] = useState(1);
   const [limit] = useState(15);
+
+  const formatDateTime = (value?: string | null) =>
+    value ? new Date(value).toLocaleString("vi-VN") : "-";
+
+  const statusLabelMap: Record<string, string> = {
+    IN_STOCK: "Đang kho",
+    RESERVED: "Đã giữ chỗ",
+    IN_TRANSIT: "Đang vận chuyển",
+    DELIVERED: "Đã giao",
+    RETURNED: "Đã trả",
+    DAMAGED: "Hư hỏng",
+  };
+
+  const storageTypeLabelMap: Record<string, string> = {
+    EVM: "Kho tổng EVM",
+    DEALER: "Kho đại lý",
+    IN_TRANSIT: "Đang vận chuyển",
+  };
+
+  const loadVehicleUnits = async (vehicleId: string) => {
+    try {
+      setVehicleUnitsLoading(true);
+      setVehicleUnitsError(null);
+      const response = await vehicleUnitApi.list({
+        vehicleId,
+        limit: 200,
+        sortBy: "importedAt",
+        sortOrder: "asc",
+      });
+      const payload = response.data?.data ?? response.data;
+      setVehicleUnits(Array.isArray(payload) ? payload : []);
+    } catch (error: any) {
+      console.error("❌ Error loading vehicle units:", error);
+      setVehicleUnits([]);
+      setVehicleUnitsError(
+        error?.response?.data?.message || "Không thể tải danh sách VIN."
+      );
+    } finally {
+      setVehicleUnitsLoading(false);
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setVehicleUnits([]);
+    setVehicleUnitsError(null);
+    setVinFilter("ALL");
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -173,10 +231,15 @@ export default function InventoryPage() {
   // Xem chi tiết
   const handleViewDetail = async (vehicleId: string) => {
     try {
+      setVehicleUnits([]);
+      setVehicleUnitsError(null);
+      setVinFilter("ALL");
       const response = await inventoryApi.getEVMInventoryByVehicle(vehicleId);
       setSelectedVehicle(response.data.data);
       setShowDetailModal(true);
+      await loadVehicleUnits(vehicleId);
     } catch (err) {
+      setShowDetailModal(false);
       toast.error("Lỗi khi tải chi tiết tồn kho.");
       console.error("Detail fetch error:", err);
     }
@@ -709,47 +772,223 @@ export default function InventoryPage() {
 
       {/* Modal chi tiết */}
       {showDetailModal && selectedVehicle && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all duration-300 ease-in-out">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">
-              Chi tiết tồn kho - {selectedVehicle.vehicle.model}
-            </h3>
-            <div className="space-y-3 text-gray-700">
-              <p>
-                <strong>Model:</strong> {selectedVehicle.vehicle.model}
-              </p>
-              <p>
-                <strong>Nhà sản xuất:</strong>{" "}
-                {selectedVehicle.vehicle.manufacturer.name}
-              </p>
-              <p>
-                <strong>Tổng tồn kho:</strong>{" "}
-                {selectedVehicle.quantity.toLocaleString()}
-              </p>
-              <p>
-                <strong>Đã đặt trước:</strong>{" "}
-                {selectedVehicle.reserved.toLocaleString()}
-              </p>
-              <p>
-                <strong>Khả dụng:</strong>{" "}
-                {selectedVehicle.available.toLocaleString()}
-              </p>
-              <p>
-                <strong>Vị trí:</strong>{" "}
-                {selectedVehicle.location || "Không xác định"}
-              </p>
+        <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+              <div>
+                <h3 className="text-2xl font-semibold text-gray-800">
+                  Chi tiết VIN - {selectedVehicle.vehicle.model}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Quản lý VIN đang thuộc kho tổng EVM và các đại lý
+                </p>
+              </div>
+              <button
+                onClick={handleCloseDetailModal}
+                className="text-gray-500 hover:text-gray-700 transition-colors duration-200"
+                aria-label="Đóng"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="px-6 py-5 border-b border-gray-100 bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+                    Tổng tồn kho
+                  </p>
+                  <p className="text-2xl font-bold text-blue-900 mt-2">
+                    {selectedVehicle.quantity.toLocaleString()} xe
+                  </p>
+                  <p className="text-xs text-blue-500 mt-1">
+                    Bao gồm cả kho đại lý
+                  </p>
+                </div>
+                <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                  <p className="text-xs font-semibold text-green-600 uppercase tracking-wide">
+                    Khả dụng EVM
+                  </p>
+                  <p className="text-2xl font-bold text-green-900 mt-2">
+                    {selectedVehicle.available.toLocaleString()} xe
+                  </p>
+                  <p className="text-xs text-green-500 mt-1">
+                    Chưa giao cho đại lý nào
+                  </p>
+                </div>
+                <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-100">
+                  <p className="text-xs font-semibold text-yellow-600 uppercase tracking-wide">
+                    Đã đặt trước
+                  </p>
+                  <p className="text-2xl font-bold text-yellow-800 mt-2">
+                    {selectedVehicle.reserved.toLocaleString()} xe
+                  </p>
+                  <p className="text-xs text-yellow-500 mt-1">
+                    Giao dịch đang xử lý
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                    Vị trí kho
+                  </p>
+                  <p className="text-sm font-medium text-gray-900 mt-2">
+                    {selectedVehicle.location || "Không xác định"}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Cập nhật từ tồn kho EVM
+                  </p>
+                </div>
+              </div>
+
               {selectedVehicle.vehicle.images.length > 0 && (
-                <img
-                  src={selectedVehicle.vehicle.images[0].url}
-                  alt={selectedVehicle.vehicle.model}
-                  className="mt-4 w-full h-48 object-cover rounded-lg border border-gray-200"
-                />
+                <div className="mt-5">
+                  <img
+                    src={selectedVehicle.vehicle.images[0].url}
+                    alt={selectedVehicle.vehicle.model}
+                    className="w-full h-48 object-cover rounded-xl border border-gray-200"
+                  />
+                </div>
               )}
             </div>
-            <div className="mt-6 flex justify-end">
+
+            <div className="px-6 py-4 border-b border-gray-100 bg-white flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-gray-600">
+                VIN hiển thị:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: "ALL", label: "Tất cả" },
+                  {
+                    key: "EVM",
+                    label: `Kho EVM (${
+                      vehicleUnits.filter(
+                        (unit) => unit.storageType === "EVM" && !unit.dealerId
+                      ).length
+                    })`,
+                  },
+                  {
+                    key: "DEALER",
+                    label: `Kho đại lý (${
+                      vehicleUnits.filter(
+                        (unit) =>
+                          unit.storageType === "DEALER" || !!unit.dealerId
+                      ).length
+                    })`,
+                  },
+                  {
+                    key: "IN_TRANSIT",
+                    label: `Đang vận chuyển (${
+                      vehicleUnits.filter(
+                        (unit) => unit.storageType === "IN_TRANSIT"
+                      ).length
+                    })`,
+                  },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setVinFilter(item.key as typeof vinFilter)}
+                    className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                      vinFilter === item.key
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50">
+              {vehicleUnitsLoading ? (
+                <div className="flex items-center justify-center py-12 text-gray-500">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  Đang tải danh sách VIN...
+                </div>
+              ) : vehicleUnitsError ? (
+                <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-lg">
+                  {vehicleUnitsError}
+                </div>
+              ) : vehicleUnits.length === 0 ? (
+                <div className="bg-white border border-dashed border-gray-300 rounded-xl py-12 text-center text-gray-500">
+                  Chưa có VIN nào được tạo cho mẫu xe này.
+                </div>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          VIN
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Trạng thái
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Kho
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Đại lý
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Cập nhật
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200 text-sm text-gray-700">
+                      {vehicleUnits
+                        .filter((unit) => {
+                          if (vinFilter === "EVM") {
+                            return unit.storageType === "EVM" && !unit.dealerId;
+                          }
+                          if (vinFilter === "DEALER") {
+                            return (
+                              unit.storageType === "DEALER" || !!unit.dealerId
+                            );
+                          }
+                          if (vinFilter === "IN_TRANSIT") {
+                            return unit.storageType === "IN_TRANSIT";
+                          }
+                          return true;
+                        })
+                        .map((unit) => (
+                          <tr key={unit.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-semibold text-gray-900">
+                              {unit.vin}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                                {statusLabelMap[unit.status] || unit.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-gray-600">
+                              {storageTypeLabelMap[unit.storageType] ||
+                                unit.storageType}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600">
+                              {unit.dealer
+                                ? `${unit.dealer.name}${
+                                    unit.dealer.city
+                                      ? ` (${unit.dealer.city})`
+                                      : ""
+                                  }`
+                                : "Kho tổng EVM"}
+                            </td>
+                            <td className="px-4 py-3 text-gray-500">
+                              {formatDateTime(unit.updatedAt || unit.createdAt)}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 bg-white border-t border-gray-200 flex justify-end">
               <button
-                onClick={() => setShowDetailModal(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors duration-200"
+                onClick={handleCloseDetailModal}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
               >
                 Đóng
               </button>

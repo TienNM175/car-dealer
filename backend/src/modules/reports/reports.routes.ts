@@ -1,7 +1,7 @@
-import { Router } from 'express';
-import { ReportsController } from './reports.controller';
-import { AuthMiddleware } from '../../middlewares/auth.middleware';
-import { RoleMiddleware } from '../../middlewares/role.middleware';
+import { Router } from "express";
+import { ReportsController } from "./reports.controller";
+import { AuthMiddleware } from "../../middlewares/auth.middleware";
+import { RoleMiddleware } from "../../middlewares/role.middleware";
 
 const router = Router();
 const reportsController = new ReportsController();
@@ -16,7 +16,7 @@ const reportsController = new ReportsController();
  * @access  Private - Dealer Manager and above
  */
 router.get(
-  '/dashboard',
+  "/dashboard",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   reportsController.getDashboardOverview
@@ -28,7 +28,7 @@ router.get(
  * @access  Private - EVM Staff, Admin
  */
 router.get(
-  '/executive-summary',
+  "/executive-summary",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   reportsController.getExecutiveSummary
@@ -44,7 +44,7 @@ router.get(
  * @access  Private - Dealer Manager and above
  */
 router.get(
-  '/sales',
+  "/sales",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   reportsController.getSalesReport
@@ -56,7 +56,7 @@ router.get(
  * @access  Private - Dealer Manager and above
  */
 router.get(
-  '/customers',
+  "/customers",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   reportsController.getCustomerReport
@@ -68,7 +68,7 @@ router.get(
  * @access  Private - Dealer Manager and above
  */
 router.get(
-  '/inventory',
+  "/inventory",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   reportsController.getInventoryReport
@@ -80,10 +80,34 @@ router.get(
  * @access  Private - EVM Staff, Admin
  */
 router.get(
-  '/dealer-performance',
+  "/dealer-performance",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   reportsController.getDealerPerformanceReport
+);
+
+/**
+ * @route   GET /api/v1/reports/vehicles-by-dealer
+ * @desc    Get vehicles with inventory and sales by dealer
+ * @access  Private - EVM Staff, Admin
+ */
+router.get(
+  "/vehicles-by-dealer",
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireEVMStaff,
+  reportsController.getVehiclesByDealerReport
+);
+
+/**
+ * @route   GET /api/v1/reports/vehicles/:vehicleId
+ * @desc    Get vehicle detail report (inventory + contracts)
+ * @access  Private - EVM Staff, Admin
+ */
+router.get(
+  "/vehicles/:vehicleId",
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireEVMStaff,
+  reportsController.getVehicleDetailReport
 );
 
 export default router;

@@ -82,30 +82,64 @@ export const updateCustomerValidation = [
     .normalizeEmail(),
 
   body('phone')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
-    .isMobilePhone('any')
-    .withMessage('Valid phone number is required'),
+    .custom((value) => {
+      // Allow empty string or null
+      if (!value || value === '' || value === null) {
+        return true;
+      }
+      // Validate if value is provided
+      const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+      if (!phoneRegex.test(value)) {
+        throw new Error('Valid phone number is required');
+      }
+      return true;
+    }),
 
   body('address')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
-    .isLength({ max: 200 })
-    .withMessage('Address must not exceed 200 characters'),
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') {
+        return true; // Allow empty string
+      }
+      if (value.length > 200) {
+        throw new Error('Address must not exceed 200 characters');
+      }
+      return true;
+    }),
 
   body('city')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
-    .isLength({ max: 100 })
-    .withMessage('City must not exceed 100 characters'),
+    .custom((value) => {
+      if (value === undefined || value === null || value === '') {
+        return true; // Allow empty string
+      }
+      if (value.length > 100) {
+        throw new Error('City must not exceed 100 characters');
+      }
+      return true;
+    }),
 
   body('identityCard')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
-    .isLength({ min: 9, max: 12 })
-    .withMessage('Identity card must be between 9 and 12 characters')
-    .matches(/^[0-9]+$/)
-    .withMessage('Identity card must contain only numbers'),
+    .custom((value) => {
+      // Allow empty string or null
+      if (!value || value === '' || value === null) {
+        return true;
+      }
+      // Validate if value is provided
+      if (value.length < 9 || value.length > 12) {
+        throw new Error('Identity card must be between 9 and 12 characters');
+      }
+      if (!/^[0-9]+$/.test(value)) {
+        throw new Error('Identity card must contain only numbers');
+      }
+      return true;
+    }),
 
   body('status')
     .optional()

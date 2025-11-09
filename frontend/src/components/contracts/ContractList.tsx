@@ -221,9 +221,24 @@ export default function ContractList({
                         Hợp đồng #{contract.contractCode}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        Khách hàng: {contract.customer?.firstName}{" "}
-                        {contract.customer?.lastName}
+                        <span className="font-medium">Khách hàng:</span>{" "}
+                        {contract.customer?.firstName} {contract.customer?.lastName}
                       </p>
+                      {contract.customer?.email && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          📧 {contract.customer.email}
+                        </p>
+                      )}
+                      {contract.customer?.phone && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          📞 {contract.customer.phone}
+                        </p>
+                      )}
+                      {contract.customer?.address && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          📍 {contract.customer.address}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div
