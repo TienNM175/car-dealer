@@ -7,7 +7,7 @@ interface DealerOrderDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   order: DealerOrder | null;
-  onStatusChange: (orderId: string, status: DealerOrder['status']) => void;
+  onStatusChange: (orderId: string, status: DealerOrder['status']) => Promise<void>; // Thay đổi: thêm async
   onEditClick?: (order: DealerOrder) => void;
   userRole: string;
 }
@@ -37,7 +37,16 @@ export default function DealerOrderDetailModal({
   onEditClick,
   userRole,
 }: DealerOrderDetailModalProps) {
-  if (!isOpen || !order) return null;
+  // Thêm state để quản lý order trong modal
+  const [currentOrder, setCurrentOrder] = React.useState<DealerOrder | null>(order);
+  const [isUpdating, setIsUpdating] = React.useState(false);
+
+  // Cập nhật currentOrder khi prop order thay đổi
+  React.useEffect(() => {
+    setCurrentOrder(order);
+  }, [order]);
+
+  if (!isOpen || !currentOrder) return null;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -61,21 +70,52 @@ export default function DealerOrderDetailModal({
     return currentIndex < statusFlow.length - 1 ? statusFlow[currentIndex + 1] as DealerOrder['status'] : null;
   };
 
-  const canEdit = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
-  const nextStatus = getNextStatus(order.status);
+  // Hàm xử lý cập nhật trạng thái
+  const handleStatusChange = async (newStatus: DealerOrder['status']) => {
+    if (!currentOrder) return;
+    
+    setIsUpdating(true);
+    try {
+      // Cập nhật trạng thái ngay lập tức trong UI
+      const updatedOrder = {
+        ...currentOrder,
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+        // Cập nhật timestamp tương ứng với trạng thái
+        ...(newStatus === 'CONFIRMED' && { confirmedAt: new Date().toISOString() }),
+        ...(newStatus === 'SHIPPED' && { shippedAt: new Date().toISOString() }),
+        ...(newStatus === 'DELIVERED' && { deliveredAt: new Date().toISOString() }),
+      };
+      
+      setCurrentOrder(updatedOrder);
+      
+      // Gọi API để cập nhật trên server
+      await onStatusChange(currentOrder.id, newStatus);
+      
+    } catch (error) {
+      // Nếu có lỗi, khôi phục lại trạng thái cũ
+      setCurrentOrder(order);
+      console.error('Failed to update order status:', error);
+      // Bạn có thể thêm thông báo lỗi ở đây nếu cần
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const canEdit = userRole === 'DEALER_MANAGER' && currentOrder.status === 'PENDING';
+  const nextStatus = getNextStatus(currentOrder.status);
   
   const canUpdateStatus = (userRole === 'EVM_STAFF' || userRole === 'ADMIN') && 
     nextStatus && 
-    order.status !== 'CANCELLED';
+    currentOrder.status !== 'CANCELLED';
   
-  const canCancel = userRole === 'DEALER_MANAGER' && order.status === 'PENDING';
+  const canCancel = userRole === 'DEALER_MANAGER' && currentOrder.status === 'PENDING';
 
-  const StatusIcon = statusConfig[order.status].icon;
-  const statusColorClass = statusConfig[order.status].color;
+  const StatusIcon = statusConfig[currentOrder.status].icon;
+  const statusColorClass = statusConfig[currentOrder.status].color;
 
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
-      {/* Thay đổi chính: Thêm flex-col và max-h cho container ngoài */}
       <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header - cố định */}
         <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200">
@@ -85,13 +125,13 @@ export default function DealerOrderDetailModal({
               <h2 className="text-xl font-semibold text-gray-800">
                 Chi tiết đơn hàng
               </h2>
-              <p className="text-gray-600">{order.orderNumber}</p>
+              <p className="text-gray-600">{currentOrder.orderNumber}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {onEditClick && canEdit && (
               <button
-                onClick={() => onEditClick(order)}
+                onClick={() => onEditClick(currentOrder)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <Edit className="w-4 h-4" />
@@ -115,15 +155,19 @@ export default function DealerOrderDetailModal({
               className={`inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold rounded-full ${statusColorClass}`}
             >
               <StatusIcon className="w-4 h-4" />
-              {statusConfig[order.status].label}
+              {statusConfig[currentOrder.status].label}
+              {isUpdating && (
+                <span className="ml-2 text-xs">(Đang cập nhật...)</span>
+              )}
             </span>
             
             <div className="flex gap-2">
               {/* EV Staff - Update status */}
               {canUpdateStatus && nextStatus && (
                 <button
-                  onClick={() => onStatusChange(order.id, nextStatus)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={() => handleStatusChange(nextStatus)}
+                  disabled={isUpdating}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Chuyển sang {statusConfig[nextStatus].label}
@@ -133,8 +177,9 @@ export default function DealerOrderDetailModal({
               {/* Manager - Cancel order */}
               {canCancel && (
                 <button
-                  onClick={() => onStatusChange(order.id, 'CANCELLED')}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  onClick={() => handleStatusChange('CANCELLED')}
+                  disabled={isUpdating}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Ban className="w-4 h-4" />
                   Hủy đơn hàng
@@ -151,46 +196,46 @@ export default function DealerOrderDetailModal({
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900">Đơn hàng được tạo</p>
-                  <p className="text-sm text-gray-500">{formatDate(order.createdAt)}</p>
+                  <p className="text-sm text-gray-500">{formatDate(currentOrder.createdAt)}</p>
                 </div>
               </div>
               
-              {order.orderedAt && (
+              {currentOrder.orderedAt && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">Đã đặt hàng</p>
-                    <p className="text-sm text-gray-500">{formatDate(order.orderedAt)}</p>
+                    <p className="text-sm text-gray-500">{formatDate(currentOrder.orderedAt)}</p>
                   </div>
                 </div>
               )}
               
-              {order.confirmedAt && (
+              {currentOrder.confirmedAt && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">Đã xác nhận</p>
-                    <p className="text-sm text-gray-500">{formatDate(order.confirmedAt)}</p>
+                    <p className="text-sm text-gray-500">{formatDate(currentOrder.confirmedAt)}</p>
                   </div>
                 </div>
               )}
               
-              {order.shippedAt && (
+              {currentOrder.shippedAt && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">Đã giao hàng</p>
-                    <p className="text-sm text-gray-500">{formatDate(order.shippedAt)}</p>
+                    <p className="text-sm text-gray-500">{formatDate(currentOrder.shippedAt)}</p>
                   </div>
                 </div>
               )}
               
-              {order.deliveredAt && (
+              {currentOrder.deliveredAt && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">Đã giao thành công</p>
-                    <p className="text-sm text-gray-500">{formatDate(order.deliveredAt)}</p>
+                    <p className="text-sm text-gray-500">{formatDate(currentOrder.deliveredAt)}</p>
                   </div>
                 </div>
               )}
@@ -205,20 +250,20 @@ export default function DealerOrderDetailModal({
               <div className="space-y-2">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Tên đại lý</label>
-                  <p className="text-gray-900">{order.dealer?.name || 'N/A'}</p>
+                  <p className="text-gray-900">{currentOrder.dealer?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Mã đại lý</label>
-                  <p className="text-gray-900">{order.dealer?.code || 'N/A'}</p>
+                  <p className="text-gray-900">{currentOrder.dealer?.code || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Thành phố</label>
-                  <p className="text-gray-900">{order.dealer?.city || 'N/A'}</p>
+                  <p className="text-gray-900">{currentOrder.dealer?.city || 'N/A'}</p>
                 </div>
-                {order.dealer?.region && (
+                {currentOrder.dealer?.region && (
                   <div>
                     <label className="text-sm font-medium text-gray-500">Khu vực</label>
-                    <p className="text-gray-900">{order.dealer.region.name}</p>
+                    <p className="text-gray-900">{currentOrder.dealer.region.name}</p>
                   </div>
                 )}
               </div>
@@ -231,20 +276,20 @@ export default function DealerOrderDetailModal({
                 <div>
                   <label className="text-sm font-medium text-gray-500">Xe</label>
                   <p className="text-gray-900">
-                    {order.vehicle?.manufacturer?.name} {order.vehicle?.model} {order.vehicle?.variant}
+                    {currentOrder.vehicle?.manufacturer?.name} {currentOrder.vehicle?.model} {currentOrder.vehicle?.variant}
                   </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Số lượng</label>
-                  <p className="text-gray-900">{order.quantity} xe</p>
+                  <p className="text-gray-900">{currentOrder.quantity} xe</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Đơn giá</label>
-                  <p className="text-gray-900">{formatCurrency(Number(order.unitPrice))}</p>
+                  <p className="text-gray-900">{formatCurrency(Number(currentOrder.unitPrice))}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Tổng tiền</label>
-                  <p className="text-gray-900 font-semibold">{formatCurrency(Number(order.totalAmount))}</p>
+                  <p className="text-gray-900 font-semibold">{formatCurrency(Number(currentOrder.totalAmount))}</p>
                 </div>
               </div>
             </div>
@@ -256,12 +301,12 @@ export default function DealerOrderDetailModal({
                 <div>
                   <label className="text-sm font-medium text-gray-500">Họ tên</label>
                   <p className="text-gray-900">
-                    {order.staff?.firstName} {order.staff?.lastName}
+                    {currentOrder.staff?.firstName} {currentOrder.staff?.lastName}
                   </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Email</label>
-                  <p className="text-gray-900">{order.staff?.email}</p>
+                  <p className="text-gray-900">{currentOrder.staff?.email}</p>
                 </div>
               </div>
             </div>
@@ -272,26 +317,26 @@ export default function DealerOrderDetailModal({
               <div className="space-y-2">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Mã đơn hàng</label>
-                  <p className="text-gray-900 font-mono">{order.orderNumber}</p>
+                  <p className="text-gray-900 font-mono">{currentOrder.orderNumber}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Ngày tạo</label>
-                  <p className="text-gray-900">{formatDate(order.createdAt)}</p>
+                  <p className="text-gray-900">{formatDate(currentOrder.createdAt)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Cập nhật lần cuối</label>
-                  <p className="text-gray-900">{formatDate(order.updatedAt)}</p>
+                  <p className="text-gray-900">{formatDate(currentOrder.updatedAt)}</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Notes */}
-          {order.notes && (
+          {currentOrder.notes && (
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-900 border-b pb-2">Ghi chú</h3>
               <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-700 whitespace-pre-wrap">{order.notes}</p>
+                <p className="text-gray-700 whitespace-pre-wrap">{currentOrder.notes}</p>
               </div>
             </div>
           )}
