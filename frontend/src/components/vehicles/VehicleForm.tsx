@@ -101,6 +101,7 @@ export default function VehicleForm({
     status: "ACTIVE",
     description: "",
     specifications: "",
+    initialStock: 10,
   });
 
   // Load manufacturers on component mount
@@ -146,6 +147,7 @@ export default function VehicleForm({
         status: vehicle.status,
         description: vehicle.description || "",
         specifications: vehicle.specifications || "",
+        initialStock: undefined,
       });
     }
   }, [vehicle]);
@@ -486,6 +488,31 @@ export default function VehicleForm({
                   </select>
                 )}
               </div>
+
+              {!vehicle && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Số lượng VIN khởi tạo <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={formData.initialStock ?? 0}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        initialStock: Math.max(0, Number(e.target.value)),
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Hệ thống sẽ tự sinh {formData.initialStock ?? 0} VIN tại kho
+                    tổng EVM.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

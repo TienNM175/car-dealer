@@ -149,7 +149,14 @@ export class InventoryController {
 
   async transferInventory(req: Request, res: Response, next: NextFunction) {
     try {
-      const data = await inventoryService.transferInventory(req.body);
+      const payload = {
+        vehicleId: req.body.vehicleId,
+        toDealerId: req.body.toDealerId,
+        quantity: Number(req.body.quantity),
+        notes: req.body.notes,
+        performedById: req.user?.userId,
+      };
+      const data = await inventoryService.transferInventory(payload);
       return ResponseUtil.success(
         res,
         data,
