@@ -15,14 +15,24 @@ const controller = new VehicleUnitController();
 router.get(
   "/",
   AuthMiddleware.authenticate,
-  RoleMiddleware.requireDealerStaff,
+  RoleMiddleware.requireRole(
+    "ADMIN",
+    "EVM_STAFF",
+    "DEALER_MANAGER",
+    "DEALER_STAFF"
+  ),
   controller.getVehicleUnits
 );
 
 router.get(
   "/available",
   AuthMiddleware.authenticate,
-  RoleMiddleware.requireDealerStaff,
+  RoleMiddleware.requireRole(
+    "ADMIN",
+    "EVM_STAFF",
+    "DEALER_MANAGER",
+    "DEALER_STAFF"
+  ),
   getAvailableVehicleUnitsValidation,
   ValidationMiddleware.validate,
   controller.getAvailableVehicleUnits

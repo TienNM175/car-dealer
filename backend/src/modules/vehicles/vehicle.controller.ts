@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { Prisma } from "@prisma/client";
 import { VehicleService } from "./vehicle.service";
 import { ResponseUtil } from "../../utils/response.util";
 import { CloudinaryService } from "./cloudinary.service";
@@ -97,7 +98,18 @@ export class VehicleController {
 
   async createVehicle(req: Request, res: Response, next: NextFunction) {
     try {
-      const vehicle = await vehicleService.createVehicle(req.body);
+      const { initialStock, initialUnits, ...rest } = req.body || {};
+      const vehicleData = rest as Prisma.VehicleCreateInput;
+
+      const vehicle = await vehicleService.createVehicle(vehicleData, {
+        createdById: req.user?.userId,
+        initialStock:
+          typeof initialStock !== "undefined"
+            ? Number(initialStock)
+            : typeof initialUnits !== "undefined"
+            ? Number(initialUnits)
+            : undefined,
+      });
       return ResponseUtil.created(res, vehicle, "Vehicle created successfully");
     } catch (error: any) {
       return next(error);

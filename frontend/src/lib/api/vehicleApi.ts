@@ -89,6 +89,7 @@ export interface CreateVehicleInput {
   status?: string;
   description?: string;
   specifications?: string;
+  initialStock?: number;
 }
 
 export interface UpdateVehicleInput extends Partial<CreateVehicleInput> { }

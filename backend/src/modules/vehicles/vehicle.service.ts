@@ -1,5 +1,10 @@
+import { randomUUID } from "crypto";
 import prisma from "../../config/database";
-import { Prisma, VehicleStatus } from "@prisma/client";
+import {
+  Prisma,
+  VehicleStatus,
+  VehicleUnitStorageType,
+} from "@prisma/client";
 import { CloudinaryService } from "./cloudinary.service";
 
 interface VehicleFilters {
@@ -21,6 +26,9 @@ interface PaginationParams {
 }
 
 const cloudinaryService = new CloudinaryService();
+type VehicleWithManufacturer = Prisma.VehicleGetPayload<{
+  include: { manufacturer: true; images: true };
+}>;
 
 export class VehicleService {
   async getAllVehicles(filters: VehicleFilters, pagination: PaginationParams) {
@@ -246,7 +254,72 @@ export class VehicleService {
     return vehicle;
   }
 
-  async createVehicle(data: Prisma.VehicleCreateInput) {
+  private sanitizeCode(value?: string | null) {
+    return (value ?? "").replace(/[^A-Za-z0-9]/g, "").toUpperCase() || "EVM";
+  }
+
+  private buildVin(prefix: string, vehicleId: string, index: number) {
+    const uuidSegment = randomUUID().replace(/-/g, "").toUpperCase().slice(0, 8);
+    const timestampSegment = Date.now().toString(36).toUpperCase();
+    const vehicleSuffix = vehicleId.slice(-6).toUpperCase();
+    return `${prefix}-${timestampSegment}-${vehicleSuffix}-${index + 1}-${uuidSegment}`;
+  }
+
+  private async createDefaultVehicleUnits(
+    tx: Prisma.TransactionClient,
+    vehicle: VehicleWithManufacturer,
+    count: number,
+    createdById?: string
+  ) {
+    if (count <= 0) {
+      return;
+    }
+
+    const prefix = this.sanitizeCode(
+      vehicle.manufacturer?.code || vehicle.manufacturer?.name || vehicle.model
+    );
+
+    const now = new Date();
+    const unitPayload: Prisma.VehicleUnitCreateManyInput[] = Array.from(
+      { length: count },
+      (_, index) => {
+        const vin = this.buildVin(prefix, vehicle.id, index);
+        return {
+          vehicleId: vehicle.id,
+          vin,
+          engineNumber: `ENG-${vin}`,
+          batterySerial: `BAT-${vin}`,
+          color: vehicle.color,
+          storageType: VehicleUnitStorageType.EVM,
+          dealerId: null,
+          location: "Kho tổng EVM",
+          manufacturedAt: now,
+          importedAt: now,
+          createdById,
+        };
+      }
+    );
+
+    await tx.vehicleUnit.createMany({
+      data: unitPayload,
+      skipDuplicates: true,
+    });
+  }
+
+  async createVehicle(
+    data: Prisma.VehicleCreateInput,
+    options?: { createdById?: string; initialStock?: number }
+  ) {
+    const stockInput = options?.initialStock;
+    const parsedInitialStock =
+      typeof stockInput === "number"
+        ? Math.max(0, Math.trunc(stockInput))
+        : Number.isFinite(Number(stockInput))
+        ? Math.max(0, Math.trunc(Number(stockInput)))
+        : 10;
+
+    const initialStock = parsedInitialStock || 0;
+
     const vehicle = await prisma.$transaction(async (tx) => {
       // Create vehicle
       const newVehicle = await tx.vehicle.create({
@@ -261,12 +334,19 @@ export class VehicleService {
       await tx.eVMInventory.create({
         data: {
           vehicleId: newVehicle.id,
-          quantity: 10, // Default stock for new vehicles
+          quantity: initialStock,
           reserved: 0,
-          available: 10, // Same as quantity initially
-          location: "EVM Warehouse",
+          available: initialStock,
+          location: "Kho tổng EVM",
         },
       });
+
+      await this.createDefaultVehicleUnits(
+        tx,
+        newVehicle as VehicleWithManufacturer,
+        initialStock,
+        options?.createdById
+      );
 
       return newVehicle;
     });

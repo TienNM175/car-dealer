@@ -1,5 +1,10 @@
 import prisma from "../../config/database";
-import { Prisma, DealerOrderStatus } from "@prisma/client";
+import {
+  Prisma,
+  DealerOrderStatus,
+  VehicleUnitStatus,
+  VehicleUnitStorageType,
+} from "@prisma/client";
 
 interface DealerOrderFilters {
   search?: string;
@@ -412,7 +417,7 @@ export class DealerOrderService {
   async updateDealerOrderStatus(
     id: string,
     status: DealerOrderStatus,
-    _userId: string
+    userId: string
   ) {
     const order = await prisma.dealerOrder.findUnique({
       where: { id },
@@ -441,6 +446,8 @@ export class DealerOrderService {
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      const transferredUnits: { id: string; vin: string }[] = [];
+
       const updatedOrder = await tx.dealerOrder.update({
         where: { id },
         data: {
@@ -466,8 +473,51 @@ export class DealerOrderService {
         },
       });
 
-      // If delivered, update inventories
+      // If delivered, assign VINs and update inventories
       if (status === "DELIVERED") {
+        const vinCandidates = await tx.vehicleUnit.findMany({
+          where: {
+            vehicleId: order.vehicleId,
+            dealerId: null,
+            status: VehicleUnitStatus.IN_STOCK,
+            storageType: VehicleUnitStorageType.EVM,
+          },
+          orderBy: [
+            { importedAt: "asc" },
+            { createdAt: "asc" },
+            { vin: "asc" },
+          ],
+          take: order.quantity,
+        });
+
+        if (vinCandidates.length < order.quantity) {
+          throw new Error(
+            `Not enough VIN units available in EVM stock to deliver this order. Required ${order.quantity}, found ${vinCandidates.length}`
+          );
+        }
+
+        const now = new Date();
+        for (const unit of vinCandidates) {
+          const updatedUnit = await tx.vehicleUnit.update({
+            where: { id: unit.id },
+            data: {
+              dealerId: order.dealerId,
+              storageType: VehicleUnitStorageType.DEALER,
+              location: order.dealer?.name || unit.location || null,
+              status: VehicleUnitStatus.IN_STOCK,
+              reservedAt: null,
+              deliveredAt: null,
+              importedAt: now,
+              updatedById: userId || undefined,
+            },
+            select: {
+              id: true,
+              vin: true,
+            },
+          });
+          transferredUnits.push(updatedUnit);
+        }
+
         // Reduce EVM inventory reserved
         await tx.eVMInventory.update({
           where: { vehicleId: order.vehicleId },
@@ -526,10 +576,13 @@ export class DealerOrderService {
         });
       }
 
-      return updatedOrder;
+      return { updatedOrder, transferredUnits };
     });
 
-    return result;
+    return {
+      ...result.updatedOrder,
+      transferredUnits: result.transferredUnits,
+    };
   }
 
   /**
