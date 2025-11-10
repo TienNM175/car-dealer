@@ -154,29 +154,29 @@ function getReportUnit(type: AnyReportType): string {
 // Helper function để xử lý inventory data
 function processInventoryData(data: any) {
   const dealersRaw = data.dealerSummary || data.dealers || data.summary?.byDealer || [];
-  
+
   const dealerSummary = Array.isArray(dealersRaw)
     ? dealersRaw.map((d: any) => ({
-        dealer: d.dealer?.name ?? d.dealerName ?? "Không xác định",
-        available: Number(d.totalAvailable ?? d.available ?? d.summary?.available ?? 0),
-        reserved: Number(d.totalReserved ?? d.reserved ?? d.summary?.reserved ?? 0),
-        sold: Number(d.totalSold ?? d.sold ?? d.summary?.sold ?? 0),
-      }))
+      dealer: d.dealer?.name ?? d.dealerName ?? "Không xác định",
+      available: Number(d.totalAvailable ?? d.available ?? d.summary?.available ?? 0),
+      reserved: Number(d.totalReserved ?? d.reserved ?? d.summary?.reserved ?? 0),
+      sold: Number(d.totalSold ?? d.sold ?? d.summary?.sold ?? 0),
+    }))
     : [];
 
   const lowStock = Array.isArray(data.lowStock)
     ? data.lowStock.map((v: any) => ({
-        vehicle: v.vehicle?.model ?? v.vehicleName ?? "Xe không xác định",
-        available: Number(v.available ?? v.stock ?? 0),
-      }))
+      vehicle: v.vehicle?.model ?? v.vehicleName ?? "Xe không xác định",
+      available: Number(v.available ?? v.stock ?? 0),
+    }))
     : [];
 
   const vehicleStats = Array.isArray(data.vehicleStats)
     ? data.vehicleStats.map((v: any) => ({
-        vehicle: v.vehicle?.model ?? v.vehicleName ?? "Xe không xác định",
-        totalStock: Number(v.totalStock ?? v.stock ?? 0),
-        totalSold: Number(v.totalSold ?? v.sold ?? 0),
-      }))
+      vehicle: v.vehicle?.model ?? v.vehicleName ?? "Xe không xác định",
+      totalStock: Number(v.totalStock ?? v.stock ?? 0),
+      totalSold: Number(v.totalSold ?? v.sold ?? 0),
+    }))
     : [];
 
   const total = dealerSummary.reduce(
@@ -270,7 +270,7 @@ export async function fetchReport(
         console.log("[DEBUG] /reports/inventory raw:", data);
 
         const processedData = processInventoryData(data);
-        
+
         return {
           title: getReportTitle(type),
           unit: getReportUnit(type),
@@ -328,9 +328,11 @@ export async function fetchReport(
 
     if (type === "sales") {
       try {
+        console.log("[DEBUG] Fetching /reports/sales with params:", params); // ✅ thêm dòng này
         const res = await axiosClient.get(`/reports/sales`, { params });
         const data = res.data?.data || res.data;
         console.log("[DEBUG] Sales data:", data);
+
 
         const totalRevenue = data.byStatus?.reduce(
           (sum: number, s: any) => sum + Number(s._sum?.finalPrice ?? s.revenue ?? 0),
@@ -341,8 +343,14 @@ export async function fetchReport(
           title: getReportTitle(type),
           unit: getReportUnit(type),
           total: totalRevenue,
-          ...data,
+          byStatus: data.byStatus ?? [],
+          byPaymentType: data.byPaymentType ?? [],
+          topVehicles: data.topVehicles ?? [],
+          staffPerformance: data.staffPerformance ?? [], // ✅ thêm dòng này
+          monthlyTrend: data.monthlyTrend ?? [],
+          vehiclesByDealer: data.vehiclesByDealer ?? [],
         };
+
       } catch (error: any) {
         console.error("[ERROR] Sales report failed:", error.message);
         return getFallbackData(type);
@@ -376,7 +384,7 @@ export async function fetchReport(
       try {
         const res = await axiosClient.get(`/debts/customers`, { params });
         const data = res.data?.data || res.data;
-        
+
         return {
           title: getReportTitle(type),
           unit: getReportUnit(type),
@@ -393,7 +401,7 @@ export async function fetchReport(
       try {
         const res = await axiosClient.get(`/debts/dealers/detail`, { params });
         const data = res.data?.data || res.data;
-        
+
         return {
           title: getReportTitle(type),
           unit: getReportUnit(type),
@@ -498,7 +506,7 @@ export async function fetchReport(
       code: error.code,
       response: error.response?.data
     });
-    
+
     return getFallbackData(type);
   }
 }

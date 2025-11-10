@@ -96,12 +96,10 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
           staffRes?.data ||
           [];
 
-        // LỌC XE CÒN KHẢ DỤNG
         const activeVehicles = vehiclesData.filter(
           (v) => v.status === 'AVAILABLE' || v.status === 'ACTIVE'
         );
 
-        // LỌC NHÂN VIÊN CÓ ROLE DEALER_STAFF / DEALER_MANAGER (KIỂM TRA ROLE TRƯỚC)
         const staffFiltered = staffData.filter(
           (u) =>
             u.role &&
