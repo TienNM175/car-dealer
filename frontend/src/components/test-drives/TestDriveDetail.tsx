@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ca
 import { CalendarDays, User, Car, ClipboardList, Mail, Phone, MapPin, Building2, DollarSign, Info } from 'lucide-react';
 
 
+
 interface TestDriveDetailProps {
     testDrive: TestDrive;
 }
@@ -29,8 +30,12 @@ const formatDate = (dateStr?: string) => {
     return format(d, 'HH:mm - dd/MM/yyyy', { locale: vi });
 };
 
+
+
 export const TestDriveDetail: React.FC<TestDriveDetailProps> = ({ testDrive }) => {
+
     return (
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-[#111]">
 
             {/* --- Cột trái --- */}
@@ -38,18 +43,19 @@ export const TestDriveDetail: React.FC<TestDriveDetailProps> = ({ testDrive }) =
                 {/* Khách hàng */}
                 <Card className="shadow-md border border-gray-200">
                     <CardHeader className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-t-md flex items-center gap-2">
-                        <User className="text-blue-600 w-5 h-5" />
+                        <User className="text-blue-700 w-5 h-5" />
                         <CardTitle className="text-blue-800 font-semibold">Khách hàng</CardTitle>
                     </CardHeader>
+
                     <CardContent className="space-y-2 pt-4">
                         <p><b>Họ tên:</b> {testDrive.customer?.firstName} {testDrive.customer?.lastName}</p>
                         <p><b>Email:</b> {testDrive.customer?.email || 'Không có'}</p>
                         <p><b>Số điện thoại:</b> {testDrive.customer?.phone || 'Không có'}</p>
                         <p><b>Địa chỉ:</b> {testDrive.customer?.address || 'Không rõ'} - {testDrive.customer?.city || ''}</p>
-                        <p className="flex items-center gap-2">
+                        {/* <p className="flex items-center gap-2">
                             <b>Trạng thái:</b>
                             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">TEST DRIVE</span>
-                        </p>
+                        </p> */}
                         {testDrive.customer?._count && (
                             <p>
                                 <b>Lịch sử:</b>{' '}
@@ -63,9 +69,9 @@ export const TestDriveDetail: React.FC<TestDriveDetailProps> = ({ testDrive }) =
 
                 {/* Nhân viên phụ trách */}
                 <Card className="shadow-md border border-gray-200">
-                    <CardHeader className="bg-gradient-to-r from-teal-100 to-teal-200 rounded-t-md flex items-center gap-2">
-                        <User className="text-teal-700 w-5 h-5" />
-                        <CardTitle className="text-teal-800 font-semibold">Nhân viên phụ trách</CardTitle>
+                    <CardHeader className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-t-md flex items-center gap-2">
+                        <User className="text-blue-700 w-5 h-5" />
+                        <CardTitle className="text-blue-800 font-semibold">Nhân viên phụ trách</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2 pt-4">
                         <p><b>Họ tên:</b> {testDrive.staff?.firstName ?? ''} {testDrive.staff?.lastName ?? ''}</p>
@@ -81,9 +87,9 @@ export const TestDriveDetail: React.FC<TestDriveDetailProps> = ({ testDrive }) =
             <div className="flex flex-col gap-6">
                 {/* Thông tin buổi lái thử */}
                 <Card className="shadow-md border border-gray-200">
-                    <CardHeader className="bg-gradient-to-r from-cyan-100 to-cyan-200 rounded-t-md flex items-center gap-2">
-                        <ClipboardList className="text-cyan-700 w-5 h-5" />
-                        <CardTitle className="text-cyan-800 font-semibold">Thông tin buổi lái thử</CardTitle>
+                    <CardHeader className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-t-md flex items-center gap-2">
+                        <ClipboardList className="text-blue-700 w-5 h-5" />
+                        <CardTitle className="text-blue-800 font-semibold">Thông tin buổi lái thử</CardTitle>
                     </CardHeader>
 
                     <CardContent className="grid grid-cols-2 gap-y-2 pt-4">
@@ -144,6 +150,6 @@ export const TestDriveDetail: React.FC<TestDriveDetailProps> = ({ testDrive }) =
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </div >
     );
 };
