@@ -677,9 +677,6 @@ export default function DealerInventoryPage() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Cập nhật
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Ghi chú
-                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200 text-sm text-gray-700">
@@ -700,9 +697,6 @@ export default function DealerInventoryPage() {
                             </td>
                             <td className="px-4 py-3 text-gray-500">
                               {formatDateTime(unit.updatedAt || unit.createdAt)}
-                            </td>
-                            <td className="px-4 py-3 text-gray-500">
-                              {unit.location || "-"}
                             </td>
                           </tr>
                         ))}

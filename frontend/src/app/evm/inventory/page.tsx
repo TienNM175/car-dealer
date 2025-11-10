@@ -54,9 +54,6 @@ export default function InventoryPage() {
   const [vehicleUnitsError, setVehicleUnitsError] = useState<string | null>(
     null
   );
-  const [vinFilter, setVinFilter] = useState<
-    "ALL" | "EVM" | "DEALER" | "IN_TRANSIT"
-  >("ALL");
 
   // Thêm states cho search và filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -80,12 +77,6 @@ export default function InventoryPage() {
     DELIVERED: "Đã giao",
     RETURNED: "Đã trả",
     DAMAGED: "Hư hỏng",
-  };
-
-  const storageTypeLabelMap: Record<string, string> = {
-    EVM: "Kho tổng EVM",
-    DEALER: "Kho đại lý",
-    IN_TRANSIT: "Đang vận chuyển",
   };
 
   const loadVehicleUnits = async (vehicleId: string) => {
@@ -115,7 +106,6 @@ export default function InventoryPage() {
     setShowDetailModal(false);
     setVehicleUnits([]);
     setVehicleUnitsError(null);
-    setVinFilter("ALL");
   };
 
   useEffect(() => {
@@ -233,7 +223,6 @@ export default function InventoryPage() {
     try {
       setVehicleUnits([]);
       setVehicleUnitsError(null);
-      setVinFilter("ALL");
       const response = await inventoryApi.getEVMInventoryByVehicle(vehicleId);
       setSelectedVehicle(response.data.data);
       setShowDetailModal(true);
@@ -827,75 +816,6 @@ export default function InventoryPage() {
                     Giao dịch đang xử lý
                   </p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                    Vị trí kho
-                  </p>
-                  <p className="text-sm font-medium text-gray-900 mt-2">
-                    {selectedVehicle.location || "Không xác định"}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Cập nhật từ tồn kho EVM
-                  </p>
-                </div>
-              </div>
-
-              {selectedVehicle.vehicle.images.length > 0 && (
-                <div className="mt-5">
-                  <img
-                    src={selectedVehicle.vehicle.images[0].url}
-                    alt={selectedVehicle.vehicle.model}
-                    className="w-full h-48 object-cover rounded-xl border border-gray-200"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="px-6 py-4 border-b border-gray-100 bg-white flex flex-wrap items-center gap-3">
-              <span className="text-sm font-medium text-gray-600">
-                VIN hiển thị:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { key: "ALL", label: "Tất cả" },
-                  {
-                    key: "EVM",
-                    label: `Kho EVM (${
-                      vehicleUnits.filter(
-                        (unit) => unit.storageType === "EVM" && !unit.dealerId
-                      ).length
-                    })`,
-                  },
-                  {
-                    key: "DEALER",
-                    label: `Kho đại lý (${
-                      vehicleUnits.filter(
-                        (unit) =>
-                          unit.storageType === "DEALER" || !!unit.dealerId
-                      ).length
-                    })`,
-                  },
-                  {
-                    key: "IN_TRANSIT",
-                    label: `Đang vận chuyển (${
-                      vehicleUnits.filter(
-                        (unit) => unit.storageType === "IN_TRANSIT"
-                      ).length
-                    })`,
-                  },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    onClick={() => setVinFilter(item.key as typeof vinFilter)}
-                    className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
-                      vinFilter === item.key
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -925,9 +845,6 @@ export default function InventoryPage() {
                           Trạng thái
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Kho
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Đại lý
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -936,22 +853,7 @@ export default function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200 text-sm text-gray-700">
-                      {vehicleUnits
-                        .filter((unit) => {
-                          if (vinFilter === "EVM") {
-                            return unit.storageType === "EVM" && !unit.dealerId;
-                          }
-                          if (vinFilter === "DEALER") {
-                            return (
-                              unit.storageType === "DEALER" || !!unit.dealerId
-                            );
-                          }
-                          if (vinFilter === "IN_TRANSIT") {
-                            return unit.storageType === "IN_TRANSIT";
-                          }
-                          return true;
-                        })
-                        .map((unit) => (
+                      {vehicleUnits.map((unit) => (
                           <tr key={unit.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3 font-semibold text-gray-900">
                               {unit.vin}
@@ -960,10 +862,6 @@ export default function InventoryPage() {
                               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                                 {statusLabelMap[unit.status] || unit.status}
                               </span>
-                            </td>
-                            <td className="px-4 py-3 text-gray-600">
-                              {storageTypeLabelMap[unit.storageType] ||
-                                unit.storageType}
                             </td>
                             <td className="px-4 py-3 text-gray-600">
                               {unit.dealer
@@ -978,7 +876,7 @@ export default function InventoryPage() {
                               {formatDateTime(unit.updatedAt || unit.createdAt)}
                             </td>
                           </tr>
-                        ))}
+                      ))}
                     </tbody>
                   </table>
                 </div>

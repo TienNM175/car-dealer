@@ -1,10 +1,6 @@
 import { randomUUID } from "crypto";
 import prisma from "../../config/database";
-import {
-  Prisma,
-  VehicleStatus,
-  VehicleUnitStorageType,
-} from "@prisma/client";
+import { Prisma, VehicleStatus, VehicleUnitStorageType } from "@prisma/client";
 import { CloudinaryService } from "./cloudinary.service";
 
 interface VehicleFilters {
@@ -259,7 +255,10 @@ export class VehicleService {
   }
 
   private buildVin(prefix: string, vehicleId: string, index: number) {
-    const uuidSegment = randomUUID().replace(/-/g, "").toUpperCase().slice(0, 8);
+    const uuidSegment = randomUUID()
+      .replace(/-/g, "")
+      .toUpperCase()
+      .slice(0, 8);
     const timestampSegment = Date.now().toString(36).toUpperCase();
     const vehicleSuffix = vehicleId.slice(-6).toUpperCase();
     return `${prefix}-${timestampSegment}-${vehicleSuffix}-${index + 1}-${uuidSegment}`;
@@ -315,8 +314,8 @@ export class VehicleService {
       typeof stockInput === "number"
         ? Math.max(0, Math.trunc(stockInput))
         : Number.isFinite(Number(stockInput))
-        ? Math.max(0, Math.trunc(Number(stockInput)))
-        : 10;
+          ? Math.max(0, Math.trunc(Number(stockInput)))
+          : 10;
 
     const initialStock = parsedInitialStock || 0;
 
