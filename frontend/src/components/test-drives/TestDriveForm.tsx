@@ -8,45 +8,26 @@ import Select from "react-select";
 import toast from "react-hot-toast";
 import { AxiosError } from "axios";
 
-import {
-  createTestDrive,
-  updateTestDrive,
-  updateTestDriveStatus,
-} from "@/lib/api/testDriveApi";
-import { customerApi } from "@/lib/api/customerApi";
-import { vehicleApi } from "@/lib/api/vehicleApi";
-import { usersApi } from "@/lib/api/users";
-import { Button } from "@/components/shared/button";
-import {
-  TestDrive,
-  Customer,
-  Vehicle,
-  User,
-  TestDriveStatus,
-} from "@/lib/types/test-drive";
+import { createTestDrive, updateTestDrive, updateTestDriveStatus } from '@/lib/api/testDriveApi';
+import { customerApi } from '@/lib/api/customerApi';
+import { vehicleApi } from '@/lib/api/vehicleApi';
+import { usersApi } from '@/lib/api/users';
+import { Button } from '@/components/shared/button';
+import { TestDrive, Customer, Vehicle, User } from '@/lib/types/test-drive';
 
 const testDriveSchema = z.object({
-  customerId: z.string().min(1, "Vui lòng chọn khách hàng"),
-  vehicleId: z.string().min(1, "Vui lòng chọn xe"),
-  staffId: z.string().min(1, "Vui lòng chọn nhân viên"),
+  customerId: z.string().min(1, 'Vui lòng chọn khách hàng'),
+  vehicleId: z.string().min(1, 'Vui lòng chọn xe'),
+  staffId: z.string().min(1, 'Vui lòng chọn nhân viên'),
   scheduledDate: z
     .string()
-    .min(1, "Vui lòng chọn ngày hẹn")
+    .min(1, 'Vui lòng chọn ngày hẹn')
     .refine((val) => new Date(val) > new Date(), {
-      message: "Ngày hẹn phải ở tương lai",
+      message: 'Ngày hẹn phải ở tương lai',
     }),
-  status: z.enum([
-    "SCHEDULED",
-    "CONFIRMED",
-    "COMPLETED",
-    "CANCELLED",
-    "NO_SHOW",
-  ]),
-  notes: z.string().max(1000, "Ghi chú không vượt quá 1000 ký tự").optional(),
-  feedback: z
-    .string()
-    .max(1000, "Feedback không vượt quá 1000 ký tự")
-    .optional(),
+  status: z.enum(['SCHEDULED', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']),
+  notes: z.string().max(1000).optional(),
+  feedback: z.string().max(1000).optional(),
 });
 
 type TestDriveFormData = z.infer<typeof testDriveSchema>;
@@ -75,28 +56,18 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
     resolver: zodResolver(testDriveSchema),
     defaultValues: initialData
       ? {
-          customerId: initialData.customerId,
-          vehicleId: initialData.vehicleId,
-          staffId: initialData.staffId,
-          scheduledDate: new Date(initialData.scheduledDate)
-            .toISOString()
-            .slice(0, 16),
-          notes: initialData.notes ?? "",
-          feedback: initialData.feedback ?? "",
-          status: initialData.status ?? "SCHEDULED",
-        }
-      : {
-          status: "SCHEDULED",
-        },
+        customerId: initialData.customerId,
+        vehicleId: initialData.vehicleId,
+        staffId: initialData.staffId,
+        scheduledDate: new Date(initialData.scheduledDate)
+          .toISOString()
+          .slice(0, 16),
+        notes: initialData.notes ?? '',
+        feedback: initialData.feedback ?? '',
+        status: initialData.status ?? 'SCHEDULED',
+      }
+      : { status: 'SCHEDULED' },
   });
-
-  const normalizeResponse = (res: any) => {
-    if (!res) return [];
-    if (Array.isArray(res)) return res;
-    if (res.data?.data) return res.data;
-    if (res.data) return res.data;
-    return [];
-  };
 
   useEffect(() => {
     const fetchDropdowns = async () => {
@@ -104,28 +75,37 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
         const [customersRes, vehiclesRes, staffRes] = await Promise.all([
           customerApi.getAllCustomers({}, { page: 1, limit: 100 }),
           vehicleApi.getAllVehicles({}, { page: 1, limit: 100 }),
-          usersApi.list({ limit: 100 }),
+          usersApi.list({ page: 1, limit: 100 }),
         ]);
 
-        const customersData =
+        const customersData: Customer[] =
           customersRes?.data?.data ||
           customersRes?.data?.customers ||
           customersRes?.data ||
           [];
 
-        const vehiclesData =
+        const vehiclesData: Vehicle[] =
           vehiclesRes?.data?.data ||
           vehiclesRes?.data?.vehicles ||
           vehiclesRes?.data ||
           [];
 
-        const staffData = staffRes?.data?.users || staffRes?.data || [];
+        const staffData: User[] =
+          staffRes?.data?.data ||
+          staffRes?.data?.users ||
+          staffRes?.data ||
+          [];
 
+        // LỌC XE CÒN KHẢ DỤNG
         const activeVehicles = vehiclesData.filter(
-          (v: any) => v.status === "ACTIVE"
+          (v) => v.status === 'AVAILABLE' || v.status === 'ACTIVE'
         );
-        const staffFiltered = staffData.filter((s: any) =>
-          ["DEALER_STAFF", "DEALER_MANAGER"].includes(s.role)
+
+        // LỌC NHÂN VIÊN CÓ ROLE DEALER_STAFF / DEALER_MANAGER (KIỂM TRA ROLE TRƯỚC)
+        const staffFiltered = staffData.filter(
+          (u) =>
+            u.role &&
+            ['DEALER_STAFF', 'DEALER_MANAGER'].includes(u.role)
         );
 
         setCustomers(customersData);
@@ -145,6 +125,7 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
 
     fetchDropdowns();
   }, []);
+
 
   const onSubmit = async (data: TestDriveFormData) => {
     setLoading(true);
@@ -172,8 +153,8 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
 
       reset();
       onSubmitSuccess();
-    } catch (error: unknown) {
-      let message = "Đã có lỗi xảy ra.";
+    } catch (error) {
+      let message = 'Đã có lỗi xảy ra.';
       if (error instanceof AxiosError)
         message = error.response?.data?.message || message;
       else if (error instanceof Error) message = error.message;
@@ -192,63 +173,54 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
         {initialData ? "Cập nhật lịch lái thử" : "Tạo mới lịch lái thử"}
       </h2>
 
-      {/* KHÁCH HÀNG */}
       <div>
-        <label className="block font-medium text-gray-700 mb-1">
-          Khách hàng
-        </label>
+        <label className="block font-medium text-gray-700 mb-1">Khách hàng</label>
         <Select
           options={customers.map((c) => ({
             value: c.id,
-            label: `${c.firstName} ${c.lastName} (${c.email})`,
+            label: `${c.firstName} ${c.lastName} (${c.email ?? c.phone ?? ''})`,
           }))}
-          onChange={(opt) => setValue("customerId", opt?.value || "")}
+          onChange={(opt) => setValue('customerId', opt?.value || '')}
           defaultValue={
             initialData
               ? {
-                  value: initialData.customerId,
-                  label: `${initialData.customer?.firstName} ${initialData.customer?.lastName}`,
-                }
+                value: initialData.customerId,
+                label: `${initialData.customer?.firstName} ${initialData.customer?.lastName}`,
+              }
               : null
           }
           className="text-black"
         />
         {errors.customerId && (
-          <p className="text-red-500 text-sm mt-1">
-            {errors.customerId.message}
-          </p>
+          <p className="text-red-500 text-sm mt-1">{errors.customerId.message}</p>
         )}
       </div>
 
-      {/* XE */}
       <div>
-        <label className="block font-medium text-gray-700 mb-1">
-          Xe được chọn
-        </label>
+        <label className="block font-medium text-gray-700 mb-1">Xe được chọn</label>
         <Select
           options={vehicles.map((v) => ({
             value: v.id,
-            label: `${v.manufacturer?.name} ${v.model} ${v.variant || ""}`,
+            label: `${v.manufacturer?.name ?? ''} ${v.model ?? ''} ${v.variant || ''
+              }`,
           }))}
-          onChange={(opt) => setValue("vehicleId", opt?.value || "")}
+          onChange={(opt) => setValue('vehicleId', opt?.value || '')}
           defaultValue={
             initialData
               ? {
-                  value: initialData.vehicleId,
-                  label: `${initialData.vehicle?.manufacturer?.name} ${initialData.vehicle?.model}`,
-                }
+                value: initialData.vehicleId,
+                label: `${initialData.vehicle?.manufacturer?.name ?? ''} ${initialData.vehicle?.model ?? ''
+                  }`,
+              }
               : null
           }
           className="text-black"
         />
         {errors.vehicleId && (
-          <p className="text-red-500 text-sm mt-1">
-            {errors.vehicleId.message}
-          </p>
+          <p className="text-red-500 text-sm mt-1">{errors.vehicleId.message}</p>
         )}
       </div>
 
-      {/* NHÂN VIÊN */}
       <div>
         <label className="block font-medium text-gray-700 mb-1">
           Nhân viên phụ trách
@@ -258,13 +230,13 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
             value: s.id,
             label: `${s.firstName} ${s.lastName} (${s.email})`,
           }))}
-          onChange={(opt) => setValue("staffId", opt?.value || "")}
+          onChange={(opt) => setValue('staffId', opt?.value || '')}
           defaultValue={
             initialData
               ? {
-                  value: initialData.staffId,
-                  label: `${initialData.staff?.firstName} ${initialData.staff?.lastName}`,
-                }
+                value: initialData.staffId,
+                label: `${initialData.staff?.firstName} ${initialData.staff?.lastName}`,
+              }
               : null
           }
           className="text-black"
@@ -274,14 +246,13 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
         )}
       </div>
 
-      {/* NGÀY HẸN */}
       <div>
         <label className="block font-medium text-gray-700 mb-1">
           Thời gian lái thử
         </label>
         <input
           type="datetime-local"
-          {...register("scheduledDate")}
+          {...register('scheduledDate')}
           className="w-full border border-gray-300 rounded-md p-3"
         />
         {errors.scheduledDate && (
@@ -291,13 +262,12 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
         )}
       </div>
 
-      {/* TRẠNG THÁI */}
       <div>
         <label className="block font-medium text-gray-700 mb-1">
           Trạng thái buổi lái thử
         </label>
         <select
-          {...register("status")}
+          {...register('status')}
           className="w-full border border-gray-300 rounded-md p-3"
         >
           <option value="SCHEDULED">Đã lên lịch</option>
@@ -311,39 +281,42 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
         )}
       </div>
 
-      {/* GHI CHÚ */}
       <div>
         <label className="block font-medium text-gray-700 mb-1">Ghi chú</label>
         <textarea
-          {...register("notes")}
+          {...register('notes')}
           rows={3}
           className="w-full border border-gray-300 rounded-md p-3"
           placeholder="Ghi chú thêm (nếu có)..."
         />
       </div>
 
-      {/* FEEDBACK */}
       <div>
         <label className="block font-medium text-gray-700 mb-1">
           Phản hồi (Feedback)
         </label>
         <textarea
-          {...register("feedback")}
+          {...register('feedback')}
           rows={3}
           className="w-full border border-gray-300 rounded-md p-3"
           placeholder="Nhập phản hồi của khách hàng sau buổi lái thử..."
         />
       </div>
 
-      {/* SUBMIT */}
       <div className="flex justify-end">
         <Button type="submit" disabled={loading}>
-          {loading ? "Đang xử lý..." : initialData ? "Cập nhật" : "Tạo mới"}
+          {loading ? 'Đang xử lý...' : initialData ? 'Cập nhật' : 'Tạo mới'}
         </Button>
       </div>
     </form>
   );
 };
+
+
+
+
+
+
 
 // 'use client';
 

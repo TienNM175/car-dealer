@@ -33,22 +33,8 @@ export interface Vehicle {
     logo?: string;
   };
   images?: VehicleImage[];
-  evmInventories?: {
-    quantity: number;
-    reserved: number;
-    available: number;
-  };
-  dealerInventories?: Array<{
-    quantity: number;
-    reserved: number;
-    available: number;
-    dealer: {
-      name: string;
-      city: string;
-    };
-  }>;
   _count?: {
-    // evmInventories: number; // Removed - not a count relation
+    evmInventories: number;
     dealerInventories: number;
     dealerOrders: number;
     quotations: number;
