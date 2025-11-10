@@ -12,9 +12,6 @@ export interface ChatbotMessageRequest {
       purpose?: string;
     };
     selectedVehicleId?: string;
-    selectedDealerId?: string;
-    preferredDate?: string;
-    preferredTime?: string;
   };
 }
 
@@ -27,54 +24,10 @@ export interface ChatbotMessageResponse {
     missingInfo?: string[];
     vehicles?: any[];
     suggestedActions?: any[];
-    bookingInfo?: any;
-    dealers?: any[];
-    nextAction?: string;
     comparison?: any;
     priceRange?: any;
-  };
-}
-
-export interface TestDriveConfirmRequest {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  vehicleId: string;
-  dealerId: string;
-  scheduledDate: string;
-  notes?: string;
-}
-
-export interface TestDriveConfirmResponse {
-  success: boolean;
-  message: string;
-  data: {
-    id: string;
-    scheduledDate: string;
-    status: string;
-    customer: {
-      firstName: string;
-      lastName: string;
-      email: string;
-      phone: string;
-    };
-    vehicle: {
-      model: string;
-      variant?: string;
-      manufacturer: {
-        name: string;
-      };
-    };
-    staff: {
-      firstName: string;
-      lastName: string;
-      dealer: {
-        name: string;
-        city: string;
-        phone?: string;
-      };
-    };
+    details?: any[];
+    recommendation?: string;
   };
 }
 
@@ -105,17 +58,6 @@ export const chatbotApi = {
     const response = await apiClient.post('/public/chatbot/clear-session', {
       sessionId,
     });
-    return response.data;
-  },
-
-  /**
-   * ✅ NEW: Confirm test drive directly from chatbot
-   */
-  confirmTestDrive: async (data: TestDriveConfirmRequest) => {
-    const response = await apiClient.post<TestDriveConfirmResponse>(
-      '/public/test-drives',
-      data
-    );
     return response.data;
   },
 };

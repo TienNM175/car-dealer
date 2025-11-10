@@ -64,12 +64,12 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onClose, onNavigate }) => {
             id: 'welcome',
             role: 'assistant',
             content:
-              'Xin chào! Tôi là trợ lý AI của EVM. Tôi có thể giúp bạn:\n\n✅ Tư vấn chọn xe phù hợp\n✅ Đặt lịch lái thử\n✅ So sánh các mẫu xe\n\nBạn cần tôi hỗ trợ gì?',
+              'Xin chào! Tôi là trợ lý AI của EVM. Tôi có thể giúp bạn:\n\n✅ Tư vấn chọn xe phù hợp\n✅ So sánh các mẫu xe\n✅ Tìm hiểu về xe điện\n\nBạn cần tôi hỗ trợ gì?',
             timestamp: new Date(),
             suggestedActions: [
-              { label: 'Tư vấn xe', action: 'GET_RECOMMENDATION' },
-              { label: 'Đặt lịch lái thử', action: 'BOOK_TEST_DRIVE' },
-              { label: 'So sánh xe', action: 'COMPARE_VEHICLES' },
+              { label: '🚗 Tư vấn xe', action: 'GET_RECOMMENDATION' },
+              { label: '📊 So sánh xe', action: 'COMPARE_VEHICLES' },
+              { label: '🔍 Xem tất cả xe', action: 'VIEW_ALL_VEHICLES' },
             ],
           },
         ]);
@@ -107,16 +107,25 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onClose, onNavigate }) => {
     setIsLoading(true);
 
     try {
-      // ✅ Pass context with IDs
       const response = await chatbotApi.sendMessage(sessionId, messageText, context);
+
+      // ✅ Debug logs
+      console.log('📥 API Response:', response);
+      console.log('💬 Reply:', response.data?.reply);
+      console.log('🚗 Vehicles:', response.data?.vehicles);
+
+      // ✅ Validate response
+      if (!response.data || !response.data.reply) {
+        throw new Error('Invalid response from API');
+      }
 
       const assistantMessage: Message = {
         id: `assistant_${Date.now()}`,
         role: 'assistant',
         content: response.data.reply,
         timestamp: new Date(),
-        vehicles: response.data.vehicles,
-        suggestedActions: response.data.suggestedActions,
+        vehicles: response.data.vehicles || [],
+        suggestedActions: response.data.suggestedActions || [],
       };
 
       const updatedMessages = [...newMessages, assistantMessage];
@@ -128,7 +137,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onClose, onNavigate }) => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error: any) {
-      console.error('Failed to send message:', error);
+      console.error('❌ Failed to send message:', error);
 
       const errorMessage: Message = {
         id: `error_${Date.now()}`,
@@ -150,64 +159,20 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onClose, onNavigate }) => {
         onNavigate?.('VehicleDetail', { vehicleId: action.vehicleId });
         break;
 
-      case 'BOOK_TEST_DRIVE':
-        if (action.vehicleId && action.dealerId) {
-          onNavigate?.('TestDrive', {
-            vehicleId: action.vehicleId,
-            dealerId: action.dealerId,
-          });
-        } else {
-          sendMessage('Tôi muốn đặt lịch lái thử');
-        }
-        break;
-
       case 'VIEW_ALL_VEHICLES':
         onNavigate?.('VehicleList', {});
         break;
 
       case 'SELECT_VEHICLE':
-        // ✅ Pass vehicleId in context
         sendMessage(`Tôi chọn ${action.label}`, {
           selectedVehicleId: action.vehicleId,
         });
         break;
 
       case 'ADD_TO_COMPARISON':
-        // Add vehicle to comparison
         sendMessage(`Thêm ${action.label || 'xe này'} vào so sánh`, {
           selectedVehicleId: action.vehicleId,
         });
-        break;
-
-      case 'SELECT_DEALER':
-        // ✅ Pass dealerId in context
-        sendMessage(`Tôi chọn đại lý: ${action.label}`, {
-          selectedDealerId: action.dealerId,
-        });
-        break;
-
-      case 'SELECT_DATE':
-        // ✅ Pass date/time in context
-        sendMessage(`Tôi chọn ngày ${action.date} lúc ${action.time || '10:00'}`, {
-          preferredDate: action.date,
-          preferredTime: action.time || '10:00',
-        });
-        break;
-
-      case 'CUSTOM_DATE':
-        sendMessage('Tôi muốn chọn ngày khác, ví dụ: 15/11/2025');
-        break;
-
-      case 'CONFIRM_FINAL':
-        // Final booking confirmation - Call API directly
-        handleFinalBooking(action.bookingData);
-        break;
-
-      case 'RETRY_BOOKING':
-        // Retry failed booking
-        if (action.bookingData) {
-          handleFinalBooking(action.bookingData);
-        }
         break;
 
       case 'GO_HOME':
@@ -220,28 +185,11 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onClose, onNavigate }) => {
         break;
 
       case 'CALL_HOTLINE':
-        // Open phone dialer (if you want)
         sendMessage('Số hotline: 1900-xxxx');
         break;
 
       case 'CHANGE_VEHICLE':
         sendMessage('Tư vấn xe khác cho tôi');
-        break;
-
-      case 'LEAVE_CONTACT':
-        sendMessage('Tôi muốn để lại thông tin để được liên hệ khi có xe');
-        break;
-
-      case 'PRE_ORDER':
-        sendMessage('Tôi muốn đặt trước xe này');
-        break;
-
-      case 'EDIT_BOOKING':
-        sendMessage('Tôi muốn chỉnh sửa thông tin đặt lịch');
-        break;
-
-      case 'RESTART_BOOKING':
-        sendMessage('Bắt đầu đặt lịch lại từ đầu');
         break;
 
       case 'RESTART_COMPARISON':
@@ -258,63 +206,6 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onClose, onNavigate }) => {
 
       default:
         sendMessage(action.label);
-    }
-  };
-
-  const handleFinalBooking = async (bookingData: any) => {
-    try {
-      setIsLoading(true);
-
-      // ✅ Call API directly instead of navigating
-      const response = await chatbotApi.confirmTestDrive({
-        firstName: bookingData.contactInfo.name.split(' ').slice(0, -1).join(' ') || bookingData.contactInfo.name,
-        lastName: bookingData.contactInfo.name.split(' ').slice(-1)[0] || '',
-        email: bookingData.contactInfo.email,
-        phone: bookingData.contactInfo.phone,
-        vehicleId: bookingData.vehicleId,
-        dealerId: bookingData.selectedDealerId,
-        scheduledDate: `${bookingData.preferredDate}T${bookingData.preferredTime || '10:00'}:00.000Z`,
-        notes: bookingData.notes || '',
-      });
-
-      // ✅ Show success message in chat
-      const successMessage: Message = {
-        id: `success_${Date.now()}`,
-        role: 'assistant',
-        content: `🎉 Đặt lịch thành công!\n\n Mã lịch hẹn: ${response.data.id.slice(0, 8).toUpperCase()}\ Xe: ${bookingData.vehicleModel}\n👤 Khách hàng: ${bookingData.contactInfo.name}\n SĐT: ${bookingData.contactInfo.phone}\n Thời gian: ${new Date(response.data.scheduledDate).toLocaleString('vi-VN')}\n Đại lý: ${bookingData.dealerName} - ${bookingData.dealerCity}\n Liên hệ đại lý: ${bookingData.dealerPhone}\n\n Chúng tôi sẽ gọi xác nhận trong vòng 24h. Cảm ơn bạn!`,
-        timestamp: new Date(),
-        suggestedActions: [
-          { label: ' Về trang chủ', action: 'GO_HOME' },
-          { label: ' Xem xe khác', action: 'VIEW_ALL_VEHICLES' },
-          { label: ' Chat mới', action: 'RESTART_CHAT' },
-        ],
-      };
-
-      const updatedMessages = [...messages, successMessage];
-      setMessages(updatedMessages);
-      saveHistory(updatedMessages);
-
-      // Auto scroll to bottom
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    } catch (error: any) {
-      console.error('Failed to confirm booking:', error);
-
-      const errorMessage: Message = {
-        id: `error_${Date.now()}`,
-        role: 'assistant',
-        content: ` Đặt lịch thất bại!\n\nLỗi: ${error.message || 'Không thể kết nối đến server'}\n\nVui lòng thử lại hoặc liên hệ hotline: 1900-xxxx`,
-        timestamp: new Date(),
-        suggestedActions: [
-          { label: ' Thử lại', action: 'RETRY_BOOKING', bookingData },
-          { label: ' Gọi hotline', action: 'CALL_HOTLINE' },
-        ],
-      };
-
-      setMessages([...messages, errorMessage]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -408,27 +299,27 @@ interface MessageBubbleProps {
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onActionPress }) => {
   const isUser = message.role === 'user';
-  const isSuccess = message.content.includes('🎉') || message.content.includes('✅ Đặt lịch thành công');
-  const isError = message.content.includes('❌');
+
+  // ✅ Debug log
+  console.log('🎨 Rendering message:', {
+    id: message.id,
+    role: message.role,
+    contentLength: message.content?.length,
+    hasVehicles: message.vehicles?.length,
+    hasActions: message.suggestedActions?.length,
+  });
 
   return (
     <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
       {!isUser && (
         <View style={styles.botIcon}>
-          <Ionicons name="chatbubble" size={16} color={COLORS.primary} />
+          <Ionicons name="chatbubble" size={16} color={COLORS.primary || '#007AFF'} />
         </View>
       )}
 
       <View style={styles.messageContent}>
-        <Text
-          style={[
-            styles.messageText,
-            isUser && styles.userMessageText,
-            isSuccess && styles.successMessageText,
-            isError && styles.errorMessageText,
-          ]}
-        >
-          {message.content}
+        <Text style={[styles.messageText, isUser && styles.userMessageText]}>
+          {message.content || '[Empty message]'}
         </Text>
 
         {/* Vehicle Cards */}
@@ -570,8 +461,8 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 15,
-    color: COLORS.text,
-    backgroundColor: COLORS.card,
+    color: COLORS.text || '#000000', // ✅ Fallback color
+    backgroundColor: COLORS.card || '#F5F5F5',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 16,
@@ -579,20 +470,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   userMessageText: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primary || '#007AFF',
     color: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 4,
-  },
-  successMessageText: {
-    backgroundColor: COLORS.success + '20',
-    borderColor: COLORS.success,
-    borderWidth: 1,
-  },
-  errorMessageText: {
-    backgroundColor: COLORS.error + '20',
-    borderColor: COLORS.error,
-    borderWidth: 1,
   },
   timestamp: {
     fontSize: 11,

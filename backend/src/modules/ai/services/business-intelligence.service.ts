@@ -13,14 +13,11 @@ export class BusinessIntelligenceService {
     period: 'daily' | 'weekly' | 'monthly',
     baseDate?: string 
   ) {
-    // ✅ Dùng baseDate nếu có, nếu không lấy hôm nay
     const now = baseDate ? new Date(baseDate) : new Date();
 
-    // ✅ endDate: cuối ngày của baseDate
     const endDate = new Date(now);
     endDate.setHours(23, 59, 59, 999);
 
-    // ✅ startDate: tính theo period
     const startDate = new Date(endDate);
     switch (period) {
       case 'daily':
@@ -44,17 +41,13 @@ export class BusinessIntelligenceService {
       endDate: endDate.toISOString(),
     });
 
-    // Gather data
-    const [newLeads, testDrives, quotations, contracts, revenue] = await Promise.all([
+    // Gather data (loại bỏ quotation)
+    const [newLeads, testDrives, contracts, revenue] = await Promise.all([
       prisma.customer.count({ where: { createdAt: { gte: startDate, lte: endDate } } }),
 
       prisma.testDrive.findMany({
         where: { scheduledDate: { gte: startDate, lte: endDate } },
         include: { vehicle: true },
-      }),
-
-      prisma.quotation.findMany({
-        where: { createdAt: { gte: startDate, lte: endDate } },
       }),
 
       prisma.contract.findMany({
@@ -85,11 +78,6 @@ export class BusinessIntelligenceService {
           total: testDrives.length,
           completed: testDrives.filter((td) => td.status === 'COMPLETED').length,
           noShows: testDrives.filter((td) => td.status === 'NO_SHOW').length,
-        },
-        quotations: {
-          total: quotations.length,
-          sent: quotations.filter((q) => q.status === 'SENT').length,
-          accepted: quotations.filter((q) => q.status === 'ACCEPTED').length,
         },
         sales: {
           total: contracts.length,

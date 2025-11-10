@@ -20,16 +20,6 @@ interface ChatContext {
   };
 }
 
-interface VehicleRecommendation {
-  vehicleId: string;
-  model: string;
-  variant: string;
-  manufacturer: string;
-  price: number;
-  score: number;
-  reason: string;
-}
-
 export class ChatbotService {
   private static sessions = new Map<string, ChatContext>();
   private static SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
@@ -42,9 +32,6 @@ export class ChatbotService {
     userMessage: string,
     context?: Partial<ChatContext> & {
       selectedVehicleId?: string;
-      selectedDealerId?: string;
-      preferredDate?: string;
-      preferredTime?: string;
     }
   ) {
     // Get or create session
@@ -57,49 +44,6 @@ export class ChatbotService {
       };
       ChatbotService.sessions.set(sessionId, session);
     }
-
-    // ✅ FIRST: Merge context data BEFORE adding message
-    if (!session.userPreferences) {
-      session.userPreferences = {};
-    }
-    
-    const bookingInfo = (session.userPreferences as any).bookingInfo || {};
-    
-    // ✅ Priority: Use context data (from button clicks)
-    if (context?.selectedVehicleId) {
-      bookingInfo.vehicleId = context.selectedVehicleId;
-      
-      // Lấy vehicle info để lưu tên
-      const vehicle = await prisma.vehicle.findUnique({
-        where: { id: context.selectedVehicleId },
-        include: { manufacturer: true },
-      });
-      if (vehicle) {
-        bookingInfo.vehicleModel = `${vehicle.manufacturer.name} ${vehicle.model}`;
-      }
-      
-      console.log('✅ Context: Selected vehicleId:', context.selectedVehicleId);
-    }
-    
-    if (context?.selectedDealerId) {
-      bookingInfo.selectedDealerId = context.selectedDealerId;
-      console.log('✅ Context: Selected dealerId:', context.selectedDealerId);
-    }
-    
-    if (context?.preferredDate) {
-      bookingInfo.preferredDate = context.preferredDate;
-      console.log('✅ Context: Selected date:', context.preferredDate);
-    }
-    
-    if (context?.preferredTime) {
-      bookingInfo.preferredTime = context.preferredTime;
-      console.log('✅ Context: Selected time:', context.preferredTime);
-    }
-    
-    // ✅ Save immediately
-    (session.userPreferences as any).bookingInfo = bookingInfo;
-    
-    console.log('📦 Booking Info after context merge:', bookingInfo);
 
     // Add user message
     session.messages.push({
@@ -122,12 +66,8 @@ export class ChatbotService {
         response = await this.handleVehicleRecommendation(userMessage, session);
         break;
 
-      case 'book_test_drive':
-        response = await this.handleBookTestDrive(userMessage, session);
-        break;
-
       case 'vehicle_comparison':
-        response = await this.handleVehicleComparison(userMessage, session);
+        response = await this.handleVehicleComparison(userMessage, session, context);
         break;
 
       case 'price_inquiry':
@@ -171,7 +111,7 @@ Tin nhắn mới nhất của khách hàng:
 
 Phân tích và trả về JSON với ý định chính:
 {
-  "intent": "vehicle_recommendation | book_test_drive | vehicle_comparison | price_inquiry | general_query",
+  "intent": "vehicle_recommendation | vehicle_comparison | price_inquiry | general_query",
   "confidence": 0.0-1.0,
   "extractedInfo": {
     "budget": number hoặc null,
@@ -184,10 +124,11 @@ Phân tích và trả về JSON với ý định chính:
 
 Quy tắc phân loại:
 - vehicle_recommendation: Khách hỏi "xe nào tốt", "tư vấn xe", "xe phù hợp"
-- book_test_drive: Khách muốn "đặt lịch", "lái thử", "book test drive"
 - vehicle_comparison: Khách hỏi "so sánh", "khác nhau", "xe nào hơn"
 - price_inquiry: Khách hỏi về "giá", "bao nhiêu tiền", "chi phí"
 - general_query: Các câu hỏi chung khác
+
+LƯU Ý: Chatbot KHÔNG hỗ trợ đặt lịch lái thử. Nếu khách hỏi về đặt lịch, trả về general_query để hướng dẫn họ sử dụng tính năng đặt lịch trên app.
 `;
 
     try {
@@ -245,8 +186,7 @@ Quy tắc phân loại:
         reply:
           'Hiện tại chưa có xe phù hợp với yêu cầu của bạn. Bạn có thể mở rộng tiêu chí tìm kiếm không?',
         suggestedActions: [
-          { label: 'Tăng ngân sách', action: 'ADJUST_BUDGET' },
-          { label: 'Xem tất cả xe', action: 'VIEW_ALL_VEHICLES' },
+          { label: '🔍 Xem tất cả xe', action: 'VIEW_ALL_VEHICLES' },
         ],
       };
     }
@@ -299,7 +239,7 @@ Hãy phân tích và trả về JSON:
   ],
   "suggestedActions": [
     {
-      "label": "Xem chi tiết VF 8",
+      "label": "🚗 Xem chi tiết VF 8",
       "action": "VIEW_VEHICLE",
       "vehicleId": "..."
     }
@@ -343,342 +283,21 @@ Nếu đủ thông tin, đề xuất 3 xe tốt nhất với lý do cụ thể.
       missingInfo: analysis.missingInfo,
       vehicles: recommendedVehicles || [],
       suggestedActions: analysis.suggestedActions || [
-        { label: 'Xem tất cả xe', action: 'VIEW_ALL_VEHICLES' },
-        { label: 'Đặt lịch lái thử', action: 'BOOK_TEST_DRIVE' },
+        { label: '🔍 Xem tất cả xe', action: 'VIEW_ALL_VEHICLES' },
+        { label: '📊 So sánh xe', action: 'COMPARE_VEHICLES' },
       ],
     };
   }
 
   /**
-   * Handle test drive booking
-   */
-  private async handleBookTestDrive(message: string, session: ChatContext) {
-    // ✅ Initialize booking info in session
-    if (!session.userPreferences) {
-      session.userPreferences = {};
-    }
-    const bookingInfo = (session.userPreferences as any).bookingInfo || {};
-
-    // ✅ Extract info from latest message (nhưng không override context)
-    const extractedInfo = await this.extractBookingInfo(message, session);
-
-    // ✅ Merge extracted info (ONLY if not already set by context)
-    if (extractedInfo.vehicleId && !bookingInfo.vehicleId) {
-      bookingInfo.vehicleId = extractedInfo.vehicleId;
-    }
-    if (extractedInfo.vehicleModel && !bookingInfo.vehicleModel) {
-      bookingInfo.vehicleModel = extractedInfo.vehicleModel;
-    }
-    if (extractedInfo.contactInfo?.name && !bookingInfo.contactInfo?.name) {
-      bookingInfo.contactInfo = bookingInfo.contactInfo || {};
-      bookingInfo.contactInfo.name = extractedInfo.contactInfo.name;
-    }
-    if (extractedInfo.contactInfo?.phone && !bookingInfo.contactInfo?.phone) {
-      bookingInfo.contactInfo = bookingInfo.contactInfo || {};
-      bookingInfo.contactInfo.phone = extractedInfo.contactInfo.phone;
-    }
-    if (extractedInfo.contactInfo?.email && !bookingInfo.contactInfo?.email) {
-      bookingInfo.contactInfo = bookingInfo.contactInfo || {};
-      bookingInfo.contactInfo.email = extractedInfo.contactInfo.email;
-    }
-    if (extractedInfo.preferredDate && !bookingInfo.preferredDate) {
-      bookingInfo.preferredDate = extractedInfo.preferredDate;
-    }
-    if (extractedInfo.preferredTime && !bookingInfo.preferredTime) {
-      bookingInfo.preferredTime = extractedInfo.preferredTime;
-    }
-    if (extractedInfo.selectedDealerId && !bookingInfo.selectedDealerId) {
-      bookingInfo.selectedDealerId = extractedInfo.selectedDealerId;
-    }
-
-    // ✅ Save back to session
-    (session.userPreferences as any).bookingInfo = bookingInfo;
-
-    // ✅ Determine next action based on what we have
-    const nextAction = this.determineBookingNextAction(bookingInfo);
-
-    console.log('📋 Booking Info:', bookingInfo);
-    console.log('🎯 Next Action:', nextAction);
-
-    // ✅ Handle each action
-    if (nextAction === 'ASK_VEHICLE') {
-      const popularVehicles = await prisma.vehicle.findMany({
-        where: {
-          status: 'ACTIVE',
-          dealerInventories: { some: { available: { gt: 0 } } },
-        },
-        include: {
-          manufacturer: true,
-          dealerInventories: {
-            where: { available: { gt: 0 } },
-            select: { available: true },
-          },
-        },
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-      });
-
-      return {
-        reply: 'Bạn muốn lái thử mẫu xe nào? 🚗',
-        nextAction,
-        suggestedActions: popularVehicles.map((v) => {
-          const totalAvailable = v.dealerInventories.reduce(
-            (sum, inv) => sum + inv.available,
-            0
-          );
-          return {
-            label: `${v.manufacturer.name} ${v.model} (${totalAvailable} xe)`,
-            action: 'SELECT_VEHICLE',
-            vehicleId: v.id,
-            vehicleModel: `${v.manufacturer.name} ${v.model}`,
-          };
-        }),
-      };
-    }
-
-    if (nextAction === 'ASK_CONTACT') {
-      return {
-        reply: `Tuyệt vời! Để đặt lịch lái thử ${bookingInfo.vehicleModel}, vui lòng cung cấp:\n\n📝 Họ tên\n📞 Số điện thoại\n📧 Email\n\nVí dụ: "Tên tôi là Nguyễn Văn A, SĐT 0901234567, email a@gmail.com"`,
-        nextAction,
-      };
-    }
-
-    if (nextAction === 'ASK_DATE') {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      return {
-        reply: 'Bạn muốn lái thử vào thời gian nào? 📅',
-        nextAction,
-        suggestedActions: [
-          {
-            label: 'Ngày mai',
-            action: 'SELECT_DATE',
-            date: tomorrow.toISOString().split('T')[0],
-            time: '10:00',
-          },
-          {
-            label: 'Cuối tuần này',
-            action: 'SELECT_DATE',
-            date: this.getNextWeekendDate(),
-            time: '14:00',
-          },
-          {
-            label: 'Chọn ngày khác',
-            action: 'CUSTOM_DATE',
-          },
-        ],
-      };
-    }
-
-    if (nextAction === 'ASK_DEALER') {
-      const dealersWithVehicle = await prisma.dealer.findMany({
-        where: {
-          isActive: true,
-          inventories: {
-            some: {
-              vehicleId: bookingInfo.vehicleId,
-              available: { gt: 0 },
-            },
-          },
-        },
-        select: {
-          id: true,
-          name: true,
-          city: true,
-          phone: true,
-          inventories: {
-            where: {
-              vehicleId: bookingInfo.vehicleId,
-              available: { gt: 0 },
-            },
-            select: { available: true },
-          },
-        },
-      });
-
-      if (dealersWithVehicle.length === 0) {
-        return {
-          reply: `Rất tiếc, hiện tại chưa có đại lý nào có sẵn ${bookingInfo.vehicleModel}. 😢\n\nBạn có muốn:\n1️⃣ Chọn mẫu xe khác\n2️⃣ Để lại thông tin, chúng tôi sẽ liên hệ khi có xe`,
-          suggestedActions: [
-            { label: 'Chọn xe khác', action: 'CHANGE_VEHICLE' },
-            { label: 'Để lại thông tin', action: 'LEAVE_CONTACT' },
-          ],
-        };
-      }
-
-      return {
-        reply: `Vui lòng chọn đại lý gần bạn để lái thử ${bookingInfo.vehicleModel}: 🏢`,
-        dealers: dealersWithVehicle,
-        suggestedActions: dealersWithVehicle.map((d) => ({
-          label: `${d.name} - ${d.city} (${d.inventories[0]?.available} xe)`,
-          action: 'SELECT_DEALER',
-          dealerId: d.id,
-        })),
-      };
-    }
-
-    // ✅ CONFIRM_BOOKING - Validate and show confirmation
-    if (nextAction === 'CONFIRM_BOOKING') {
-      const inventory = await prisma.inventory.findUnique({
-        where: {
-          dealerId_vehicleId: {
-            dealerId: bookingInfo.selectedDealerId,
-            vehicleId: bookingInfo.vehicleId,
-          },
-        },
-        include: {
-          dealer: { select: { name: true, city: true, phone: true } },
-        },
-      });
-
-      if (!inventory || inventory.available <= 0) {
-        const alternativeDealers = await prisma.dealer.findMany({
-          where: {
-            isActive: true,
-            id: { not: bookingInfo.selectedDealerId },
-            inventories: {
-              some: {
-                vehicleId: bookingInfo.vehicleId,
-                available: { gt: 0 },
-              },
-            },
-          },
-          select: {
-            id: true,
-            name: true,
-            city: true,
-            inventories: {
-              where: { vehicleId: bookingInfo.vehicleId },
-              select: { available: true },
-            },
-          },
-          take: 3,
-        });
-
-        if (alternativeDealers.length === 0) {
-          return {
-            reply: `⚠️ Xin lỗi, xe ${bookingInfo.vehicleModel} hiện đã hết tại đại lý bạn chọn và tất cả các đại lý khác.\n\nBạn có muốn:\n1️⃣ Chọn mẫu xe tương tự\n2️⃣ Đặt trước để chờ xe về`,
-            suggestedActions: [
-              { label: 'Tư vấn xe khác', action: 'GET_RECOMMENDATION' },
-              { label: 'Đặt trước', action: 'PRE_ORDER' },
-            ],
-          };
-        }
-
-        return {
-          reply: `⚠️ Rất tiếc, ${bookingInfo.vehicleModel} đã hết tại đại lý bạn chọn.\n\nNhưng còn sẵn tại các đại lý sau:`,
-          dealers: alternativeDealers,
-          suggestedActions: alternativeDealers.map((d) => ({
-            label: `${d.name} - ${d.city} (${d.inventories[0]?.available} xe)`,
-            action: 'SELECT_DEALER',
-            dealerId: d.id,
-          })),
-        };
-      }
-
-          bookingInfo.dealerName = inventory.dealer.name;
-          bookingInfo.dealerCity = inventory.dealer.city;
-          bookingInfo.dealerPhone = inventory.dealer.phone;
-          
-          (session.userPreferences as any).bookingInfo = bookingInfo;
-
-      // ✅ ALL GOOD - Show confirmation
-      const dateStr = new Date(bookingInfo.preferredDate).toLocaleDateString('vi-VN', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-
-      return {
-        reply: `✅ Thông tin đặt lịch:\n\n Xe: ${bookingInfo.vehicleModel}\n Họ tên: ${bookingInfo.contactInfo.name}\n SĐT: ${bookingInfo.contactInfo.phone}\n Email: ${bookingInfo.contactInfo.email}\n Thời gian: ${dateStr} lúc ${bookingInfo.preferredTime || 'theo lịch đại lý'}\n Đại lý: ${inventory.dealer.name} - ${inventory.dealer.city}\n\n Xác nhận đặt lịch?`,
-        bookingInfo: {
-          ...bookingInfo,
-          dealerName: inventory.dealer.name,
-          dealerCity: inventory.dealer.city,
-          dealerPhone: inventory.dealer.phone,
-        },
-        suggestedActions: [
-          {
-            label: '✅ Xác nhận đặt lịch ngay',
-            action: 'CONFIRM_FINAL',
-            bookingData: bookingInfo,
-          },
-          { label: '✏️ Chỉnh sửa thông tin', action: 'EDIT_BOOKING' },
-        ],
-      };
-    }
-
-    return {
-      reply: 'Đã có lỗi xảy ra. Vui lòng thử lại.',
-      suggestedActions: [{ label: 'Bắt đầu lại', action: 'RESTART_BOOKING' }],
-    };
-  }
-
-  /**
-   * ✅ NEW: Extract booking info from message
-   */
-  private async extractBookingInfo(message: string, session: ChatContext) {
-    const conversationHistory = session.messages
-      .slice(-3)
-      .map((m) => `${m.role}: ${m.content}`)
-      .join('\n');
-
-    const prompt = `
-Trích xuất thông tin đặt lịch từ tin nhắn sau.
-
-Hội thoại gần đây:
-${conversationHistory}
-
-Tin nhắn mới: "${message}"
-
-Trả về JSON:
-{
-  "vehicleId": "id xe nếu có" hoặc null,
-  "vehicleModel": "tên xe đầy đủ" hoặc null,
-  "contactInfo": {
-    "name": "họ tên đầy đủ" hoặc null,
-    "phone": "số điện thoại (10-11 số)" hoặc null,
-    "email": "email hợp lệ" hoặc null
-  },
-  "preferredDate": "YYYY-MM-DD" hoặc null,
-  "preferredTime": "HH:MM" hoặc null,
-  "selectedDealerId": "id đại lý nếu có" hoặc null
-}
-
-Lưu ý:
-- Nếu user nói "ngày mai", tính từ hôm nay: ${new Date().toISOString().split('T')[0]}
-- Nếu user nói "cuối tuần", lấy thứ 7 tuần này
-- Phone phải có 10-11 số
-- Email phải có @ và domain
-`;
-
-    try {
-      const result = await GeminiClient.generateJSON(prompt, { useCache: false });
-      return result;
-    } catch (error) {
-      console.error('Extract booking info failed:', error);
-      return {};
-    }
-  }
-
-  /**
-   * ✅ NEW: Determine next action based on booking info
-   */
-  private determineBookingNextAction(bookingInfo: any): string {
-    if (!bookingInfo.vehicleId) return 'ASK_VEHICLE';
-    if (!bookingInfo.contactInfo?.name || !bookingInfo.contactInfo?.phone) return 'ASK_CONTACT';
-    if (!bookingInfo.preferredDate) return 'ASK_DATE';
-    if (!bookingInfo.selectedDealerId) return 'ASK_DEALER';
-    return 'CONFIRM_BOOKING';
-  }
-
-  /**
    * Handle vehicle comparison
    */
-  private async handleVehicleComparison(message: string, session: ChatContext) {
-    // ✅ Initialize comparison state
+  private async handleVehicleComparison(
+    message: string,
+    session: ChatContext,
+    context?: any
+  ) {
+    // Initialize comparison state
     if (!session.userPreferences) {
       session.userPreferences = {};
     }
@@ -686,23 +305,38 @@ Lưu ý:
       selectedVehicles: [],
     };
 
-    // ✅ Extract vehicle from message
-    const extractedVehicle = await this.extractVehicleFromMessage(message);
+    // Add vehicle from context (button click)
+    if (context?.selectedVehicleId) {
+      const vehicle = await prisma.vehicle.findUnique({
+        where: { id: context.selectedVehicleId },
+        include: { manufacturer: true },
+      });
 
-    if (extractedVehicle) {
-      // ✅ Add to selected vehicles (avoid duplicates)
-      const existingIds = comparisonState.selectedVehicles.map((v: any) => v.id);
-      if (!existingIds.includes(extractedVehicle.id)) {
-        comparisonState.selectedVehicles.push(extractedVehicle);
+      if (vehicle) {
+        const existingIds = comparisonState.selectedVehicles.map((v: any) => v.id);
+        if (!existingIds.includes(vehicle.id)) {
+          comparisonState.selectedVehicles.push({
+            id: vehicle.id,
+            model: vehicle.model,
+            manufacturer: vehicle.manufacturer.name,
+          });
+        }
+      }
+    } else {
+      // Extract vehicle from message
+      const extractedVehicle = await this.extractVehicleFromMessage(message);
+      if (extractedVehicle) {
+        const existingIds = comparisonState.selectedVehicles.map((v: any) => v.id);
+        if (!existingIds.includes(extractedVehicle.id)) {
+          comparisonState.selectedVehicles.push(extractedVehicle);
+        }
       }
     }
 
-    // ✅ Save state
+    // Save state
     (session.userPreferences as any).comparisonState = comparisonState;
 
-    console.log('📊 Comparison State:', comparisonState);
-
-    // ✅ Need at least 2 vehicles
+    // Need at least 2 vehicles
     if (comparisonState.selectedVehicles.length === 0) {
       const popularVehicles = await prisma.vehicle.findMany({
         where: { status: 'ACTIVE' },
@@ -724,7 +358,6 @@ Lưu ý:
     if (comparisonState.selectedVehicles.length === 1) {
       const firstVehicle = comparisonState.selectedVehicles[0];
       
-      // Get other vehicles for comparison
       const otherVehicles = await prisma.vehicle.findMany({
         where: {
           status: 'ACTIVE',
@@ -753,7 +386,7 @@ Lưu ý:
       };
     }
 
-    // ✅ Have 2+ vehicles - Do comparison
+    // Have 2+ vehicles - Do comparison
     const vehicleIds = comparisonState.selectedVehicles.map((v: any) => v.id);
     const vehiclesData = await prisma.vehicle.findMany({
       where: { id: { in: vehicleIds } },
@@ -767,12 +400,12 @@ Lưu ý:
       return {
         reply: 'Không tìm thấy đủ thông tin xe để so sánh. Vui lòng thử lại.',
         suggestedActions: [
-          { label: 'Bắt đầu lại', action: 'RESTART_COMPARISON' },
+          { label: '🔄 Bắt đầu lại', action: 'RESTART_COMPARISON' },
         ],
       };
     }
 
-    // ✅ AI comparison
+    // AI comparison
     const comparisonPrompt = `
 So sánh chi tiết các xe sau bằng tiếng Việt:
 
@@ -833,7 +466,7 @@ Trả về JSON:
       useCache: false,
     });
 
-    // ✅ Clear comparison state after done
+    // Clear comparison state after done
     (session.userPreferences as any).comparisonState = { selectedVehicles: [] };
 
     return {
@@ -853,19 +486,19 @@ Trả về JSON:
       recommendation: comparisonResult.recommendation,
       suggestedActions: [
         {
-          label: 'So sánh xe khác',
+          label: '📊 So sánh xe khác',
           action: 'RESTART_COMPARISON',
         },
         {
-          label: 'Đặt lịch lái thử',
-          action: 'BOOK_TEST_DRIVE',
+          label: '🔍 Xem tất cả xe',
+          action: 'VIEW_ALL_VEHICLES',
         },
       ],
     };
   }
 
   /**
-   * ✅ NEW: Extract vehicle from message
+   * Extract vehicle from message
    */
   private async extractVehicleFromMessage(message: string) {
     const vehicles = await prisma.vehicle.findMany({
@@ -873,7 +506,6 @@ Trả về JSON:
       include: { manufacturer: true },
     });
 
-    // Simple pattern matching
     const lowerMessage = message.toLowerCase();
     for (const vehicle of vehicles) {
       const modelLower = vehicle.model.toLowerCase();
@@ -939,8 +571,8 @@ Trả về JSON với câu trả lời thân thiện về giá xe:
         price: Number(v.retailPrice),
       })),
       suggestedActions: [
-        { label: 'Xem chi tiết', action: 'VIEW_VEHICLES' },
-        { label: 'Tư vấn xe phù hợp', action: 'GET_RECOMMENDATION' },
+        { label: '🚗 Xem chi tiết xe', action: 'VIEW_ALL_VEHICLES' },
+        { label: '💡 Tư vấn xe phù hợp', action: 'GET_RECOMMENDATION' },
       ],
     };
   }
@@ -963,15 +595,21 @@ ${conversationHistory}
 Tin nhắn mới: "${message}"
 
 Trả lời câu hỏi một cách thân thiện, ngắn gọn bằng tiếng Việt.
-Nếu câu hỏi về kỹ thuật, hãy giải thích đơn giản.
-Nếu không liên quan đến xe điện, hãy lịch sự chuyển hướng về sản phẩm.
+
+QUY TẮC QUAN TRỌNG:
+- Nếu câu hỏi về kỹ thuật, hãy giải thích đơn giản.
+- Nếu không liên quan đến xe điện, hãy lịch sự chuyển hướng về sản phẩm.
+- Nếu khách hỏi về ĐẶT LỊCH LÁI THỬ, hãy hướng dẫn họ sử dụng tính năng đặt lịch trên app (không phải qua chatbot):
+  + Bước 1: Chọn xe muốn lái thử
+  + Bước 2: Nhấn nút "Đặt lịch lái thử" trên trang chi tiết xe
+  + Bước 3: Điền thông tin và chọn thời gian
 
 Trả về JSON:
 {
   "reply": "Câu trả lời",
   "suggestedActions": [
-    { "label": "Xem xe điện", "action": "VIEW_VEHICLES" },
-    { "label": "Tư vấn xe", "action": "GET_RECOMMENDATION" }
+    { "label": "🔍 Xem xe điện", "action": "VIEW_ALL_VEHICLES" },
+    { "label": "💡 Tư vấn xe", "action": "GET_RECOMMENDATION" }
   ]
 }
 `;
@@ -981,20 +619,6 @@ Trả về JSON:
     });
 
     return response;
-  }
-
-  /**
-   * Helper: Get next weekend date
-   */
-  private getNextWeekendDate(): string {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const daysUntilSaturday = (6 - dayOfWeek + 7) % 7 || 7;
-
-    const saturday = new Date(now);
-    saturday.setDate(now.getDate() + daysUntilSaturday);
-
-    return saturday.toISOString().split('T')[0];
   }
 
   /**
