@@ -73,7 +73,7 @@ class App {
 
     // ✅ HEALTH CHECK - DIRECT ROUTE
     this.app.get("/health", (_req, res) => {
-      console.log("✅ /health route called");
+      console.log(" /health route called");
       res.json({
         status: "OK",
         timestamp: new Date().toISOString(),
@@ -83,7 +83,7 @@ class App {
 
     // ✅ TEST DIRECT ROUTE
     this.app.get("/api/v1/direct", (_req, res) => {
-      console.log("✅ /api/v1/direct route called");
+      console.log(" /api/v1/direct route called");
       res.json({ 
         success: true, 
         message: "Direct route works!",
@@ -96,7 +96,7 @@ class App {
 
     // ✅ TEST ROUTE IN API ROUTER
     apiRouter.get("/test", (_req, res) => {
-      console.log("✅ /api/v1/test route called");
+      console.log(" /api/v1/test route called");
       res.json({ 
         success: true, 
         message: "API Router test route works!",
@@ -108,53 +108,53 @@ class App {
     console.log("📦 Mounting module routes...");
     
     apiRouter.use("/auth", authRoutes);
-    console.log("✅ /auth routes mounted");
+    console.log(" /auth routes mounted");
     
     apiRouter.use("/vehicles", vehicleRoutes);
-    console.log("✅ /vehicles routes mounted");
+    console.log(" /vehicles routes mounted");
     
     apiRouter.use("/dealers", dealerRoutes);
-    console.log("✅ /dealers routes mounted");
+    console.log(" /dealers routes mounted");
     
     apiRouter.use("/customers", customerRoutes);
-    console.log("✅ /customers routes mounted");
+    console.log(" /customers routes mounted");
     
     apiRouter.use("/orders", orderRoutes);
-    console.log("✅ /orders routes mounted");
+    console.log(" /orders routes mounted");
     
     apiRouter.use("/contracts", contractRoutes);
-    console.log("✅ /contracts routes mounted");
+    console.log(" /contracts routes mounted");
     
     apiRouter.use("/inventory", inventoryRoutes);
-    console.log("✅ /inventory routes mounted");
+    console.log(" /inventory routes mounted");
     
     apiRouter.use("/test-drives", testDriveRoutes);
-    console.log("✅ /test-drives routes mounted");
+    console.log(" /test-drives routes mounted");
     
     apiRouter.use("/reports", reportRoutes);
-    console.log("✅ /reports routes mounted");
+    console.log(" /reports routes mounted");
     
     apiRouter.use("/quotations", quotationRoutes);
-    console.log("✅ /quotations routes mounted");
+    console.log(" /quotations routes mounted");
     
     apiRouter.use("/promotions", promotionRoutes);
-    console.log("✅ /promotions routes mounted");
+    console.log(" /promotions routes mounted");
     
     apiRouter.use("/ai/admin", aiAdminRoutes);
-    console.log("✅ /ai/admin routes mounted");
+    console.log(" /ai/admin routes mounted");
     
     apiRouter.use("/users", userRoutes);
-    console.log("✅ /users routes mounted");
+    console.log(" /users routes mounted");
     
     apiRouter.use("/public", publicRoutes);
     apiRouter.use("/public/chatbot", chatbotRoutes);
     apiRouter.use("/vehicle-units", vehicleUnitRoutes);
     apiRouter.use("/vehicle-export-documents", vehicleExportDocumentRoutes);
     apiRouter.use("/export-documents", vehicleExportDocumentRoutes);
-    console.log("✅ /public routes mounted");
+    console.log(" /public routes mounted");
     
     apiRouter.use("/debts", debtsRoutes);
-    console.log("✅ /debts routes mounted");
+    console.log(" /debts routes mounted");
 
     // ✅ MOUNT API ROUTER - ĐẶT TRƯỚC DEBUG MIDDLEWARE
     this.app.use("/api/v1", apiRouter);

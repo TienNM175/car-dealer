@@ -20,7 +20,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log(
-    "🌱 Starting ENHANCED 2025 database seeding (VND + publicId)...\n"
+    "🌱 Starting ENHANCED 2025 database seeding (Oct-Nov 2025)...\n"
   );
 
   // Helper functions
@@ -38,9 +38,9 @@ async function main() {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   };
 
-  // Date ranges for 2025 data
+  // Date ranges for Oct 15 - Nov 10, 2025
   const recentStart = new Date("2025-10-15T00:00:00Z");
-  const recentEnd = new Date("2025-10-26T23:59:59Z");
+  const recentEnd = new Date("2025-11-10T23:59:59Z");
 
   // 1. REGIONS
   console.log("🌍 Creating regions...");
@@ -156,7 +156,7 @@ async function main() {
 
   console.log("✅ Created 3 dealer contracts\n");
 
-  // 4. USERS (GIỮ NGUYÊN)
+  // 4. USERS
   console.log("👥 Creating users...");
   const hashedPassword = await bcrypt.hash("Admin@123456", 10);
 
@@ -298,7 +298,7 @@ async function main() {
   });
   console.log("✅ Created 4 manufacturers\n");
 
-  // 6. VEHICLES (CHỈ 10 XE)
+  // 6. VEHICLES
   console.log("🚗 Creating 10 vehicles for 2025...");
   const vehicles = [];
 
@@ -804,8 +804,8 @@ async function main() {
 
   console.log(`✅ Created ${totalVehicleUnitsCreated} vehicle units (VIN)\n`);
 
-  // 10. CUSTOMERS (20 CHỈ THÔI)
-  console.log("👤 Creating 20 customers with dealerId...");
+  // 10. CUSTOMERS (40 - Tăng gấp đôi)
+  console.log("👤 Creating 40 customers with dealerId...");
 
   const firstNames = [
     "Nguyễn",
@@ -835,15 +835,15 @@ async function main() {
   ];
 
   const customers = [];
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= 40; i++) {
     const firstName = randomElement(firstNames);
     const middleName = randomElement(middleNames);
     const lastName = randomElement(lastNames);
 
     let assignedDealer;
-    if (i <= 8) {
+    if (i <= 14) {
       assignedDealer = dealer1;
-    } else if (i <= 16) {
+    } else if (i <= 28) {
       assignedDealer = dealer2;
     } else {
       assignedDealer = dealer3;
@@ -888,7 +888,7 @@ async function main() {
           ? randomElement([dealerStaff2, dealerManager2])
           : randomElement(staffMembers);
 
-    const eventCount = randomNumber(1, 2);
+    const eventCount = randomNumber(1, 3);
     for (let i = 0; i < eventCount; i++) {
       lifecycleData.push({
         customerId: customer.id,
@@ -898,6 +898,7 @@ async function main() {
           "Gọi tư vấn",
           "Đã lái thử",
           "Yêu cầu báo giá",
+          "Hoàn thành đơn hàng",
         ]),
         changedBy: dealerStaffForLifecycle.id,
         createdAt: randomDateBetween(customer.createdAt, recentEnd),
@@ -908,17 +909,18 @@ async function main() {
   await prisma.customerLifecycle.createMany({ data: lifecycleData });
   console.log(`✅ Created ${lifecycleData.length} lifecycle records\n`);
 
-  // 12. TEST DRIVES (30)
-  console.log("🎯 Creating 30 test drives...");
+  // 12. TEST DRIVES (60 - Tăng gấp đôi)
+  console.log("🎯 Creating 60 test drives...");
   const testDriveData = [];
   const tdStatuses: TestDriveStatus[] = [
     "SCHEDULED",
     "CONFIRMED",
     "COMPLETED",
     "CANCELLED",
+    "NO_SHOW",
   ];
 
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     const customer = randomElement(customers);
     const vehicle = randomElement(vehicles);
 
@@ -937,25 +939,33 @@ async function main() {
       staffId: staff.id,
       scheduledDate: randomDateBetween(recentStart, recentEnd),
       status,
-      notes: status === "COMPLETED" ? "Hoàn thành tốt" : "Đang chờ xử lý",
+      notes:
+        status === "COMPLETED"
+          ? "Hoàn thành tốt"
+          : status === "NO_SHOW"
+            ? "Khách không đến"
+            : "Đang chờ xử lý",
       feedback:
-        status === "COMPLETED" ? randomElement(["Rất hài lòng", "Tốt"]) : null,
+        status === "COMPLETED"
+          ? randomElement(["Rất hài lòng", "Tốt", "Xuất sắc"])
+          : null,
     });
   }
 
   await prisma.testDrive.createMany({ data: testDriveData });
-  console.log("✅ Created 30 test drives\n");
+  console.log("✅ Created 60 test drives\n");
 
-  // 13. QUOTATIONS (25)
-  console.log("💰 Creating 25 quotations...");
+  // 13. QUOTATIONS (50 - Tăng gấp đôi)
+  console.log("💰 Creating 50 quotations...");
   const quotationStatuses: QuotationStatus[] = [
     "DRAFT",
     "SENT",
     "ACCEPTED",
     "REJECTED",
+    "EXPIRED",
   ];
 
-  for (let i = 1; i <= 25; i++) {
+  for (let i = 1; i <= 50; i++) {
     const customer = randomElement(customers);
     const vehicle = randomElement(vehicles);
 
@@ -982,10 +992,10 @@ async function main() {
         finalPrice,
         paymentType,
         installmentMonths:
-          paymentType === "INSTALLMENT" ? randomElement([36, 48]) : null,
+          paymentType === "INSTALLMENT" ? randomElement([36, 48, 60]) : null,
         monthlyPayment:
           paymentType === "INSTALLMENT"
-            ? Math.round(finalPrice / randomElement([36, 48]))
+            ? Math.round(finalPrice / randomElement([36, 48, 60]))
             : null,
         validUntil: randomDateBetween(recentStart, new Date("2025-12-31")),
         status: randomElement(quotationStatuses),
@@ -995,10 +1005,10 @@ async function main() {
     });
   }
 
-  console.log("✅ Created 25 quotations\n");
+  console.log("✅ Created 50 quotations\n");
 
-  // 14. CONTRACTS (15)
-  console.log("📋 Creating 15 contracts...");
+  // 14. CONTRACTS (30 - Tăng gấp đôi)
+  console.log("📋 Creating 30 contracts...");
   const contracts = [];
   let assignedVehicleUnits = 0;
   let fallbackVehicleUnitsCreated = 0;
@@ -1021,7 +1031,7 @@ async function main() {
     }
   };
 
-  for (let i = 1; i <= 15; i++) {
+  for (let i = 1; i <= 30; i++) {
     const customer = randomElement(customers);
     const vehicle = randomElement(vehicles);
 
@@ -1037,7 +1047,9 @@ async function main() {
     const finalPrice = basePrice - discount;
     const paymentType: PaymentType = randomElement(["FULL", "INSTALLMENT"]);
     const status: ContractStatus =
-      i <= 10 ? "COMPLETED" : randomElement(["SIGNED", "DELIVERING"]);
+      i <= 18
+        ? "COMPLETED"
+        : randomElement(["SIGNED", "DELIVERING", "PENDING"]);
 
     const signedDate = randomDateBetween(recentStart, recentEnd);
     const deliveryDate = new Date(
@@ -1098,10 +1110,12 @@ async function main() {
       finalPrice,
       paymentType,
       installmentMonths:
-        paymentType === "INSTALLMENT" ? randomElement([36, 48]) : null,
+        paymentType === "INSTALLMENT"
+          ? randomElement([36, 48, 60])
+          : null,
       monthlyPayment:
         paymentType === "INSTALLMENT"
-          ? Math.round(finalPrice / randomElement([36, 48]))
+          ? Math.round(finalPrice / randomElement([36, 48, 60]))
           : null,
       interestRate:
         paymentType === "INSTALLMENT" ? randomNumber(35, 60) / 10 : null,
@@ -1149,32 +1163,30 @@ async function main() {
             : claimedVehicleUnit.storageType,
         },
       });
-    } else {
-      console.warn(
-        "⚠️ Không tìm được VIN cho hợp đồng",
-        createdContract.contractCode
-      );
     }
   }
 
   console.log(
-    `✅ Created 15 contracts (gán VIN cho ${assignedVehicleUnits} hợp đồng; thêm mới ${fallbackVehicleUnitsCreated} VIN dự phòng)\n`
+    `✅ Created 30 contracts (gán VIN cho ${assignedVehicleUnits} hợp đồng; thêm mới ${fallbackVehicleUnitsCreated} VIN dự phòng)\n`
   );
 
-  // 15. FEEDBACKS (10)
-  console.log("⭐ Creating 10 feedbacks...");
+  // 15. FEEDBACKS (20 - Tăng)
+  console.log("⭐ Creating 20 feedbacks...");
   const feedbackCategories: FeedbackCategory[] = [
     "SERVICE",
     "PRODUCT",
     "DELIVERY",
+    "OTHER",
   ];
   const feedbackData = [];
 
   const completedContracts = contracts.filter((c) => c.status === "COMPLETED");
 
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 20; i++) {
     const contract =
-      i < completedContracts.length ? completedContracts[i] : null;
+      i < completedContracts.length
+        ? completedContracts[i]
+        : randomElement(completedContracts);
     const customer = contract
       ? await prisma.customer.findUnique({ where: { id: contract.customerId } })
       : randomElement(customers);
@@ -1188,6 +1200,7 @@ async function main() {
         "Tốt",
         "Hài lòng",
         "Chuyên nghiệp",
+        "Rất tốt",
       ]),
       category: randomElement(feedbackCategories),
       createdAt: randomDateBetween(recentStart, recentEnd),
@@ -1195,18 +1208,19 @@ async function main() {
   }
 
   await prisma.feedback.createMany({ data: feedbackData });
-  console.log("✅ Created 10 feedbacks\n");
+  console.log("✅ Created 20 feedbacks\n");
 
-  // 16. COMPLAINTS (5)
-  console.log("🔔 Creating 5 complaints...");
+  // 16. COMPLAINTS (10 - Tăng)
+  console.log("🔔 Creating 10 complaints...");
   const complaintStatuses: ComplaintStatus[] = [
     "OPEN",
     "IN_PROGRESS",
     "RESOLVED",
+    "CLOSED",
   ];
   const complaintData = [];
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 10; i++) {
     const customer = randomElement(customers);
     const contract =
       randomElement(contracts.filter((c) => c.customerId === customer.id)) ||
@@ -1228,21 +1242,25 @@ async function main() {
         "Chậm trả giao xe",
         "Xe có lỗi kỹ thuật",
         "Tư vấn cần cải thiện",
+        "Chất lượng dịch vụ",
+        "Vấn đề về giá cả",
       ]),
       description: "Khách hàng báo cáo vấn đề",
       status,
-      resolution: status === "RESOLVED" ? "Đã xử lý" : null,
+      resolution:
+        status === "RESOLVED" || status === "CLOSED" ? "Đã xử lý" : null,
       resolvedAt:
-        status === "RESOLVED"
+        status === "RESOLVED" || status === "CLOSED"
           ? randomDateBetween(createdDate, recentEnd)
           : null,
-      resolvedBy: status === "RESOLVED" ? resolver : null,
+      resolvedBy:
+        status === "RESOLVED" || status === "CLOSED" ? resolver : null,
       createdAt: createdDate,
     });
   }
 
   await prisma.complaint.createMany({ data: complaintData });
-  console.log("✅ Created 5 complaints\n");
+  console.log("✅ Created 10 complaints\n");
 
   // 17. CUSTOMER DEBTS
   console.log("💳 Creating customer debts...");
@@ -1251,9 +1269,9 @@ async function main() {
   );
   const debtData: Prisma.CustomerDebtCreateManyInput[] = [];
 
-  for (const contract of installmentContracts.slice(0, 8)) {
+  for (const contract of installmentContracts.slice(0, 15)) {
     const totalDebt = Number(contract.finalPrice);
-    const monthsPaid = randomNumber(2, 8);
+    const monthsPaid = randomNumber(2, 12);
     const paidAmount = Number(contract.monthlyPayment!) * monthsPaid;
 
     debtData.push({
@@ -1276,17 +1294,18 @@ async function main() {
   await prisma.customerDebt.createMany({ data: debtData });
   console.log(`✅ Created ${debtData.length} customer debts\n`);
 
-  // 18. DEALER ORDERS (10)
-  console.log("📦 Creating 10 dealer orders...");
+  // 18. DEALER ORDERS (20 - Tăng)
+  console.log("📦 Creating 20 dealer orders...");
   const orderStatuses: DealerOrderStatus[] = [
     "PENDING",
     "CONFIRMED",
     "PROCESSING",
     "SHIPPED",
     "DELIVERED",
+    "CANCELLED",
   ];
 
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 20; i++) {
     const dealer = randomElement([dealer1, dealer2, dealer3]);
     const manager =
       dealer.id === dealer1.id
@@ -1298,7 +1317,7 @@ async function main() {
     const quantity = randomNumber(3, 8);
     const unitPrice = Number(vehicle.wholesalePrice);
     const status: DealerOrderStatus =
-      i <= 6
+      i <= 12
         ? randomElement(["DELIVERED", "SHIPPED"])
         : randomElement(orderStatuses);
 
@@ -1333,10 +1352,10 @@ async function main() {
     });
   }
 
-  console.log("✅ Created 10 dealer orders\n");
+  console.log("✅ Created 20 dealer orders\n");
 
-  // 19. DEALER DISCOUNTS (5)
-  console.log("🎁 Creating 5 dealer discounts...");
+  // 19. DEALER DISCOUNTS (8 - Tăng)
+  console.log("🎁 Creating 8 dealer discounts...");
   const discountData: Prisma.DealerDiscountCreateManyInput[] = [
     {
       dealerId: dealer1.id,
@@ -1357,7 +1376,18 @@ async function main() {
       discountValue: 5,
       minPurchase: 762000000,
       startDate: new Date("2025-10-01"),
-      endDate: new Date("2025-10-31"),
+      endDate: new Date("2025-11-30"),
+      isActive: true,
+    },
+    {
+      dealerId: dealer1.id,
+      name: "Khuyến mãi tháng 11",
+      description: "Flash sale tháng 11",
+      discountType: "PERCENTAGE",
+      discountValue: 7,
+      minPurchase: 800000000,
+      startDate: new Date("2025-11-01"),
+      endDate: new Date("2025-11-30"),
       isActive: true,
     },
     {
@@ -1373,13 +1403,24 @@ async function main() {
     },
     {
       dealerId: dealer2.id,
-      name: "Ưu đãi tháng 10",
-      description: "Giảm 4% cho tất cả mẫu xe",
+      name: "Ưu đãi tháng 10-11",
+      description: "Giảm 6% cho tất cả mẫu xe",
       discountType: "PERCENTAGE",
-      discountValue: 4,
+      discountValue: 6,
       minPurchase: 762000000,
       startDate: new Date("2025-10-01"),
-      endDate: new Date("2025-10-15"),
+      endDate: new Date("2025-11-15"),
+      isActive: true,
+    },
+    {
+      dealerId: dealer2.id,
+      name: "Ưu đãi Model Y - Tháng 11",
+      description: "Giảm 12% cho Model Y",
+      discountType: "PERCENTAGE",
+      discountValue: 12,
+      minPurchase: 1200000000,
+      startDate: new Date("2025-11-01"),
+      endDate: new Date("2025-11-30"),
       isActive: true,
     },
     {
@@ -1393,12 +1434,23 @@ async function main() {
       endDate: new Date("2025-07-15"),
       isActive: false,
     },
+    {
+      dealerId: dealer3.id,
+      name: "Ưu đãi mùa thu đông",
+      description: "Giảm 5% cho tất cả xe",
+      discountType: "PERCENTAGE",
+      discountValue: 5,
+      minPurchase: 700000000,
+      startDate: new Date("2025-10-15"),
+      endDate: new Date("2025-12-31"),
+      isActive: true,
+    },
   ];
 
   await prisma.dealerDiscount.createMany({ data: discountData });
-  console.log("✅ Created 5 dealer discounts\n");
+  console.log("✅ Created 8 dealer discounts\n");
 
-  // 20. TARGETS
+  // 20. TARGETS (18 - Tăng)
   console.log("🎯 Creating sales targets for 2025...");
   const targetData = [];
 
@@ -1429,7 +1481,7 @@ async function main() {
   await prisma.target.createMany({ data: targetData });
   console.log(`✅ Created ${targetData.length} sales targets\n`);
 
-  // 21. DEALER DEBTS
+  // 21. DEALER DEBTS (8 - Tăng)
   console.log("💸 Creating dealer debts...");
   const dealerDebtData: Prisma.DealerDebtCreateManyInput[] = [
     {
@@ -1447,6 +1499,13 @@ async function main() {
       status: "PARTIAL",
     },
     {
+      dealerId: dealer1.id,
+      totalDebt: 8600000000,
+      paidAmount: 0,
+      dueDate: new Date("2025-12-31"),
+      status: "UNPAID",
+    },
+    {
       dealerId: dealer2.id,
       totalDebt: 13208000000,
       paidAmount: 13208000000,
@@ -1460,46 +1519,68 @@ async function main() {
       dueDate: new Date("2025-10-28"),
       status: "PARTIAL",
     },
+    {
+      dealerId: dealer2.id,
+      totalDebt: 12000000000,
+      paidAmount: 4000000000,
+      dueDate: new Date("2025-11-30"),
+      status: "PARTIAL",
+    },
+    {
+      dealerId: dealer3.id,
+      totalDebt: 9000000000,
+      paidAmount: 9000000000,
+      dueDate: new Date("2025-09-15"),
+      status: "PAID",
+    },
+    {
+      dealerId: dealer3.id,
+      totalDebt: 7500000000,
+      paidAmount: 0,
+      dueDate: new Date("2025-12-15"),
+      status: "UNPAID",
+    },
   ];
 
   await prisma.dealerDebt.createMany({ data: dealerDebtData });
-  console.log("✅ Created 4 dealer debts\n");
+  console.log("✅ Created 8 dealer debts\n");
 
   // 22. FINAL SUMMARY
-  console.log("\n🎉 OPTIMIZED 2025 Database seeding completed!\n");
+  console.log("\n🎉 Enhanced 2025 Database seeding completed!\n");
   console.log(
     "┌─────────────────────────────────────────────────────────────┐"
   );
-  console.log("📊 OPTIMIZED SEEDING SUMMARY (2025)");
+  console.log("📊 EXTENDED DATA (Oct 15 - Nov 10, 2025)");
   console.log(
     "└─────────────────────────────────────────────────────────────┘"
   );
   console.log("✓ Regions: 3");
   console.log("✓ Dealers: 3");
   console.log("✓ Dealer Contracts: 3");
-  console.log("✓ Users: 6 (giữ nguyên)");
+  console.log("✓ Users: 6");
   console.log("✓ Manufacturers: 4");
   console.log("✓ Vehicles: 10");
   console.log("✓ Vehicle Images: 10 (with publicId)");
   console.log("✓ EVM Inventory: 10");
   console.log(`✓ Dealer Inventory: ${dealerInventoryData.length}`);
-  console.log("✓ Customers: 20");
+  console.log("✓ Customers: 40 (tăng từ 20)");
   console.log(`✓ Customer Lifecycle: ${lifecycleData.length}`);
-  console.log("✓ Test Drives: 30");
-  console.log("✓ Quotations: 25");
-  console.log("✓ Contracts: 15");
-  console.log("✓ Feedbacks: 10");
-  console.log("✓ Complaints: 5");
+  console.log("✓ Test Drives: 60 (tăng từ 30)");
+  console.log("✓ Quotations: 50 (tăng từ 25)");
+  console.log("✓ Contracts: 30 (tăng từ 15)");
+  console.log("✓ Feedbacks: 20 (tăng từ 10)");
+  console.log("✓ Complaints: 10 (tăng từ 5)");
   console.log(`✓ Customer Debts: ${debtData.length}`);
-  console.log("✓ Dealer Orders: 10");
-  console.log("✓ Dealer Discounts: 5");
+  console.log("✓ Dealer Orders: 20 (tăng từ 10)");
+  console.log("✓ Dealer Discounts: 8 (tăng từ 5)");
   console.log(`✓ Sales Targets: ${targetData.length}`);
-  console.log("✓ Dealer Debts: 4");
+  console.log("✓ Dealer Debts: 8 (tăng từ 4)");
+  console.log("✓ Vehicle Units: " + totalVehicleUnitsCreated);
   console.log(
     "─────────────────────────────────────────────────────────────\n"
   );
 
-  console.log("👥 TEST ACCOUNTS (GIỮ NGUYÊN):");
+  console.log("👥 TEST ACCOUNTS:");
   console.log("🔐 Admin: admin@evdealer.com / Admin@123456");
   console.log("🏭 EVM Staff: evm@evdealer.com / Admin@123456");
   console.log("🏢 Manager HN: manager.hn@evdealer.com / Admin@123456");
@@ -1507,6 +1588,7 @@ async function main() {
   console.log("🏢 Manager HCM: manager.hcm@evdealer.com / Admin@123456");
   console.log("👤 Staff HCM: staff.hcm@evdealer.com / Admin@123456\n");
 
+  console.log("📅 Date Range: 15/10/2025 - 10/11/2025");
   console.log("🚀 Ready to use!\n");
 }
 
