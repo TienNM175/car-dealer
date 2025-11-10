@@ -35,13 +35,12 @@ export class BusinessIntelligenceService {
     }
     startDate.setHours(0, 0, 0, 0);
 
-    console.log('📅 Executive Summary Period:', {
+    console.log('Executive Summary Period:', {
       period,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
     });
 
-    // Gather data (loại bỏ quotation)
     const [newLeads, testDrives, contracts, revenue] = await Promise.all([
       prisma.customer.count({ where: { createdAt: { gte: startDate, lte: endDate } } }),
 

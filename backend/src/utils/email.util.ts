@@ -19,18 +19,16 @@ export class EmailUtil {
         user: config.SMTP_USER,
         pass: config.SMTP_PASSWORD,
       },
-      // Nếu dùng Gmail, có thể dùng app password
       tls: {
         rejectUnauthorized: false,
       },
     });
 
-    // Verify connection on startup
     this.transporter.verify((error, success) => {
       if (error) {
-        console.warn('⚠️  Email service not configured:', error.message);
+        console.warn(' Email service not configured:', error.message);
       } else {
-        console.log('✅ Email service configured successfully');
+        console.log(' Email service configured successfully');
       }
     });
   }

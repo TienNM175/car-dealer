@@ -257,7 +257,6 @@ export class PublicService {
       return testDrive;
     });
 
-    // ✅ Gửi email xác nhận (async - không chặn response)
     this.sendTestDriveEmailAsync(result, data);
 
     return result;
@@ -291,7 +290,6 @@ export class PublicService {
         });
       } catch (error: any) {
         console.error('Failed to send test drive email in background:', error.message);
-        // Không ném error vì không muốn ảnh hưởng đến booking response
       }
     });
   }

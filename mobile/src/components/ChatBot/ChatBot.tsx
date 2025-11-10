@@ -109,12 +109,6 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onClose, onNavigate }) => {
     try {
       const response = await chatbotApi.sendMessage(sessionId, messageText, context);
 
-      // ✅ Debug logs
-      console.log('📥 API Response:', response);
-      console.log('💬 Reply:', response.data?.reply);
-      console.log('🚗 Vehicles:', response.data?.vehicles);
-
-      // ✅ Validate response
       if (!response.data || !response.data.reply) {
         throw new Error('Invalid response from API');
       }
@@ -137,7 +131,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onClose, onNavigate }) => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error: any) {
-      console.error('❌ Failed to send message:', error);
+      console.error(' Failed to send message:', error);
 
       const errorMessage: Message = {
         id: `error_${Date.now()}`,

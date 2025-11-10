@@ -52,7 +52,7 @@ export class GeminiClient {
     this.models.forEach((m) => this.modelStats.set(m, { modelName: m, failCount: 0, quotaExceeded: false }));
 
     if (!this.apiKeys.PRIMARY && !this.apiKeys.SECONDARY) {
-      console.warn("⚠️  Gemini API keys not found! Running in limited mode.");
+      console.warn("  Gemini API keys not found! Running in limited mode.");
     }
   }
 
@@ -101,7 +101,7 @@ export class GeminiClient {
 
     if (!this.instances.has(selectedKey)) {
       this.instances.set(selectedKey, new GoogleGenerativeAI(apiKey));
-      console.log(`🔑 Initialized Gemini instance: ${selectedKey}`);
+      console.log(` Initialized Gemini instance: ${selectedKey}`);
     }
 
     this.lastKeyUsed = selectedKey;
@@ -225,7 +225,7 @@ export class GeminiClient {
       const result = await model.generateContent(prompt);
       return result.response.text();
     } catch (error: any) {
-      console.error("❌ Gemini text generation failed:", error.message);
+      console.error(" Gemini text generation failed:", error.message);
       return "Lỗi khi tạo phản hồi AI. Vui lòng thử lại sau.";
     }
   }
