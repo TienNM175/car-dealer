@@ -224,18 +224,22 @@ export class ReportsService {
       })
     );
 
-    // Sales by staff
+    // Sales by staff (lọc theo dealer)
     const byStaff = await prisma.contract.groupBy({
       by: ["staffId"],
       where: {
-        ...where,
         status: "COMPLETED",
+        ...(filters.fromDate && { createdAt: { gte: filters.fromDate } }),
+        ...(filters.toDate && { createdAt: { lte: filters.toDate } }),
+        ...(filters.dealerId && { staff: { dealerId: filters.dealerId } }), // ✅ Lọc theo dealer
       },
       _count: true,
       _sum: {
         finalPrice: true,
       },
     });
+
+
 
     const staffPerformance = await Promise.all(
       byStaff.map(async (item) => {
@@ -246,14 +250,34 @@ export class ReportsService {
             firstName: true,
             lastName: true,
             email: true,
+            role: true,       // ✅ thêm role
+            dealerId: true,   // ✅ thêm dealerId
+            dealer: {         // ✅ lấy thông tin đại lý cho rõ
+              select: {
+                id: true,
+                name: true,
+                city: true,
+              },
+            },
           },
         });
+
         return {
-          staff,
+          staff: {
+            id: staff?.id,
+            firstName: staff?.firstName,
+            lastName: staff?.lastName,
+            email: staff?.email,
+            role: staff?.role,               // ✅ thêm role
+            dealerId: staff?.dealerId,       // ✅ để frontend lọc
+            dealer: staff?.dealer || null,   // ✅ hiển thị tên đại lý
+          },
           salesCount: item._count,
-          totalRevenue: item._sum.finalPrice || 0,
-          averageOrderValue: Number(item._sum.finalPrice || 0) / item._count,
+          totalRevenue: Number(item._sum.finalPrice || 0),
+          averageOrderValue:
+            item._count > 0 ? Number(item._sum.finalPrice || 0) / item._count : 0,
         };
+
       })
     );
 
@@ -787,7 +811,7 @@ export class ReportsService {
 
     return {
       dealers: performance.sort(
-      (a, b) => Number(b.sales.revenue) - Number(a.sales.revenue)
+        (a, b) => Number(b.sales.revenue) - Number(a.sales.revenue)
       ),
       vehiclesByDealer, // Danh sách xe và breakdown theo đại lý
     };

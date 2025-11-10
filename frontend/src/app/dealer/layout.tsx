@@ -69,18 +69,18 @@ export default function DealerLayout({
       role: ["DEALER_MANAGER", "DEALER_STAFF"],
     },
     {
-      id: "reports",
-      icon: BarChart3,
-      label: "Báo cáo",
-      role: ["DEALER_MANAGER"],
-    },
-    //thêm mục lái thử ở đaaay
-    {
       id: "test-drive",
       icon: Calendar,
       label: "Lái thử",
       role: ["DEALER_STAFF", "DEALER_MANAGER"],
     },
+    {
+      id: "reports",
+      icon: BarChart3,
+      label: "Báo cáo",
+      role: ["DEALER_MANAGER"],
+    },
+
   ];
 
   const filteredMenuItems = dealerMenuItems.filter((item) =>

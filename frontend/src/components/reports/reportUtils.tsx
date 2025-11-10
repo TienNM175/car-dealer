@@ -83,6 +83,8 @@ export const VN_LABELS: Record<string, string> = {
   targetAmount: "Mục tiêu",
   achievementRate: "Tỉ lệ đạt",
   DRAFT: "Bản nháp",
+  PENDING: "Đang xử lý",
+  averageOrderValue: "Giá trị đơn hàng trung bình",
 };
 
 export type ChartData = Record<string, string | number>;
@@ -130,13 +132,24 @@ export const formatCompactVN = (n: number): string => {
 
 export const makeValueFormatter =
   (unit?: string) =>
-  (value: ValueType, _name: NameType): string => {
-    if (typeof value !== "number") return String(value);
-    if (unit === "VND" || unit === "")
-      return new Intl.NumberFormat("vi-VN").format(value) + " ";
-    if (unit === "%") return `${value.toFixed(1)}%`;
-    return new Intl.NumberFormat("vi-VN").format(value);
-  };
+    (value: ValueType, _name: NameType): string => {
+      if (typeof value !== "number") return String(value);
+      if (unit === "VND" || unit === "")
+        return new Intl.NumberFormat("vi-VN").format(value) + " ";
+      if (unit === "%") return `${value.toFixed(1)}%`;
+      return new Intl.NumberFormat("vi-VN").format(value);
+    };
+
+
+const tooltipStyle = {
+  color: "#000000",
+  backgroundColor: "#ffffff",
+  border: "1px solid #e5e7eb",
+  borderRadius: "6px",
+  padding: "8px 10px",
+};
+
+
 
 export function ChartCard({
   title,
@@ -175,12 +188,13 @@ export function PieChartComponent({
           ))}
         </Pie>
         <Tooltip
-          formatter={(value, name) => [
-            valueFormatter ? valueFormatter(value, name) : value,
-            VN_LABELS[name as string] ?? name,
-          ]}
+          contentStyle={tooltipStyle}
+          itemStyle={{ color: "#000000" }}
+          labelStyle={{ color: "#000000", fontWeight: 600 }}
+          formatter={(value, name) => [value, VN_LABELS[name as string] ?? name]}
           labelFormatter={(label) => `Nhóm: ${VN_LABELS[label] ?? label}`}
         />
+
         <Legend formatter={(v) => `• ${VN_LABELS[v] ?? v}`} />
       </PieChart>
     </ResponsiveContainer>
@@ -284,6 +298,15 @@ export function BarChartComponent({
         )}
         {/* <Tooltip formatter={(value, name) => [valueFormatter ? valueFormatter(value, name) : value, VN_LABELS[name as string] ?? name]} labelFormatter={(label) => `Nhóm: ${VN_LABELS[label] ?? label}`} /> */}
         <Tooltip
+          contentStyle={{
+            color: "#000000",
+            backgroundColor: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "6px",
+            padding: "8px 10px",
+          }}
+          itemStyle={{ color: "#000000" }}
+          labelStyle={{ color: "#000000", fontWeight: 600 }}
           formatter={(value, name) => [
             valueFormatter ? valueFormatter(value, name) : value,
             VN_LABELS[name as string] ?? name,
@@ -298,6 +321,7 @@ export function BarChartComponent({
             return `Nhóm: ${VN_LABELS[label] ?? label}`;
           }}
         />
+
 
         <Legend formatter={(v) => `• ${VN_LABELS[v] ?? v}`} />
         {bars.map((b) => (
@@ -392,12 +416,13 @@ export function LineChartComponent({
         />
         <YAxis tickFormatter={formatCompactVN} />
         <Tooltip
-          formatter={(value, name) => [
-            valueFormatter ? valueFormatter(value, name) : value,
-            VN_LABELS[name as string] ?? name,
-          ]}
+          contentStyle={tooltipStyle}
+          itemStyle={{ color: "#000000" }}
+          labelStyle={{ color: "#000000", fontWeight: 600 }}
+          formatter={(value, name) => [value, VN_LABELS[name as string] ?? name]}
           labelFormatter={(label) => `Nhóm: ${VN_LABELS[label] ?? label}`}
         />
+
         <Legend formatter={(v) => `• ${VN_LABELS[v] ?? v}`} />
         {lines.map((l) => (
           <Line
