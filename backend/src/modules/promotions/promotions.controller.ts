@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { PromotionsService } from "./promotions.service";
 import { ResponseUtil } from "../../utils/response.util";
-import { DiscountType } from "@prisma/client";
+import { DiscountType, PromotionSource } from "@prisma/client";
 
 const promotionsService = new PromotionsService();
 
@@ -18,6 +18,7 @@ export class PromotionsController {
         isActive: req.query.isActive
           ? req.query.isActive === "true"
           : undefined,
+        source: req.query.source as PromotionSource, // Hỗ trợ filter theo source
         startDate: req.query.startDate as string,
         endDate: req.query.endDate as string,
         minDiscount: req.query.minDiscount
@@ -88,9 +89,11 @@ export class PromotionsController {
     try {
       const { dealerId } = req.params;
       const includeInactive = req.query.includeInactive === "true";
+      const source = req.query.source as PromotionSource; // Hỗ trợ filter theo source
       const promotions = await promotionsService.getByDealerId(
         dealerId,
-        includeInactive
+        includeInactive,
+        source
       );
       return ResponseUtil.success(
         res,
@@ -129,11 +132,15 @@ export class PromotionsController {
   ) {
     try {
       const { dealerId } = req.params;
-      const result =
-        await promotionsService.getAvailablePromotionsForDealer(dealerId);
+      // FIXED: Parse query param includeInactive (default false)
+      const includeInactive = req.query.includeInactive === "true";
+      const result = await promotionsService.getAvailablePromotionsForDealer(
+        dealerId,
+        includeInactive
+      );
       return ResponseUtil.success(
         res,
-        result.allPromotions,
+        result,
         "Available promotions retrieved successfully"
       );
     } catch (error: any) {
@@ -160,22 +167,24 @@ export class PromotionsController {
         return ResponseUtil.badRequest(res, "Dealer ID is required");
       }
 
-      const data = {
+      const data: any = {
         dealer: { connect: { id: dealerId } },
         name: req.body.name,
         description: req.body.description,
         discountType: req.body.discountType || "PERCENTAGE",
         discountValue: req.body.discountValue,
         minPurchase: req.body.minPurchase,
-        // EVM/Admin can create MANUFACTURER promotions, Dealer creates DEALER promotions
-        source:
-          userRole === "ADMIN" || userRole === "EVM_STAFF"
-            ? req.body.source || "MANUFACTURER"
-            : "DEALER",
         startDate: new Date(req.body.startDate),
         endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
         isActive: req.body.isActive ?? true,
       };
+
+      // EVM/Admin can specify source (default MANUFACTURER), Dealer creates DEALER promotions
+      let source: PromotionSource = "DEALER";
+      if (userRole === "ADMIN" || userRole === "EVM_STAFF") {
+        source = req.body.source || "MANUFACTURER";
+      }
+      data.source = source;
 
       const promotion = await promotionsService.create(data, userRole);
       return ResponseUtil.created(
@@ -184,6 +193,9 @@ export class PromotionsController {
         "Promotion created successfully"
       );
     } catch (error: any) {
+      if (error.message.includes("Only EVM staff or admin can create manufacturer promotions")) {
+        return ResponseUtil.forbidden(res, error.message);
+      }
       if (
         error.message.includes("not found") ||
         error.message.includes("must be after") ||
@@ -210,7 +222,7 @@ export class PromotionsController {
         return ResponseUtil.unauthorized(res, "Authentication required");
       }
 
-      const data = {
+      const data: any = {
         ...(req.body.name && { name: req.body.name }),
         ...(req.body.description !== undefined && {
           description: req.body.description,
@@ -241,6 +253,9 @@ export class PromotionsController {
         "Promotion updated successfully"
       );
     } catch (error: any) {
+      if (error.message.includes("Cannot update manufacturer promotions")) {
+        return ResponseUtil.forbidden(res, error.message);
+      }
       if (error.message.includes("not found")) {
         return ResponseUtil.notFound(res, error.message);
       }
@@ -282,6 +297,9 @@ export class PromotionsController {
         `Promotion ${promotion.isActive ? "activated" : "deactivated"} successfully`
       );
     } catch (error: any) {
+      if (error.message.includes("Cannot toggle manufacturer promotions")) {
+        return ResponseUtil.forbidden(res, error.message);
+      }
       if (error.message.includes("not found")) {
         return ResponseUtil.notFound(res, error.message);
       }
@@ -308,6 +326,9 @@ export class PromotionsController {
       const result = await promotionsService.delete(id, userRole, dealerId);
       return ResponseUtil.success(res, result);
     } catch (error: any) {
+      if (error.message.includes("Cannot delete manufacturer promotions")) {
+        return ResponseUtil.forbidden(res, error.message);
+      }
       if (error.message.includes("not found")) {
         return ResponseUtil.notFound(res, error.message);
       }
@@ -370,8 +391,9 @@ export class PromotionsController {
         req.user?.role === "ADMIN" || req.user?.role === "EVM_STAFF"
           ? undefined
           : req.user?.dealerId;
+      const source = req.query.source as PromotionSource; // Hỗ trợ filter theo source
 
-      const stats = await promotionsService.getStatistics(dealerId);
+      const stats = await promotionsService.getStatistics(dealerId, source);
       return ResponseUtil.success(
         res,
         stats,

@@ -1,11 +1,12 @@
 import prisma from "../../config/database";
-import { Prisma, DiscountType } from "@prisma/client";
+import { Prisma, DiscountType, PromotionSource } from "@prisma/client";
 
 interface PromotionFilters {
   search?: string;
   dealerId?: string;
   discountType?: DiscountType;
   isActive?: boolean;
+  source?: PromotionSource; // Thêm filter theo source
   startDate?: string;
   endDate?: string;
   minDiscount?: number;
@@ -45,6 +46,7 @@ export class PromotionsService {
       ...(filters.dealerId && { dealerId: filters.dealerId }),
       ...(filters.discountType && { discountType: filters.discountType }),
       ...(filters.isActive !== undefined && { isActive: filters.isActive }),
+      ...(filters.source && { source: filters.source }), // Hỗ trợ filter theo source
       ...(filters.minDiscount && {
         discountValue: { gte: filters.minDiscount },
       }),
@@ -128,10 +130,11 @@ export class PromotionsService {
   /**
    * Get promotions by dealer ID
    */
-  async getByDealerId(dealerId: string, includeInactive = false) {
+  async getByDealerId(dealerId: string, includeInactive = false, source?: PromotionSource) {
     const where: Prisma.DealerDiscountWhereInput = {
       dealerId,
       ...(includeInactive ? {} : { isActive: true }),
+      ...(source && { source }), // Hỗ trợ filter theo source
     };
 
     const promotions = await prisma.dealerDiscount.findMany({
@@ -176,33 +179,32 @@ export class PromotionsService {
   /**
    * Get all available promotions for a dealer (from dealer + manufacturer)
    */
-  async getAvailablePromotionsForDealer(dealerId: string) {
+  async getAvailablePromotionsForDealer(dealerId: string, includeInactive: boolean = false) {
     const now = new Date();
 
-    // Get all active promotions for this dealer (both DEALER and MANUFACTURER source)
-    const allPromotions = await prisma.dealerDiscount.findMany({
-      where: {
-        dealerId,
-        isActive: true,
-        startDate: { lte: now },
-        OR: [{ endDate: { gte: now } }, { endDate: null }],
-      },
-      orderBy: [
-        { source: "desc" }, // MANUFACTURER first
-        { discountValue: "desc" }, // Then by discount value
-      ],
-    });
+    // FIXED: Sử dụng getByDealerId để hỗ trợ includeInactive, fetch all (active + inactive nếu true)
+    const allPromotions = await this.getByDealerId(dealerId, includeInactive);
+
+    // FIXED: Nếu includeInactive=true, return all (không filter date, để frontend handle status)
+    // Nếu false, filter valid active (start <= now <= end)
+    let validPromotions = allPromotions;
+    if (!includeInactive) {
+      validPromotions = allPromotions.filter(p => 
+        p.isActive && p.startDate <= now && (!p.endDate || p.endDate >= now)
+      );
+    }
 
     // Separate by source for easier filtering in frontend
-    const dealerPromotions = allPromotions.filter((p) => p.source === "DEALER");
-    const manufacturerPromotions = allPromotions.filter(
+    const dealerPromotions = validPromotions.filter((p) => p.source === "DEALER");
+    const manufacturerPromotions = validPromotions.filter(
       (p) => p.source === "MANUFACTURER"
     );
 
+    // FIXED: Nếu includeInactive=true, thêm allPromotions để frontend filter client-side
     return {
       dealerPromotions,
       manufacturerPromotions,
-      allPromotions,
+      allPromotions: includeInactive ? allPromotions : validPromotions,
     };
   }
 
@@ -210,10 +212,16 @@ export class PromotionsService {
    * Create new promotion
    */
   async create(
-    data: Prisma.DealerDiscountCreateInput,
-    _userRole: string,
+    data: Prisma.DealerDiscountCreateInput & { source?: PromotionSource }, // Thêm source vào input
+    userRole: string,
     _userId?: string
   ) {
+    // Xác định source: Dealer chỉ tạo DEALER, EVM/ADMIN có thể tạo MANUFACTURER
+    const source = data.source || "DEALER";
+    if (source === "MANUFACTURER" && userRole !== "ADMIN" && userRole !== "EVM_STAFF") {
+      throw new Error("Only EVM staff or admin can create manufacturer promotions");
+    }
+
     // Validate dealer exists
     const dealer = await prisma.dealer.findUnique({
       where: { id: data.dealer.connect?.id },
@@ -266,6 +274,7 @@ export class PromotionsService {
     const promotion = await prisma.dealerDiscount.create({
       data: {
         ...data,
+        source, // Đảm bảo source được set
         isActive: data.isActive ?? true,
       },
       include: {
@@ -293,11 +302,17 @@ export class PromotionsService {
       throw new Error("Promotion not found");
     }
 
-    // Check authorization
+    // Check authorization: Dealer chỉ update của dealer mình
     if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
       if (existing.dealerId !== dealerId) {
         throw new Error("Access denied");
       }
+    }
+
+    // Enforce: Không cho dealer update MANUFACTURER (chỉ EVM/ADMIN)
+    if (existing.source === "MANUFACTURER" && 
+        (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER")) {
+      throw new Error("Cannot update manufacturer promotions. Only EVM staff or admin can edit.");
     }
 
     // Validate dates if provided
@@ -359,11 +374,17 @@ export class PromotionsService {
       throw new Error("Promotion not found");
     }
 
-    // Check authorization
+    // Check authorization: Dealer chỉ toggle của dealer mình
     if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
       if (existing.dealerId !== dealerId) {
         throw new Error("Access denied");
       }
+    }
+
+    // Enforce: Không cho dealer toggle MANUFACTURER (chỉ EVM/ADMIN)
+    if (existing.source === "MANUFACTURER" && 
+        (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER")) {
+      throw new Error("Cannot toggle manufacturer promotions. Only EVM staff or admin can edit.");
     }
 
     const promotion = await prisma.dealerDiscount.update({
@@ -389,13 +410,17 @@ export class PromotionsService {
       throw new Error("Promotion not found");
     }
 
-    // Check authorization
-    if (userRole !== "ADMIN") {
-      if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
-        if (promotion.dealerId !== dealerId) {
-          throw new Error("Access denied");
-        }
+    // Check authorization: Dealer chỉ delete của dealer mình
+    if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
+      if (promotion.dealerId !== dealerId) {
+        throw new Error("Access denied");
       }
+    }
+
+    // Enforce: Không cho dealer delete MANUFACTURER (chỉ EVM/ADMIN)
+    if (promotion.source === "MANUFACTURER" && 
+        (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER")) {
+      throw new Error("Cannot delete manufacturer promotions. Only EVM staff or admin can delete.");
     }
 
     // Can only delete inactive promotions or future promotions
@@ -523,8 +548,11 @@ export class PromotionsService {
   /**
    * Get promotion statistics
    */
-  async getStatistics(dealerId?: string) {
-    const where: Prisma.DealerDiscountWhereInput = dealerId ? { dealerId } : {};
+  async getStatistics(dealerId?: string, source?: PromotionSource) {
+    const where: Prisma.DealerDiscountWhereInput = { 
+      ...(dealerId ? { dealerId } : {}),
+      ...(source ? { source } : {}),
+    };
 
     const [total, active, inactive, byType, avgDiscount] = await Promise.all([
       prisma.dealerDiscount.count({ where }),

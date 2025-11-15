@@ -19,6 +19,7 @@ import {
   UserCog,
   ShoppingCart,
   ClipboardList,
+  Percent
 } from "lucide-react";
 
 export default function EVMLayout({ children }: { children: React.ReactNode }) {
@@ -57,6 +58,12 @@ export default function EVMLayout({ children }: { children: React.ReactNode }) {
     //   label: "Giá & Chiết khấu",
     //   role: ["ADMIN"],
     // },
+       {
+          id: "promotions",
+          icon: Percent,
+          label: "Mã khuyến mãi",
+           role: ["EVM_STAFF", "ADMIN"],
+        },
     {
       id: "reports",
       icon: BarChart3,

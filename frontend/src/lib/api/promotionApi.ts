@@ -8,6 +8,8 @@ import {
   CalculateDiscountResponse,
   PromotionStatistics,
   PaginatedPromotionsResponse,
+  AvailablePromotionsResponse, // Thêm import cho available response
+  PromotionSource, // Thêm cho source param
 } from "../types/promotion.types";
 
 const API_BASE_URL =
@@ -20,7 +22,7 @@ const apiClient = axios.create({
 
 // Add token to all requests
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("auth_token"); // Changed from 'token' to 'auth_token'
+  const token = localStorage.getItem("auth_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -53,13 +55,19 @@ export const promotionApi = {
    * Get promotions for a specific dealer
    * @param dealerId - Dealer ID
    * @param includeInactive - Include inactive promotions (default: false)
+   * @param source - Filter by source (DEALER | MANUFACTURER, optional)
    */
   getByDealerId: async (
     dealerId: string,
-    includeInactive = false
+    includeInactive = false,
+    source?: PromotionSource // Thêm param source
   ): Promise<Promotion[]> => {
+    const params: Record<string, any> = { includeInactive }; // FIXED: Type as Record to allow dynamic keys
+    if (source) {
+      params.source = source;
+    }
     const response = await apiClient.get(`/promotions/dealer/${dealerId}`, {
-      params: { includeInactive },
+      params,
     });
     return response.data.data;
   },
@@ -72,10 +80,21 @@ export const promotionApi = {
     const response = await apiClient.get(
       `/promotions/dealer/${dealerId}/active`
     );
-    console.log("🎁 API Response:", response);
-    console.log("🎁 API Response data:", response.data);
-    // Backend returns {success: true, data: Array} format
     return response.data.data;
+  },
+
+  /**
+   * GET /promotions/dealer/:dealerId/available
+   * Get available promotions for dealer (separate DEALER & MANUFACTURER)
+   * FIXED: Thêm param includeInactive (default true để fetch all, tránh mất inactive sau toggle)
+   */
+  getAvailablePromotions: async (
+    dealerId: string,
+    includeInactive: boolean = true // FIXED: Default true để fetch cả active + inactive
+  ): Promise<AvailablePromotionsResponse> => {
+    const params: Record<string, any> = { includeInactive }; // FIXED: Pass query param
+    const response = await apiClient.get(`/promotions/dealer/${dealerId}/available`, { params });
+    return response.data.data; // Backend return { dealerPromotions, manufacturerPromotions, allPromotions? }
   },
 
   /**
@@ -128,11 +147,17 @@ export const promotionApi = {
   /**
    * GET /promotions/statistics
    * Get promotion statistics
+   * @param dealerId - Optional dealer ID
+   * @param source - Optional filter by source
    */
-  getStatistics: async (dealerId?: string): Promise<PromotionStatistics> => {
-    const response = await apiClient.get("/promotions/statistics", {
-      params: dealerId ? { dealerId } : undefined,
-    });
+  getStatistics: async (
+    dealerId?: string,
+    source?: PromotionSource // Thêm param source
+  ): Promise<PromotionStatistics> => {
+    const params: Record<string, any> = {}; // FIXED: Type as Record for dynamic params
+    if (dealerId) params.dealerId = dealerId;
+    if (source) params.source = source;
+    const response = await apiClient.get("/promotions/statistics", { params });
     return response.data.data;
   },
 
