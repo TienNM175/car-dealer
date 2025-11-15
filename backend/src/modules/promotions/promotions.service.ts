@@ -20,7 +20,52 @@ interface PaginationParams {
   sortOrder?: "asc" | "desc";
 }
 
+interface CreatePromotionInput extends Prisma.DealerDiscountCreateInput {
+  vehicleUnitIds?: string[]; // Thêm: Mảng ID Vehicle Units (optional)
+}
+
+interface UpdatePromotionInput extends Prisma.DealerDiscountUpdateInput {
+  vehicleUnitIds?: string[]; // Thêm: Update mảng ID
+}
+
 export class PromotionsService {
+  // Include cho vehicleUnits (select fields cần cho UI)
+ // FIXED: Chỉ dùng include nest, không select top-level trên vehicleUnits
+private promotionInclude = {
+  dealer: {
+    select: {
+      id: true,
+      name: true,
+      code: true,
+      city: true,
+    },
+  },
+  vehicleUnits: {
+    select: {
+      id: true,  // Fields từ PromotionVehicle
+      createdAt: true,
+      vehicleUnit: {  // Nested select từ PromotionVehicle -> VehicleUnit
+        select: {
+          id: true,
+          vin: true,
+          color: true,
+          status: true,
+          vehicle: {  // Nested từ VehicleUnit -> Vehicle
+            select: {
+              id: true,
+              model: true,
+              variant: true,
+              manufacturer: {
+                select: { name: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
   /**
    * Get all promotions with filters and pagination
    */
@@ -79,16 +124,7 @@ export class PromotionsService {
       skip,
       take: limit,
       orderBy: { [sortBy]: sortOrder },
-      include: {
-        dealer: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-            city: true,
-          },
-        },
-      },
+      include: this.promotionInclude, // Thêm include vehicleUnits
     });
 
     return {
@@ -108,9 +144,7 @@ export class PromotionsService {
   async getById(id: string, userRole?: string, dealerId?: string) {
     const promotion = await prisma.dealerDiscount.findUnique({
       where: { id },
-      include: {
-        dealer: true,
-      },
+      include: this.promotionInclude, // Thêm include vehicleUnits
     });
 
     if (!promotion) {
@@ -140,15 +174,7 @@ export class PromotionsService {
     const promotions = await prisma.dealerDiscount.findMany({
       where,
       orderBy: { startDate: "desc" },
-      include: {
-        dealer: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-      },
+      include: this.promotionInclude, // Thêm include vehicleUnits
     });
 
     return promotions;
@@ -171,6 +197,7 @@ export class PromotionsService {
         { source: "desc" }, // MANUFACTURER first
         { discountValue: "desc" }, // Then by discount value
       ],
+      include: this.promotionInclude, // Thêm include vehicleUnits
     });
 
     return promotions;
@@ -179,79 +206,106 @@ export class PromotionsService {
   /**
    * Get all available promotions for a dealer (from dealer + manufacturer)
    */
-  async getAvailablePromotionsForDealer(dealerId: string, includeInactive: boolean = false) {
-    const now = new Date();
+  async getAvailablePromotionsForDealer(dealerId: string, includeInactive: boolean = false, vehicleUnitId?: string) {  // FIXED: Thêm param vehicleUnitId?: string
+  const now = new Date();
 
-    // FIXED: Sử dụng getByDealerId để hỗ trợ includeInactive, fetch all (active + inactive nếu true)
-    const allPromotions = await this.getByDealerId(dealerId, includeInactive);
+  // FIXED: Sử dụng getByDealerId để hỗ trợ includeInactive, fetch all (active + inactive nếu true)
+  const allPromotions = await this.getByDealerId(dealerId, includeInactive);
 
-    // FIXED: Nếu includeInactive=true, return all (không filter date, để frontend handle status)
-    // Nếu false, filter valid active (start <= now <= end)
-    let validPromotions = allPromotions;
-    if (!includeInactive) {
-      validPromotions = allPromotions.filter(p => 
-        p.isActive && p.startDate <= now && (!p.endDate || p.endDate >= now)
-      );
-    }
-
-    // Separate by source for easier filtering in frontend
-    const dealerPromotions = validPromotions.filter((p) => p.source === "DEALER");
-    const manufacturerPromotions = validPromotions.filter(
-      (p) => p.source === "MANUFACTURER"
+  // FIXED: Nếu includeInactive=true, return all (không filter date, để frontend handle status)
+  // Nếu false, filter valid active (start <= now <= end)
+  let validPromotions = allPromotions;
+  if (!includeInactive) {
+    validPromotions = allPromotions.filter(p => 
+      p.isActive && p.startDate <= now && (!p.endDate || p.endDate >= now)
     );
-
-    // FIXED: Nếu includeInactive=true, thêm allPromotions để frontend filter client-side
-    return {
-      dealerPromotions,
-      manufacturerPromotions,
-      allPromotions: includeInactive ? allPromotions : validPromotions,
-    };
   }
+
+  // FIXED: Nếu có vehicleUnitId, filter chỉ promotions có relation với unit đó (qua promotionVehicle)
+ if (vehicleUnitId) {
+  validPromotions = validPromotions.filter(p => {
+    // Nếu promotion không gắn xe nào → áp dụng cho tất cả → cho hiện
+    if (!p.vehicleUnits || p.vehicleUnits.length === 0) return true;
+    
+    // Nếu có gắn xe → chỉ cho hiện nếu có match với vehicleUnitId đang chọn
+    return p.vehicleUnits.some(unit => unit.vehicleUnit.id === vehicleUnitId);
+  });
+}
+
+  // Separate by source for easier filtering in frontend
+  const dealerPromotions = validPromotions.filter((p) => p.source === "DEALER");
+  const manufacturerPromotions = validPromotions.filter(
+    (p) => p.source === "MANUFACTURER"
+  );
+
+  // FIXED: Nếu includeInactive=true, thêm allPromotions để frontend filter client-side
+  return {
+    dealerPromotions,
+    manufacturerPromotions,
+    allPromotions: includeInactive ? allPromotions : validPromotions,
+  };
+}
 
   /**
    * Create new promotion
    */
   async create(
-    data: Prisma.DealerDiscountCreateInput & { source?: PromotionSource }, // Thêm source vào input
+    data: CreatePromotionInput, // FIXED: Extend để có vehicleUnitIds
     userRole: string,
     _userId?: string
   ) {
+    const { vehicleUnitIds, ...promotionData } = data; // FIXED: Extract vehicleUnitIds
+
     // Xác định source: Dealer chỉ tạo DEALER, EVM/ADMIN có thể tạo MANUFACTURER
-    const source = data.source || "DEALER";
+    const source = promotionData.source || "DEALER";
     if (source === "MANUFACTURER" && userRole !== "ADMIN" && userRole !== "EVM_STAFF") {
       throw new Error("Only EVM staff or admin can create manufacturer promotions");
     }
 
     // Validate dealer exists
     const dealer = await prisma.dealer.findUnique({
-      where: { id: data.dealer.connect?.id },
+      where: { id: promotionData.dealer.connect?.id },
     });
     if (!dealer) {
       throw new Error("Dealer not found");
     }
 
     // Validate dates
-    const startDate = new Date(data.startDate);
-    const endDate = data.endDate ? new Date(data.endDate) : null;
+    const startDate = new Date(promotionData.startDate);
+    const endDate = promotionData.endDate ? new Date(promotionData.endDate) : null;
 
     if (endDate && endDate <= startDate) {
       throw new Error("End date must be after start date");
     }
 
     // Validate discount value
-    if (data.discountType === "PERCENTAGE") {
-      if (Number(data.discountValue) < 0 || Number(data.discountValue) > 100) {
+    if (promotionData.discountType === "PERCENTAGE") {
+      if (Number(promotionData.discountValue) < 0 || Number(promotionData.discountValue) > 100) {
         throw new Error("Percentage discount must be between 0 and 100");
       }
     } else {
-      if (Number(data.discountValue) < 0) {
+      if (Number(promotionData.discountValue) < 0) {
         throw new Error("Discount value cannot be negative");
       }
     }
 
     // Validate min purchase
-    if (data.minPurchase && Number(data.minPurchase) < 0) {
+    if (promotionData.minPurchase && Number(promotionData.minPurchase) < 0) {
       throw new Error("Minimum purchase cannot be negative");
+    }
+
+    // FIXED: Validate vehicleUnitIds nếu có (phải tồn tại và thuộc dealer)
+    if (vehicleUnitIds && vehicleUnitIds.length > 0) {
+      const existingUnits = await prisma.vehicleUnit.findMany({
+        where: {
+          id: { in: vehicleUnitIds },
+          dealerId: dealer.id, // Phải thuộc dealer này
+        },
+        select: { id: true },
+      });
+      if (existingUnits.length !== vehicleUnitIds.length) {
+        throw new Error("Some vehicle unit IDs do not exist or do not belong to this dealer");
+      }
     }
 
     // Check for overlapping promotions
@@ -259,7 +313,7 @@ export class PromotionsService {
       where: {
         dealerId: dealer.id,
         isActive: true,
-        name: data.name,
+        name: promotionData.name,
         startDate: { lte: endDate || new Date("2099-12-31") },
         OR: [{ endDate: { gte: startDate } }, { endDate: null }],
       },
@@ -271,16 +325,28 @@ export class PromotionsService {
       );
     }
 
+    // FIXED: Tạo Promotion trước
     const promotion = await prisma.dealerDiscount.create({
       data: {
-        ...data,
+        ...promotionData,
         source, // Đảm bảo source được set
-        isActive: data.isActive ?? true,
+        isActive: promotionData.isActive ?? true,
       },
-      include: {
-        dealer: true,
-      },
+      include: this.promotionInclude, // Include vehicleUnits (sẽ rỗng lúc này)
     });
+
+    // FIXED: Tạo relations PromotionVehicle nếu có vehicleUnitIds
+    if (vehicleUnitIds && vehicleUnitIds.length > 0) {
+      await prisma.promotionVehicle.createMany({
+        data: vehicleUnitIds.map(unitId => ({
+          promotionId: promotion.id,
+          vehicleUnitId: unitId,
+        })),
+        skipDuplicates: true, // Tránh duplicate
+      });
+      // Refetch để có vehicleUnits populated
+      return this.getById(promotion.id, userRole, dealer.id);
+    }
 
     return promotion;
   }
@@ -290,10 +356,12 @@ export class PromotionsService {
    */
   async update(
     id: string,
-    data: Prisma.DealerDiscountUpdateInput,
+    data: UpdatePromotionInput, // FIXED: Extend để có vehicleUnitIds
     userRole: string,
     dealerId?: string
   ) {
+    const { vehicleUnitIds, ...promotionData } = data; // FIXED: Extract vehicleUnitIds
+
     const existing = await prisma.dealerDiscount.findUnique({
       where: { id },
     });
@@ -316,12 +384,12 @@ export class PromotionsService {
     }
 
     // Validate dates if provided
-    if (data.startDate || data.endDate) {
-      const startDate = data.startDate
-        ? new Date(data.startDate as Date)
+    if (promotionData.startDate || promotionData.endDate) {
+      const startDate = promotionData.startDate
+        ? new Date(promotionData.startDate as Date)
         : existing.startDate;
-      const endDate = data.endDate
-        ? new Date(data.endDate as Date)
+      const endDate = promotionData.endDate
+        ? new Date(promotionData.endDate as Date)
         : existing.endDate;
 
       if (endDate && endDate <= startDate) {
@@ -330,10 +398,10 @@ export class PromotionsService {
     }
 
     // Validate discount value if provided
-    if (data.discountValue || data.discountType) {
+    if (promotionData.discountValue || promotionData.discountType) {
       const discountType =
-        (data.discountType as DiscountType) || existing.discountType;
-      const discountValue = data.discountValue || existing.discountValue;
+        (promotionData.discountType as DiscountType) || existing.discountType;
+      const discountValue = promotionData.discountValue || existing.discountValue;
 
       if (discountType === "PERCENTAGE") {
         if (Number(discountValue) < 0 || Number(discountValue) > 100) {
@@ -347,19 +415,48 @@ export class PromotionsService {
     }
 
     // Validate min purchase if provided
-    if (data.minPurchase && Number(data.minPurchase) < 0) {
+    if (promotionData.minPurchase && Number(promotionData.minPurchase) < 0) {
       throw new Error("Minimum purchase cannot be negative");
     }
 
-    const promotion = await prisma.dealerDiscount.update({
+    // FIXED: Validate vehicleUnitIds nếu có (phải tồn tại và thuộc dealer)
+    if (vehicleUnitIds && vehicleUnitIds.length > 0) {
+      const existingUnits = await prisma.vehicleUnit.findMany({
+        where: {
+          id: { in: vehicleUnitIds },
+          dealerId: existing.dealerId, // Phải thuộc dealer của promotion
+        },
+        select: { id: true },
+      });
+      if (existingUnits.length !== vehicleUnitIds.length) {
+        throw new Error("Some vehicle unit IDs do not exist or do not belong to this dealer");
+      }
+    }
+
+    // FIXED: Update Promotion cơ bản trước
+    await prisma.dealerDiscount.update({
       where: { id },
-      data,
-      include: {
-        dealer: true,
-      },
+      data: promotionData,
     });
 
-    return promotion;
+    // FIXED: Xóa relations cũ trong PromotionVehicle
+    await prisma.promotionVehicle.deleteMany({
+      where: { promotionId: id },
+    });
+
+    // FIXED: Tạo relations mới nếu có vehicleUnitIds
+    if (vehicleUnitIds && vehicleUnitIds.length > 0) {
+      await prisma.promotionVehicle.createMany({
+        data: vehicleUnitIds.map(unitId => ({
+          promotionId: id,
+          vehicleUnitId: unitId,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    // Refetch với include để return full data
+    return this.getById(id, userRole, existing.dealerId);
   }
 
   /**
@@ -390,9 +487,7 @@ export class PromotionsService {
     const promotion = await prisma.dealerDiscount.update({
       where: { id },
       data: { isActive: !existing.isActive },
-      include: {
-        dealer: true,
-      },
+      include: this.promotionInclude, // Thêm include vehicleUnits
     });
 
     return promotion;
@@ -430,6 +525,11 @@ export class PromotionsService {
       );
     }
 
+    // FIXED: Xóa relations PromotionVehicle trước khi delete Promotion
+    await prisma.promotionVehicle.deleteMany({
+      where: { promotionId: id },
+    });
+
     await prisma.dealerDiscount.delete({
       where: { id },
     });
@@ -440,110 +540,136 @@ export class PromotionsService {
   /**
    * Calculate discount amount for a purchase
    */
-  async calculateDiscount(
-    dealerId: string,
-    purchaseAmount: number,
-    promotionId?: string
-  ) {
-    let promotion;
+ async calculateDiscount(
+  dealerId: string,
+  purchaseAmount: number,
+  promotionId?: string,
+  vehicleUnitId?: string // Thêm: Để filter theo xe cụ thể
+) {
+  let promotion;
 
-    if (promotionId) {
-      // Use specific promotion
-      promotion = await prisma.dealerDiscount.findUnique({
-        where: { id: promotionId },
-      });
+  if (promotionId) {
+    // Use specific promotion
+    promotion = await prisma.dealerDiscount.findUnique({
+      where: { id: promotionId },
+      include: this.promotionInclude, // Include để check vehicleUnits
+    });
 
-      if (
-        !promotion ||
-        !promotion.isActive ||
-        promotion.dealerId !== dealerId
-      ) {
-        throw new Error("Invalid promotion");
-      }
-    } else {
-      // Find best applicable promotion
-      const now = new Date();
-      const applicablePromotions = await prisma.dealerDiscount.findMany({
+    if (
+      !promotion ||
+      !promotion.isActive ||
+      promotion.dealerId !== dealerId
+    ) {
+      throw new Error("Invalid promotion");
+    }
+
+    // FIXED: Nếu có vehicleUnitId, check relation PromotionVehicle
+    if (vehicleUnitId) {
+      const hasRelation = await prisma.promotionVehicle.findFirst({
         where: {
-          dealerId,
-          isActive: true,
-          startDate: { lte: now },
-          AND: [
-            {
-              OR: [{ endDate: { gte: now } }, { endDate: null }],
-            },
-            {
-              OR: [
-                { minPurchase: { lte: purchaseAmount } },
-                { minPurchase: null },
-              ],
-            },
-          ],
+          promotionId: promotion.id,
+          vehicleUnitId: vehicleUnitId,
         },
-        orderBy: { discountValue: "desc" },
       });
-
-      if (applicablePromotions.length === 0) {
-        return {
-          originalAmount: purchaseAmount,
-          discountAmount: 0,
-          finalAmount: purchaseAmount,
-          promotion: null,
-        };
-      }
-
-      // Calculate best discount
-      let maxDiscount = 0;
-      for (const promo of applicablePromotions) {
-        let discount = 0;
-        if (promo.discountType === "PERCENTAGE") {
-          discount = purchaseAmount * (Number(promo.discountValue) / 100);
-        } else {
-          discount = Number(promo.discountValue);
-        }
-
-        if (discount > maxDiscount) {
-          maxDiscount = discount;
-          promotion = promo;
-        }
+      if (!hasRelation) {
+        throw new Error("This promotion does not apply to the selected vehicle unit");
       }
     }
+  } else {
+    // Find best applicable promotion
+    const now = new Date();
+    let applicablePromotions = await prisma.dealerDiscount.findMany({
+      where: {
+        dealerId,
+        isActive: true,
+        startDate: { lte: now },
+        AND: [
+          {
+            OR: [{ endDate: { gte: now } }, { endDate: null }],
+          },
+          {
+            OR: [
+              { minPurchase: { lte: purchaseAmount } },
+              { minPurchase: null },
+            ],
+          },
+        ],
+      },
+      include: this.promotionInclude, // Include để check vehicleUnits sau
+      orderBy: { discountValue: "desc" },
+    });
 
-    // Calculate final discount
-    let discountAmount = 0;
-    if (promotion) {
-      // Check min purchase requirement
-      if (
-        promotion.minPurchase &&
-        purchaseAmount < Number(promotion.minPurchase)
-      ) {
-        throw new Error(`Minimum purchase amount is ${promotion.minPurchase}`);
-      }
+    // FIXED: Nếu có vehicleUnitId, filter chỉ promotions có relation với unit đó
+    if (vehicleUnitId) {
+      const relatedPromotionIds = await prisma.promotionVehicle.findMany({
+        where: { vehicleUnitId },
+        select: { promotionId: true },
+      });
+      const ids = relatedPromotionIds.map(r => r.promotionId);
+      applicablePromotions = applicablePromotions.filter(p => ids.includes(p.id));
+    }
 
-      if (promotion.discountType === "PERCENTAGE") {
-        discountAmount =
-          purchaseAmount * (Number(promotion.discountValue) / 100);
+    if (applicablePromotions.length === 0) {
+      return {
+        originalAmount: purchaseAmount,
+        discountAmount: 0,
+        finalAmount: purchaseAmount,
+        promotion: null,
+      };
+    }
+
+    // Calculate best discount
+    let maxDiscount = 0;
+    for (const promo of applicablePromotions) {
+      let discount = 0;
+      if (promo.discountType === "PERCENTAGE") {
+        discount = purchaseAmount * (Number(promo.discountValue) / 100);
       } else {
-        discountAmount = Number(promotion.discountValue);
+        discount = Number(promo.discountValue);
+      }
+
+      if (discount > maxDiscount) {
+        maxDiscount = discount;
+        promotion = promo;
       }
     }
-
-    const finalAmount = Math.max(0, purchaseAmount - discountAmount);
-
-    return {
-      originalAmount: purchaseAmount,
-      discountAmount,
-      finalAmount,
-      promotion: promotion
-        ? {
-            id: promotion.id,
-            name: promotion.name,
-            discountType: promotion.discountType,
-            discountValue: promotion.discountValue,
-          }
-        : null,
-    };
   }
+
+  // Calculate final discount
+  let discountAmount = 0;
+  if (promotion) {
+    // Check min purchase requirement
+    if (
+      promotion.minPurchase &&
+      purchaseAmount < Number(promotion.minPurchase)
+    ) {
+      throw new Error(`Minimum purchase amount is ${promotion.minPurchase}`);
+    }
+
+    if (promotion.discountType === "PERCENTAGE") {
+      discountAmount =
+        purchaseAmount * (Number(promotion.discountValue) / 100);
+    } else {
+      discountAmount = Number(promotion.discountValue);
+    }
+  }
+
+  const finalAmount = Math.max(0, purchaseAmount - discountAmount);
+
+  return {
+    originalAmount: purchaseAmount,
+    discountAmount,
+    finalAmount,
+    promotion: promotion
+      ? {
+          id: promotion.id,
+          name: promotion.name,
+          discountType: promotion.discountType,
+          discountValue: promotion.discountValue,
+        }
+      : null,
+  };
+}
 
   /**
    * Get promotion statistics

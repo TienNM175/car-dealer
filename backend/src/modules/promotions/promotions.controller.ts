@@ -177,6 +177,8 @@ export class PromotionsController {
         startDate: new Date(req.body.startDate),
         endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
         isActive: req.body.isActive ?? true,
+        // FIXED: Extract vehicleUnitIds từ body (array strings, optional)
+        vehicleUnitIds: req.body.vehicleUnitIds ? (req.body.vehicleUnitIds as string[]) : undefined,
       };
 
       // EVM/Admin can specify source (default MANUFACTURER), Dealer creates DEALER promotions
@@ -201,7 +203,8 @@ export class PromotionsController {
         error.message.includes("must be after") ||
         error.message.includes("must be between") ||
         error.message.includes("cannot be negative") ||
-        error.message.includes("already exists")
+        error.message.includes("already exists") ||
+        error.message.includes("Some vehicle unit IDs do not exist") // FIXED: Xử lý validation mới
       ) {
         return ResponseUtil.badRequest(res, error.message);
       }
@@ -239,6 +242,10 @@ export class PromotionsController {
           endDate: req.body.endDate ? new Date(req.body.endDate) : null,
         }),
         ...(req.body.isActive !== undefined && { isActive: req.body.isActive }),
+        // FIXED: Extract vehicleUnitIds từ body (array strings, optional - nếu có thì update relations)
+        ...(req.body.vehicleUnitIds !== undefined && {
+          vehicleUnitIds: req.body.vehicleUnitIds as string[],
+        }),
       };
 
       const promotion = await promotionsService.update(
@@ -265,7 +272,8 @@ export class PromotionsController {
       if (
         error.message.includes("must be after") ||
         error.message.includes("must be between") ||
-        error.message.includes("cannot be negative")
+        error.message.includes("cannot be negative") ||
+        error.message.includes("Some vehicle unit IDs do not exist") // FIXED: Xử lý validation mới
       ) {
         return ResponseUtil.badRequest(res, error.message);
       }
@@ -347,7 +355,7 @@ export class PromotionsController {
    */
   async calculateDiscount(req: Request, res: Response, next: NextFunction) {
     try {
-      const { dealerId, purchaseAmount, promotionId } = req.body;
+      const { dealerId, purchaseAmount, promotionId, vehicleUnitId } = req.body; // FIXED: Thêm vehicleUnitId từ body (optional)
 
       if (!dealerId || !purchaseAmount) {
         return ResponseUtil.badRequest(
@@ -363,7 +371,8 @@ export class PromotionsController {
       const result = await promotionsService.calculateDiscount(
         dealerId,
         Number(purchaseAmount),
-        promotionId
+        promotionId,
+        vehicleUnitId // FIXED: Pass vehicleUnitId để filter relation nếu cần
       );
 
       return ResponseUtil.success(
@@ -374,7 +383,8 @@ export class PromotionsController {
     } catch (error: any) {
       if (
         error.message.includes("Invalid promotion") ||
-        error.message.includes("Minimum purchase")
+        error.message.includes("Minimum purchase") ||
+        error.message.includes("This promotion does not apply to the selected vehicle unit") // FIXED: Xử lý validation mới
       ) {
         return ResponseUtil.badRequest(res, error.message);
       }

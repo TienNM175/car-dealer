@@ -321,10 +321,26 @@ model DealerDiscount {
   contracts     Contract[]
   dealer        Dealer          @relation(fields: [dealerId], references: [id])
 
+  // Thêm mới: Many-to-many với VehicleUnit (qua PromotionVehicle)
+  vehicleUnits  PromotionVehicle[]
+
   @@index([dealerId])
   @@index([isActive])
   @@index([source])
   @@map("dealer_discounts")
+}
+
+model PromotionVehicle {
+  id            String   @id @default(cuid())
+  promotionId   String   // FK to DealerDiscount.id
+  vehicleUnitId String   // FK to VehicleUnit.id
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  promotion     DealerDiscount @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  vehicleUnit   VehicleUnit    @relation(fields: [vehicleUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, vehicleUnitId])  // Không duplicate relation
+  @@map("promotion_vehicles")  // Table name in DB
 }
 
 model Session {
@@ -463,6 +479,9 @@ model VehicleUnit {
   dealer          Dealer?                 @relation(fields: [dealerId], references: [id])
   updatedBy       User?                   @relation("VehicleUnitUpdatedBy", fields: [updatedById], references: [id])
   vehicle         Vehicle                 @relation(fields: [vehicleId], references: [id])
+
+  // Thêm mới: Many-to-many với DealerDiscount (qua PromotionVehicle)
+  promotions      PromotionVehicle[]
 
   @@index([vehicleId])
   @@index([dealerId])

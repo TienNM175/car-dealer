@@ -15,12 +15,15 @@ import {
   CheckCircle,
   X,
   Lock,
-
+  Car,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { promotionApi } from "@/lib/api/promotionApi";
+import { vehicleUnitApi } from "@/lib/api/vehicleUnitApi";
 import { Promotion, UpdatePromotionDTO, PromotionStatistics, PromotionSource, AvailablePromotionsResponse } from "@/lib/types/promotion.types";
+import { VehicleUnitSummary as VehicleUnit } from "@/lib/api/vehicleUnitApi"; // Import type từ vehicleUnitApi
 import { useAuth } from "@/contexts/AuthContext";
-
 
 // Temporary interface for raw API response to avoid TS errors
 interface RawPromotionStatistics {
@@ -47,7 +50,9 @@ export default function PromotionsPage() {
   const isManager = user?.role === "DEALER_MANAGER"; // Kiểm tra role để phân quyền UI
   const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAFF";
   const [availablePromotions, setAvailablePromotions] = useState<AvailablePromotionsResponse | null>(null);
+  const [vehicles, setVehicles] = useState<VehicleUnit[]>([]); // State cho list Vehicle Units
   const [loading, setLoading] = useState(true);
+  const [loadingVehicles, setLoadingVehicles] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -71,6 +76,8 @@ export default function PromotionsPage() {
   const [deletingPromotionId, setDeletingPromotionId] = useState<string | null>(null);
   const [deletingPromotion, setDeletingPromotion] = useState<Promotion | null>(null);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
+  const [showVehicleModal, setShowVehicleModal] = useState(false); // Modal multi-select cho Vehicle Units
+  const [vehicleSearchTerm, setVehicleSearchTerm] = useState(""); // Search trong modal xe
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
@@ -80,6 +87,7 @@ export default function PromotionsPage() {
     startDate: string;
     endDate: string;
     isActive: boolean;
+    vehicleUnitIds: string[]; // Thêm mảng ID Vehicle Units
   }>({
     name: "",
     description: "",
@@ -89,9 +97,11 @@ export default function PromotionsPage() {
     startDate: new Date().toISOString().split("T")[0],
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     isActive: true,
+    vehicleUnitIds: [], // Mặc định rỗng (áp dụng cho mọi xe)
   });
   const [discountValueFormatted, setDiscountValueFormatted] = useState<string>("");
   const [formErrors, setFormErrors] = useState<{ name?: string; description?: string }>({});
+  const [selectedVehicleUnits, setSelectedVehicleUnits] = useState<string[]>([]); // Selected IDs trong modal
 
   // Computed promotions based on activeSourceTab
   const promotions = useMemo(() => {
@@ -100,6 +110,29 @@ export default function PromotionsPage() {
       ? availablePromotions.dealerPromotions 
       : availablePromotions.manufacturerPromotions;
   }, [availablePromotions, activeSourceTab]);
+
+  // Filtered vehicles cho modal
+  const filteredVehicles = useMemo(() => {
+  if (!vehicleSearchTerm.trim()) return vehicles;
+
+  const term = vehicleSearchTerm.toLowerCase().trim();
+
+  return vehicles.filter((v) => {
+    const manufacturer = v.vehicle?.manufacturer?.name?.toLowerCase() || "";
+    const model = v.vehicle?.model?.toLowerCase() || "";
+    const variant = v.vehicle?.variant?.toLowerCase() || "";
+    const vin = v.vin?.toLowerCase() || "";
+    const color = v.color?.toLowerCase() || "";
+
+    return (
+      manufacturer.includes(term) ||
+      model.includes(term) ||
+      variant.includes(term) ||
+      vin.includes(term) ||
+      color.includes(term)
+    );
+  });
+}, [vehicles, vehicleSearchTerm]);
 
   // Format functions
   const formatVNDInput = (value: string): string => {
@@ -140,6 +173,25 @@ export default function PromotionsPage() {
     return Object.keys(errors).length === 0;
   };
 
+  // Fetch vehicles (Vehicle Units) available cho dealer
+  const fetchVehicles = async () => {
+    if (!dealerId) return;
+    try {
+      setLoadingVehicles(true);
+      const response = await vehicleUnitApi.list({
+        dealerId,
+        status: "IN_STOCK", // Chỉ lấy xe còn hàng
+        limit: 100, // Giới hạn để tránh load quá nhiều
+      });
+      setVehicles(response.data.data);
+    } catch (err: any) {
+      console.error("Error fetching vehicles:", err);
+      setError("Không thể tải danh sách xe");
+    } finally {
+      setLoadingVehicles(false);
+    }
+  };
+
   const fetchPromotions = async () => {
     if (!dealerId) {
       setError("Không tìm thấy thông tin đại lý. Vui lòng đăng nhập lại.");
@@ -151,7 +203,7 @@ export default function PromotionsPage() {
       setLoading(true);
       setError(null);
 
-      // Sử dụng getAvailablePromotions để separate MANUFACTURER & DEALER
+      // Sử dụng getAvailablePromotions để separate MANUFACTURER & DEALER (include vehicleUnits)
       const response = await promotionApi.getAvailablePromotions(dealerId);
       setAvailablePromotions(response);
     } catch (err: any) {
@@ -206,6 +258,7 @@ export default function PromotionsPage() {
         minPurchase: unformatVND(formData.minPurchase),
         dealerId, // Gửi dealerId, backend sẽ force nếu cần
         source: "DEALER" as PromotionSource, // Auto-set source=DEALER cho dealer
+        vehicleUnitIds: formData.vehicleUnitIds, // Gửi mảng IDs
       };
       await promotionApi.create(submitData);
       setSuccess("Tạo khuyến mãi thành công!");
@@ -234,6 +287,7 @@ export default function PromotionsPage() {
       const updateData: UpdatePromotionDTO = {
         ...formData,
         minPurchase: unformatVND(formData.minPurchase),
+        vehicleUnitIds: formData.vehicleUnitIds, // Update mảng IDs
       };
       await promotionApi.update(editingPromotion.id, updateData);
       setSuccess("Cập nhật thành công!");
@@ -353,7 +407,9 @@ export default function PromotionsPage() {
       startDate: startDateStr,
       endDate: endDateStr,
       isActive: promotion.isActive,
+      vehicleUnitIds: promotion.vehicleUnits?.map(vu => vu.vehicleUnit?.id || '')?.filter(id => id) || [],
     });
+    setSelectedVehicleUnits(promotion.vehicleUnits?.map(vu => vu.vehicleUnit?.id || '')?.filter(id => id) || []);
     setDiscountValueFormatted(formattedDiscountValue);
     setFormErrors({});
     setShowModal(true);
@@ -369,7 +425,9 @@ export default function PromotionsPage() {
       startDate: new Date().toISOString().split("T")[0],
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       isActive: true,
+      vehicleUnitIds: [],
     });
+    setSelectedVehicleUnits([]);
     setDiscountValueFormatted("");
     setFormErrors({});
     setEditingPromotion(null);
@@ -397,6 +455,27 @@ export default function PromotionsPage() {
     }
   };
 
+  // Handle open vehicle modal
+  const openVehicleModal = () => {
+    setVehicleSearchTerm("");
+    setShowVehicleModal(true);
+  };
+
+  // Handle select vehicle units
+  const toggleVehicleUnit = (vehicleUnitId: string) => {
+    setSelectedVehicleUnits(prev =>
+      prev.includes(vehicleUnitId)
+        ? prev.filter(id => id !== vehicleUnitId)
+        : [...prev, vehicleUnitId]
+    );
+  };
+
+  // Confirm selection
+  const confirmVehicleSelection = () => {
+    setFormData({ ...formData, vehicleUnitIds: selectedVehicleUnits });
+    setShowVehicleModal(false);
+  };
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchPromotions();
@@ -409,6 +488,13 @@ export default function PromotionsPage() {
       fetchStatistics();
     }
   }, [activeTab, dealerId, activeSourceTab]); // Refetch stats khi switch source tab
+
+  // Load vehicles khi open modal hoặc khi cần
+  useEffect(() => {
+    if (showModal && isManager && activeSourceTab === "DEALER") {
+      fetchVehicles();
+    }
+  }, [showModal, isManager, activeSourceTab, dealerId]);
 
   if (loading && promotions.length === 0) {
     return (
@@ -709,6 +795,9 @@ export default function PromotionsPage() {
                         Thời gian
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Xe áp dụng
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Trạng thái
                       </th>
                       {isManager && activeSourceTab === "DEALER" && ( // Chỉ show cột Thao tác cho DEALER tab
@@ -767,6 +856,22 @@ export default function PromotionsPage() {
                           </p>
                           <p className="text-gray-500">→ {formatDate(promotion.endDate)}</p>
                         </td>
+                      <td className="px-6 py-4">
+  {promotion.vehicleUnits && promotion.vehicleUnits.length > 0 ? (
+    <div className="flex flex-wrap gap-1">
+      {promotion.vehicleUnits.slice(0, 3).map((vu) => (
+        <span key={vu.id} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+          {vu.vehicleUnit?.vehicle?.model || 'Unknown'} {vu.vehicleUnit?.vin?.slice(-6) || 'N/A'}
+        </span>
+      ))}
+      {promotion.vehicleUnits.length > 3 && (
+        <span className="text-xs text-gray-500">+{promotion.vehicleUnits.length - 3}</span>
+      )}
+    </div>
+  ) : (
+    <span className="text-xs text-gray-500">Tất cả xe</span>
+  )}
+</td>
                         <td className="px-6 py-4">
                           {canToggle ? (
                             <button
@@ -827,7 +932,7 @@ export default function PromotionsPage() {
         )}
 
         {/* Create/Edit Modal (chỉ show nếu manager và cho DEALER) */}
-        {showModal && isManager && (
+        {showModal && isManager && activeSourceTab === "DEALER" && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden transform transition-all animate-in slide-in-from-bottom-4 duration-300">
               {/* Modal Header */}
@@ -1006,6 +1111,36 @@ export default function PromotionsPage() {
                   </div>
                 </div>
 
+                {/* Vehicle Units Section - Mới thêm */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+                    <div className="w-1 h-5 bg-gradient-to-b from-indigo-600 to-blue-600 rounded-full"></div>
+                    <h4 className="font-semibold text-gray-900">Xe áp dụng</h4>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Chọn xe cụ thể (tùy chọn)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={openVehicleModal}
+                      disabled={loadingVehicles}
+                      className="w-full border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 text-gray-600 hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Car className="w-4 h-4" />
+                        {formData.vehicleUnitIds.length > 0 
+                          ? `${formData.vehicleUnitIds.length} xe được chọn` 
+                          : "Áp dụng cho tất cả xe (chọn để giới hạn)"}
+                      </div>
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Để khuyến mãi áp dụng cho tất cả xe, để trống. Chọn xe cụ thể để áp dụng riêng.
+                    </p>
+                  </div>
+                </div>
+
                 {/* Dealer & Period Section - Fixed dealer for dealer user */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
@@ -1115,8 +1250,110 @@ export default function PromotionsPage() {
           </div>
         )}
 
+        {/* Vehicle Selection Modal */}
+        {showVehicleModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden transform transition-all animate-in slide-in-from-bottom-4 duration-300">
+              {/* Modal Header */}
+              <div className="relative bg-gradient-to-r from-indigo-600 to-blue-600 p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <Car className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-white">Chọn xe áp dụng</h3>
+                      <p className="text-blue-100 text-sm mt-1">Chọn các xe cụ thể để áp dụng khuyến mãi</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowVehicleModal(false)}
+                    className="w-10 h-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg flex items-center justify-center transition-all text-white"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(80vh-200px)]">
+                {/* Search */}
+                <div>
+                 <input
+  type="text"
+  value={vehicleSearchTerm}
+  onChange={(e) => setVehicleSearchTerm(e.target.value)}
+  placeholder="Tìm kiếm theo hãng, model, VIN, màu..."
+  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-base text-gray-900 placeholder-gray-500"
+/>
+                </div>
+
+                {/* List */}
+                {loadingVehicles ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Đang tải danh sách xe...</p>
+                  </div>
+                ) : filteredVehicles.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Car className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>Không tìm thấy xe nào</p>
+                  </div>
+                ) : (
+                 <div className="space-y-2 max-h-64 overflow-y-auto">
+    {filteredVehicles.map((v) => (
+      <label key={v.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
+        <input
+          type="checkbox"
+          checked={selectedVehicleUnits.includes(v.id)}
+          onChange={() => toggleVehicleUnit(v.id)}
+          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+        />
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-gray-900 truncate">
+            {v.vehicle?.manufacturer?.name} {v.vehicle?.model} {v.vehicle?.variant}
+          </p>
+          <p className="text-sm text-gray-500 truncate">VIN: {v.vin}</p>
+          <p className="text-xs text-gray-400">
+            Màu: {v.color || "Không xác định"} | Trạng thái: {v.status}
+          </p>
+        </div>
+      </label>
+    ))}
+  </div>
+                )}
+
+                {/* Summary */}
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="text-sm text-gray-600">
+                    Đã chọn: <span className="font-semibold text-blue-600">{selectedVehicleUnits.length}</span> xe
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 p-6 bg-gray-50 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowVehicleModal(false)}
+                  className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-all"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmVehicleSelection}
+                  className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all"
+                >
+                  Xác nhận
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Delete Confirmation Modal (chỉ show nếu manager và cho DEALER) */}
-        {showDeleteModal && isManager && (
+        {showDeleteModal && isManager && activeSourceTab === "DEALER" && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all animate-in slide-in-from-bottom-4 duration-300">
               {/* Modal Header */}
