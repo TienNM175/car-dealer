@@ -26,6 +26,25 @@ export interface Promotion {
     code: string;
     city?: string;
   };
+  // Thêm mới: Relation với Vehicle Units (many-to-many, optional)
+  vehicleUnits?: {
+    id: string;
+    createdAt: Date;
+    vehicleUnit?: {
+      id: string;
+      vin: string;
+      color?: string;
+      status: string;
+      vehicle?: {
+        id: string;
+        model: string;
+        variant?: string;
+        manufacturer?: {
+          name: string;
+        };
+      };
+    };
+  }[]; // Nested structure từ backend
 }
 
 export interface CreatePromotionDTO {
@@ -39,6 +58,8 @@ export interface CreatePromotionDTO {
   startDate: string | Date;
   endDate?: string | Date;
   isActive?: boolean;
+  // Thêm mới: Mảng ID Vehicle Units (optional, rỗng = áp dụng cho tất cả)
+  vehicleUnitIds?: string[];
 }
 
 export interface UpdatePromotionDTO {
@@ -52,6 +73,8 @@ export interface UpdatePromotionDTO {
   isActive?: boolean;
   // Không có source ở đây: Không cho update nguồn gốc (immutable)
   // Không có isEditable: Auto-managed ở backend dựa trên source
+  // Thêm mới: Update mảng ID Vehicle Units (optional)
+  vehicleUnitIds?: string[];
 }
 
 export interface PromotionFilters {
