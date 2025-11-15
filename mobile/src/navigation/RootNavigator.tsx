@@ -1,4 +1,4 @@
-// mobile/src/navigation/RootNavigator.tsx (UPDATED)
+// mobile/src/navigation/RootNavigator.tsx
 import React from 'react';
 import { View, StyleSheet, Modal } from 'react-native';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
@@ -8,6 +8,8 @@ import { VehicleListScreen } from '../screens/VehicleListScreen';
 import { VehicleDetailScreen } from '../screens/VehicleDetailScreen';
 import { DealerListScreen } from '../screens/DealerListScreen';
 import { TestDriveScreen } from '../screens/TestDriveScreen';
+import { ContractLookupScreen } from '../screens/ContractLookupScreen'; 
+import { ContractDetailsScreen } from '../screens/ContractDetailsScreen'; 
 import { ChatBot } from '../components/ChatBot/ChatBot';
 import { FloatingChatButton } from '../components/FloatingChatButton';
 import { ChatBotProvider, useChatBot } from '../contexts/ChatBotContext';
@@ -37,18 +39,22 @@ export type RootStackParamList = {
       scheduledDate: string;
     };
   };
+  ContractLookup: undefined; // ✅ NEW ROUTE
+  ContractDetails: { // ✅ NEW ROUTE
+    contractData: any;
+  };
 };
+
 type RootNavigationProp = StackNavigationProp<RootStackParamList>;
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-// ✅ Inner component có access vào navigation
+// Inner component có access vào navigation
 const NavigationWithChatBot = () => {
   const navigation = useNavigation<RootNavigationProp>();
   const { isOpen, closeChat } = useChatBot();
 
   const handleNavigate = (screen: string, params?: any) => {
-    // ✅ Đóng chat trước khi navigate
     closeChat();
     
     setTimeout(() => {
@@ -104,12 +110,27 @@ const NavigationWithChatBot = () => {
             headerShown: false,
           }}
         />
+        {/* ✅ NEW SCREENS */}
+        <Stack.Screen
+          name="ContractLookup"
+          component={ContractLookupScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="ContractDetails"
+          component={ContractDetailsScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack.Navigator>
 
-      {/* ✅ Global Floating Chat Button */}
+      {/* Global Floating Chat Button */}
       <FloatingChatButton />
 
-      {/* ✅ Global ChatBot Modal */}
+      {/* Global ChatBot Modal */}
       <Modal
         visible={isOpen}
         animationType="slide"
@@ -124,7 +145,7 @@ const NavigationWithChatBot = () => {
   );
 };
 
-// ✅ Root component wrap với Provider
+// Root component wrap với Provider
 export const RootNavigator: React.FC = () => {
   return (
     <ChatBotProvider>

@@ -95,4 +95,117 @@ export class PublicController {
       return next(error);
     }
   }
+
+  /**
+   * Lookup contract by contract code and customer info
+   */
+  async lookupContract(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { contractCode, email, phone } = req.body;
+
+      if (!contractCode || (!email && !phone)) {
+        return ResponseUtil.badRequest(
+          res,
+          'Contract code and either email or phone is required'
+        );
+      }
+
+      const result = await publicService.lookupContract(
+        contractCode,
+        email,
+        phone
+      );
+
+      return ResponseUtil.success(
+        res,
+        result,
+        'Contract information retrieved successfully'
+      );
+    } catch (error: any) {
+      if (error.message === 'Contract not found') {
+        return ResponseUtil.notFound(res, error.message);
+      }
+      if (error.message.includes('does not match')) {
+        return ResponseUtil.badRequest(res, error.message);
+      }
+      return next(error);
+    }
+  }
+
+  /**
+   * Get debt information for a contract
+   */
+  async getContractDebt(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { contractCode } = req.params;
+      const { email, phone } = req.query;
+
+      if (!email && !phone) {
+        return ResponseUtil.badRequest(
+          res,
+          'Email or phone is required for verification'
+        );
+      }
+
+      const debtInfo = await publicService.getContractDebt(
+        contractCode,
+        email as string,
+        phone as string
+      );
+
+      return ResponseUtil.success(
+        res,
+        debtInfo,
+        'Debt information retrieved successfully'
+      );
+    } catch (error: any) {
+      if (error.message === 'Contract not found') {
+        return ResponseUtil.notFound(res, error.message);
+      }
+      if (error.message.includes('does not match')) {
+        return ResponseUtil.badRequest(res, error.message);
+      }
+      return next(error);
+    }
+  }
+
+  /**
+   * Get payment schedule for installment contract
+   */
+  async getPaymentSchedule(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { contractCode } = req.params;
+      const { email, phone } = req.query;
+
+      if (!email && !phone) {
+        return ResponseUtil.badRequest(
+          res,
+          'Email or phone is required for verification'
+        );
+      }
+
+      const schedule = await publicService.getPaymentSchedule(
+        contractCode,
+        email as string,
+        phone as string
+      );
+
+      return ResponseUtil.success(
+        res,
+        schedule,
+        'Payment schedule retrieved successfully'
+      );
+    } catch (error: any) {
+      if (error.message === 'Contract not found') {
+        return ResponseUtil.notFound(res, error.message);
+      }
+      if (error.message.includes('does not match')) {
+        return ResponseUtil.badRequest(res, error.message);
+      }
+      if (error.message.includes('not an installment contract')) {
+        return ResponseUtil.badRequest(res, error.message);
+      }
+      return next(error);
+    }
+  }
 }

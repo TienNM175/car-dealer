@@ -1,5 +1,5 @@
 // ============================================
-// Enhanced src/screens/HomeScreen.tsx
+// Enhanced HomeScreen with Better Contract Lookup UI
 // ============================================
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -25,7 +25,7 @@ import { Vehicle, Manufacturer } from '../types/vehicle';
 import { COLORS } from '../constants/config';
 import { RootStackParamList } from '../navigation/RootNavigator';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -41,7 +41,6 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -148,12 +147,12 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.statNumber}>500+</Text>
                 <Text style={styles.statLabel}>Xe</Text>
               </View>
-              <View style={styles.divider} />
+              <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>100+</Text>
                 <Text style={styles.statLabel}>Đại lý</Text>
               </View>
-              <View style={styles.divider} />
+              <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>24/7</Text>
                 <Text style={styles.statLabel}>Hỗ trợ</Text>
@@ -166,6 +165,37 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </LinearGradient>
       </Animated.View>
+
+      {/* Contract Lookup - Featured Action */}
+      <View style={styles.actionSection}>
+        <TouchableOpacity
+          style={styles.primaryActionCard}
+          onPress={() => navigation.navigate('ContractLookup')}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={['#FF6B6B', '#FF5252']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.primaryActionGradient}
+          >
+            <View style={styles.primaryActionLeft}>
+              <View style={styles.primaryActionIcon}>
+                <Ionicons name="document-text-outline" size={40} color="#FFFFFF" />
+              </View>
+              <View style={styles.primaryActionTextWrapper}>
+                <Text style={styles.primaryActionTitle}>Tra cứu hợp đồng</Text>
+                <Text style={styles.primaryActionSubtitle}>
+                  Kiểm tra công nợ & lịch thanh toán
+                </Text>
+              </View>
+            </View>
+            <View style={styles.primaryActionArrow}>
+              <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
 
       {/* Search Section */}
       <View style={styles.searchWrapper}>
@@ -242,13 +272,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.sectionSubtitle}>Sản phẩm mới nhất</Text>
           </View>
           <TouchableOpacity onPress={() => navigation.navigate('VehicleList', {})}>
-            <Text style={styles.seeAll}>Xem tất cả</Text>
-            <Ionicons
-              name="arrow-forward"
-              size={16}
-              color={COLORS.primary}
-              style={styles.seeAllIcon}
-            />
+            <Text style={styles.seeAll}>Xem tất cả →</Text>
           </TouchableOpacity>
         </View>
 
@@ -292,14 +316,15 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
         />
       </View>
 
-      {/* CTA Section */}
+      {/* CTA Section - Test Drive */}
       <View style={styles.ctaSection}>
         <LinearGradient
-          colors={['#1976D2', '#1565C0']}
+          colors={['#A06CD5', '#9B5DD4']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.ctaGradient}
         >
+          <Ionicons name="speedometer-outline" size={40} color="#FFFFFF" style={{ marginBottom: 12 }} />
           <Text style={styles.ctaTitle}>Sẵn Sàng Lái Thử?</Text>
           <Text style={styles.ctaDescription}>
             Đặt lịch lái thử xe của bạn ngay hôm nay
@@ -309,7 +334,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => navigation.navigate('VehicleList', {})}
           >
             <Text style={styles.ctaButtonText}>Khám Phá Ngay</Text>
-            <Ionicons name="arrow-forward" size={20} color="#1976D2" />
+            <Ionicons name="arrow-forward" size={20} color="#A06CD5" />
           </TouchableOpacity>
         </LinearGradient>
       </View>
@@ -318,6 +343,10 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
     </ScrollView>
   );
 };
+
+// ============================================
+// Helper Components
+// ============================================
 
 interface FilterButtonProps {
   icon: string;
@@ -463,6 +492,9 @@ const BenefitItem: React.FC<BenefitItemProps> = ({
   </View>
 );
 
+// ============================================
+// STYLES
+// ============================================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -525,7 +557,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     opacity: 0.8,
   },
-  divider: {
+  statDivider: {
     width: 1,
     height: 40,
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -540,6 +572,60 @@ const styles = StyleSheet.create({
   waveEmoji: {
     fontSize: 80,
   },
+
+  actionSection: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+    marginTop: -16,
+  },
+  primaryActionCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  primaryActionGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  primaryActionLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  primaryActionIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  primaryActionTextWrapper: {
+    flex: 1,
+  },
+  primaryActionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  primaryActionSubtitle: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    opacity: 0.9,
+  },
+  primaryActionArrow: {
+    marginLeft: 8,
+  },
+
   searchWrapper: {
     paddingHorizontal: 0,
     marginBottom: 16,
@@ -611,9 +697,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.primary,
     fontWeight: '700',
-  },
-  seeAllIcon: {
-    marginTop: 2,
   },
   categoryList: {
     marginLeft: -16,
@@ -748,7 +831,7 @@ const styles = StyleSheet.create({
   ctaButtonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1976D2',
+    color: '#A06CD5',
   },
   footer: {
     height: 20,
