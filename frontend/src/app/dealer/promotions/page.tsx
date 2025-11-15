@@ -14,10 +14,13 @@ import {
   AlertCircle,
   CheckCircle,
   X,
+  Lock,
+
 } from "lucide-react";
 import { promotionApi } from "@/lib/api/promotionApi";
-import { Promotion, UpdatePromotionDTO, PromotionStatistics } from "@/lib/types/promotion.types";
+import { Promotion, UpdatePromotionDTO, PromotionStatistics, PromotionSource, AvailablePromotionsResponse } from "@/lib/types/promotion.types";
 import { useAuth } from "@/contexts/AuthContext";
+
 
 // Temporary interface for raw API response to avoid TS errors
 interface RawPromotionStatistics {
@@ -42,8 +45,8 @@ export default function PromotionsPage() {
   const { user } = useAuth(); // Lấy user từ context (dealerId, role)
   const dealerId = user?.dealerId;
   const isManager = user?.role === "DEALER_MANAGER"; // Kiểm tra role để phân quyền UI
-const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAFF";
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAFF";
+  const [availablePromotions, setAvailablePromotions] = useState<AvailablePromotionsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -58,10 +61,11 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"list" | "statistics">("list");
+  const [activeSourceTab, setActiveSourceTab] = useState<PromotionSource>("DEALER"); // Thêm tab cho source: DEALER (tự tạo) vs MANUFACTURER (từ hãng)
   const [statistics, setStatistics] = useState<PromotionStatistics | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  // Modal states (chỉ dùng cho manager)
+  // Modal states (chỉ dùng cho manager, và chỉ cho DEALER promotions)
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingPromotionId, setDeletingPromotionId] = useState<string | null>(null);
@@ -88,6 +92,14 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
   });
   const [discountValueFormatted, setDiscountValueFormatted] = useState<string>("");
   const [formErrors, setFormErrors] = useState<{ name?: string; description?: string }>({});
+
+  // Computed promotions based on activeSourceTab
+  const promotions = useMemo(() => {
+    if (!availablePromotions) return [];
+    return activeSourceTab === "DEALER" 
+      ? availablePromotions.dealerPromotions 
+      : availablePromotions.manufacturerPromotions;
+  }, [availablePromotions, activeSourceTab]);
 
   // Format functions
   const formatVNDInput = (value: string): string => {
@@ -139,19 +151,9 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
       setLoading(true);
       setError(null);
 
-      const params: any = {
-        dealerId,
-        isActive: filterActive,
-        search: searchTerm,
-        startDate,
-        endDate,
-        sortBy,
-        sortOrder,
-      };
-
-      const response = await promotionApi.getAll(params);
-      const promotionsData = Array.isArray(response.data) ? response.data : [];
-      setPromotions(promotionsData);
+      // Sử dụng getAvailablePromotions để separate MANUFACTURER & DEALER
+      const response = await promotionApi.getAvailablePromotions(dealerId);
+      setAvailablePromotions(response);
     } catch (err: any) {
       if (err.response?.status === 401) {
         setError("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
@@ -169,7 +171,8 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
 
     try {
       setLoadingStats(true);
-      const apiData = (await promotionApi.getStatistics(dealerId)) as unknown as RawPromotionStatistics;
+      // Filter stats theo activeSourceTab nếu cần (optional)
+      const apiData = (await promotionApi.getStatistics(dealerId, activeSourceTab)) as unknown as RawPromotionStatistics;
       
       const mappedStats: PromotionStatistics = {
         totalPromotions: apiData.total || 0,
@@ -191,7 +194,7 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
     }
   };
 
-  // CRUD Handlers (chỉ dùng cho manager)
+  // CRUD Handlers (chỉ dùng cho manager và chỉ cho DEALER promotions)
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -202,6 +205,7 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
         ...formData,
         minPurchase: unformatVND(formData.minPurchase),
         dealerId, // Gửi dealerId, backend sẽ force nếu cần
+        source: "DEALER" as PromotionSource, // Auto-set source=DEALER cho dealer
       };
       await promotionApi.create(submitData);
       setSuccess("Tạo khuyến mãi thành công!");
@@ -218,6 +222,12 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
     e.preventDefault();
     if (!validateForm()) return;
     if (!editingPromotion) return;
+
+    // Check if editable (MANUFACTURER không được sửa)
+    if (editingPromotion.source === "MANUFACTURER") {
+      alert("Không được chỉnh sửa mã khuyến mãi từ hãng!");
+      return;
+    }
 
     try {
       setError(null);
@@ -237,6 +247,11 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
   };
 
   const openDeleteModal = (promotion: Promotion) => {
+    // Chỉ cho DEALER promotions
+    if (promotion.source === "MANUFACTURER") {
+      alert("Không được xóa mã khuyến mãi từ hãng!");
+      return;
+    }
     setDeletingPromotion(promotion);
     setDeletingPromotionId(promotion.id);
     setShowDeleteModal(true);
@@ -244,6 +259,14 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
 
   const handleDelete = async () => {
     if (!deletingPromotion || !deletingPromotionId) return;
+
+    if (deletingPromotion.source === "MANUFACTURER") {
+      alert("Không được xóa mã khuyến mãi từ hãng!");
+      setShowDeleteModal(false);
+      setDeletingPromotion(null);
+      setDeletingPromotionId(null);
+      return;
+    }
 
     if (deletingPromotion.isActive) {
       setError("Cannot delete active promotion that has already started");
@@ -268,6 +291,15 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
   };
 
   const handleToggleStatus = async (id: string) => {
+    const promotion = promotions.find(p => p.id === id);
+    if (!promotion) return;
+
+    // Chỉ cho DEALER promotions
+    if (promotion.source === "MANUFACTURER") {
+      alert("Không được thay đổi trạng thái mã khuyến mãi từ hãng!");
+      return;
+    }
+
     try {
       setError(null);
       await promotionApi.toggleStatus(id);
@@ -286,6 +318,12 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
   };
 
   const openEditModal = (promotion: Promotion) => {
+    // Chỉ cho DEALER promotions
+    if (promotion.source === "MANUFACTURER") {
+      alert("Không được chỉnh sửa mã khuyến mãi từ hãng!");
+      return;
+    }
+
     const startDateStr =
       typeof promotion.startDate === "string"
         ? promotion.startDate.split("T")[0]
@@ -364,13 +402,13 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
       fetchPromotions();
     }, 500);
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, filterActive, startDate, endDate, sortBy, sortOrder, dealerId]);
+  }, [searchTerm, filterActive, startDate, endDate, sortBy, sortOrder, dealerId]); // Filters áp dụng chung, nhưng fetch dùng available (không param, filter ở UI)
 
   useEffect(() => {
     if (activeTab === "statistics") {
       fetchStatistics();
     }
-  }, [activeTab, dealerId]);
+  }, [activeTab, dealerId, activeSourceTab]); // Refetch stats khi switch source tab
 
   if (loading && promotions.length === 0) {
     return (
@@ -398,7 +436,7 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
               </p>
             </div>
             <div className="flex gap-2">
-              {isManager && (
+              {isManager && activeSourceTab === "DEALER" && ( // Chỉ show nút tạo cho tab DEALER
                 <button
                   onClick={openCreateModal}
                   className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-semibold shadow-md hover:shadow-lg transition-all"
@@ -411,7 +449,7 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
           </div>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation - Main Tabs */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="flex border-b border-gray-200">
             <button
@@ -449,6 +487,34 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
             <AlertCircle className="w-5 h-5" />
             <p className="font-medium">{error}</p>
+          </div>
+        )}
+
+        {/* Source Tabs - Chỉ cho List Tab */}
+        {activeTab === "list" && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => setActiveSourceTab("DEALER")}
+                className={`flex-1 px-6 py-4 font-semibold text-sm transition-all ${
+                  activeSourceTab === "DEALER"
+                    ? "bg-gradient-to-r from-green-600 to-green-700 text-white border-b-2 border-green-600"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                Tự tạo ({availablePromotions?.dealerPromotions.length || 0})
+              </button>
+              <button
+                onClick={() => setActiveSourceTab("MANUFACTURER")}
+                className={`flex-1 px-6 py-4 font-semibold text-sm transition-all ${
+                  activeSourceTab === "MANUFACTURER"
+                    ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white border-b-2 border-purple-600"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                Từ hãng ({availablePromotions?.manufacturerPromotions.length || 0})
+              </button>
+            </div>
           </div>
         )}
 
@@ -599,14 +665,22 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Tag className="w-5 h-5 text-blue-600" />
                 Danh sách khuyến mãi ({promotions.length})
+                {/* Source Badge */}
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                  activeSourceTab === "DEALER" 
+                    ? "bg-green-100 text-green-800" 
+                    : "bg-purple-100 text-purple-800"
+                }`}>
+                  {activeSourceTab === "DEALER" ? "Tự tạo" : "Từ hãng"}
+                </span>
               </h3>
             </div>
 
             {promotions.length === 0 ? (
               <div className="p-12 text-center text-gray-500">
                 <Tag className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                <p>Chưa có khuyến mãi nào được áp dụng cho đại lý của bạn.</p>
-                {isManager ? (
+                <p>Chưa có {activeSourceTab === "DEALER" ? "khuyến mãi tự tạo" : "mã khuyến mãi từ hãng"} nào.</p>
+                {isManager && activeSourceTab === "DEALER" ? (
                   <button
                     onClick={openCreateModal}
                     className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-semibold mx-auto shadow-md transition-all"
@@ -614,6 +688,8 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
                     <Plus className="w-4 h-4" />
                     Tạo ngay
                   </button>
+                ) : activeSourceTab === "MANUFACTURER" ? (
+                  <p className="text-sm mt-2">Vui lòng liên hệ hãng để nhận mã khuyến mãi.</p>
                 ) : (
                   <p className="text-sm mt-2">Vui lòng liên hệ quản lý đại lý để được hỗ trợ.</p>
                 )}
@@ -635,7 +711,7 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Trạng thái
                       </th>
-                      {isManager && (
+                      {isManager && activeSourceTab === "DEALER" && ( // Chỉ show cột Thao tác cho DEALER tab
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Thao tác
                         </th>
@@ -649,6 +725,22 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
                           <div>
                             <p className="font-semibold text-gray-900">{promotion.name}</p>
                             <p className="text-sm text-gray-500">{promotion.description || "Không có mô tả"}</p>
+                            {/* Source & Editable Badge */}
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                promotion.source === "DEALER" 
+                                  ? "bg-green-100 text-green-800" 
+                                  : "bg-purple-100 text-purple-800"
+                              }`}>
+                                {promotion.source === "DEALER" ? "Tự tạo" : "Từ hãng"}
+                              </span>
+                              {promotion.source === "MANUFACTURER" && (
+                                <span className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Lock className="w-3 h-3" />
+                                  Không chỉnh sửa
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -675,37 +767,37 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
                           </p>
                           <p className="text-gray-500">→ {formatDate(promotion.endDate)}</p>
                         </td>
-                      <td className="px-6 py-4">
-  {canToggle ? (
-    <button
-      onClick={() => handleToggleStatus(promotion.id)}
-      className="flex items-center gap-1"
-    >
-      {promotion.isActive ? (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-          <ToggleRight className="w-4 h-4 mr-1" />
-          Hoạt động
-        </span>
-      ) : (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
-          <ToggleLeft className="w-4 h-4 mr-1" />
-          Tạm dừng
-        </span>
-      )}
-    </button>
-  ) : (
-    <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-        promotion.isActive
-          ? "bg-green-100 text-green-800"
-          : "bg-gray-100 text-gray-800"
-      }`}
-    >
-      {promotion.isActive ? "Hoạt động" : "Tạm dừng"}
-    </span>
-  )}
-</td>
-                        {isManager && (
+                        <td className="px-6 py-4">
+                          {canToggle ? (
+                            <button
+                              onClick={() => handleToggleStatus(promotion.id)}
+                              className="flex items-center gap-1"
+                            >
+                              {promotion.isActive ? (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                  <ToggleRight className="w-4 h-4 mr-1" />
+                                  Hoạt động
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
+                                  <ToggleLeft className="w-4 h-4 mr-1" />
+                                  Tạm dừng
+                                </span>
+                              )}
+                            </button>
+                          ) : (
+                            <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                promotion.isActive
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {promotion.isActive ? "Hoạt động" : "Tạm dừng"}
+                            </span>
+                          )}
+                        </td>
+                        {isManager && activeSourceTab === "DEALER" && (
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
                               <button
@@ -734,7 +826,7 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
           </div>
         )}
 
-        {/* Create/Edit Modal (chỉ show nếu manager) */}
+        {/* Create/Edit Modal (chỉ show nếu manager và cho DEALER) */}
         {showModal && isManager && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden transform transition-all animate-in slide-in-from-bottom-4 duration-300">
@@ -1023,7 +1115,7 @@ const canToggle = user?.role === "DEALER_MANAGER" || user?.role === "DEALER_STAF
           </div>
         )}
 
-        {/* Delete Confirmation Modal (chỉ show nếu manager) */}
+        {/* Delete Confirmation Modal (chỉ show nếu manager và cho DEALER) */}
         {showDeleteModal && isManager && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all animate-in slide-in-from-bottom-4 duration-300">

@@ -1,4 +1,4 @@
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 
 export const createPromotionValidation = [
   body('dealerId')
@@ -41,6 +41,12 @@ export const createPromotionValidation = [
     .withMessage('Minimum purchase must be a number')
     .custom((value) => value >= 0)
     .withMessage('Minimum purchase cannot be negative'),
+
+  // Source: Optional for EVM/Admin (default MANUFACTURER if they create), required/false for Dealer
+  body('source')
+    .optional()
+    .isIn(['DEALER', 'MANUFACTURER'])
+    .withMessage('Source must be DEALER or MANUFACTURER'),
 
   body('startDate')
     .notEmpty()
@@ -92,6 +98,9 @@ export const updatePromotionValidation = [
     .withMessage('Minimum purchase must be a number')
     .custom((value) => value >= 0)
     .withMessage('Minimum purchase cannot be negative'),
+
+  // Do not allow updating source (immutable)
+  // body('source') - omitted intentionally
 
   body('startDate')
     .optional()
@@ -148,4 +157,12 @@ export const dealerIdValidation = [
     .withMessage('Dealer ID must be a string')
     .notEmpty()
     .withMessage('Dealer ID is required'),
+];
+
+// Optional: Add validation for query params if needed (e.g., for source in GET routes)
+export const sourceQueryValidation = [
+  query('source')
+    .optional()
+    .isIn(['DEALER', 'MANUFACTURER'])
+    .withMessage('Source must be DEALER or MANUFACTURER'),
 ];

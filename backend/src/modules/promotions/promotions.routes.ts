@@ -7,6 +7,8 @@ import {
   createPromotionValidation,
   updatePromotionValidation,
   calculateDiscountValidation,
+  idValidation,
+  dealerIdValidation,
 } from "./promotions.validation";
 
 const router = Router();
@@ -16,7 +18,7 @@ const promotionsController = new PromotionsController();
  * @route   GET /api/v1/promotions
  * @desc    Get all promotions with filters
  * @access  Private - Dealer Staff and above
- * @query   search, dealerId, discountType, isActive, startDate, endDate, minDiscount, maxDiscount, page, limit, sortBy, sortOrder
+ * @query   search, dealerId, discountType, isActive, source, startDate, endDate, minDiscount, maxDiscount, page, limit, sortBy, sortOrder
  */
 router.get(
   "/",
@@ -28,7 +30,8 @@ router.get(
 /**
  * @route   GET /api/v1/promotions/statistics
  * @desc    Get promotion statistics
- * @access  Private - Dealer Manager and above
+ * @access  Private - Dealer Manager and above (or EVM/Admin for all)
+ * @query   source (optional)
  */
 router.get(
   "/statistics",
@@ -67,12 +70,14 @@ router.post(
  * @route   GET /api/v1/promotions/dealer/:dealerId
  * @desc    Get all promotions for a dealer
  * @access  Private - Dealer Staff and above
- * @query   includeInactive (boolean)
+ * @query   includeInactive (boolean), source (DEALER|MANUFACTURER)
  */
 router.get(
   "/dealer/:dealerId",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
+  dealerIdValidation,
+  ValidationMiddleware.validate,
   promotionsController.getByDealerId
 );
 
@@ -85,6 +90,8 @@ router.get(
   "/dealer/:dealerId/active",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
+  dealerIdValidation,
+  ValidationMiddleware.validate,
   promotionsController.getActivePromotions
 );
 
@@ -97,6 +104,8 @@ router.get(
   "/dealer/:dealerId/available",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
+  dealerIdValidation,
+  ValidationMiddleware.validate,
   promotionsController.getAvailablePromotions
 );
 
@@ -109,17 +118,20 @@ router.get(
   "/:id",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
+  idValidation,
+  ValidationMiddleware.validate,
   promotionsController.getById
 );
 
 /**
  * @route   POST /api/v1/promotions
- * @desc    Create new promotion
- * @access  Private - Dealer Manager and above
+ * @desc    Create new promotion (Dealer creates DEALER; EVM/Admin can create MANUFACTURER)
+ * @access  Private - Dealer Manager (for DEALER) or EVM Staff/Admin (for MANUFACTURER)
  */
 router.post(
   "/",
   AuthMiddleware.authenticate,
+  // Note: Role check is flexible; service enforces based on source
   RoleMiddleware.requireDealerManager,
   createPromotionValidation,
   ValidationMiddleware.validate,
@@ -128,13 +140,16 @@ router.post(
 
 /**
  * @route   PUT /api/v1/promotions/:id
- * @desc    Update promotion
- * @access  Private - Dealer Manager and above
+ * @desc    Update promotion (Dealer only updates DEALER; EVM/Admin updates MANUFACTURER)
+ * @access  Private - Dealer Manager (for DEALER) or EVM Staff/Admin (for MANUFACTURER)
  */
 router.put(
   "/:id",
   AuthMiddleware.authenticate,
+  // Note: Role check is flexible; service enforces based on source
   RoleMiddleware.requireDealerManager,
+  idValidation,
+  ValidationMiddleware.validate,
   updatePromotionValidation,
   ValidationMiddleware.validate,
   promotionsController.update
@@ -142,25 +157,31 @@ router.put(
 
 /**
  * @route   PATCH /api/v1/promotions/:id/toggle
- * @desc    Toggle promotion active status
- * @access  Private - Dealer Staff and above (updated to include DEALER_STAFF)
+ * @desc    Toggle promotion active status (Dealer only toggles DEALER; EVM/Admin toggles MANUFACTURER)
+ * @access  Private - Dealer Staff and above (for DEALER) or EVM Staff/Admin (for MANUFACTURER)
  */
 router.patch(
   "/:id/toggle",
   AuthMiddleware.authenticate,
+  // Note: Updated to requireDealerStaff for consistency; service enforces
   RoleMiddleware.requireDealerStaff,
+  idValidation,
+  ValidationMiddleware.validate,
   promotionsController.toggleStatus
 );
 
 /**
  * @route   DELETE /api/v1/promotions/:id
- * @desc    Delete promotion
- * @access  Private - Dealer Manager and above
+ * @desc    Delete promotion (Dealer only deletes DEALER; EVM/Admin deletes MANUFACTURER)
+ * @access  Private - Dealer Manager (for DEALER) or EVM Staff/Admin (for MANUFACTURER)
  */
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  // Note: Role check is flexible; service enforces based on source
   RoleMiddleware.requireDealerManager,
+  idValidation,
+  ValidationMiddleware.validate,
   promotionsController.delete
 );
 
