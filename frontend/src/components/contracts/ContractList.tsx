@@ -26,6 +26,7 @@ interface ContractListProps {
   onSearchChange: (value: string) => void;
   onFilterChange: (value: string) => void;
   onCreateClick?: () => void; // Optional - not available for EVM/ADMIN
+  onCreateDepositClick?: () => void; // Tạo HĐ đặt cọc
   onViewClick: (contract: Contract) => void;
   onEditClick?: (contract: Contract) => void; // Optional - not available for EVM/ADMIN
   onDeleteClick: (contract: Contract) => void;
@@ -93,6 +94,7 @@ export default function ContractList({
   onSearchChange,
   onFilterChange,
   onCreateClick,
+  onCreateDepositClick,
   onViewClick,
   onEditClick,
   onDeleteClick,
@@ -128,6 +130,15 @@ export default function ContractList({
             >
               <Plus className="w-4 h-4" />
               Tạo hợp đồng mới
+            </button>
+          )}
+          {onCreateDepositClick && (
+            <button
+              onClick={onCreateDepositClick}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+            >
+              <DollarSign className="w-4 h-4" />
+              Tạo HĐ đặt cọc
             </button>
           )}
         </div>
@@ -217,12 +228,20 @@ export default function ContractList({
                       <FileText className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg">
-                        Hợp đồng #{contract.contractCode}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-lg">
+                          Hợp đồng #{contract.contractCode}
+                        </h3>
+                        {contract.contractType === "DEPOSIT" && (
+                          <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
+                            Đặt cọc
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-600">
                         <span className="font-medium">Khách hàng:</span>{" "}
-                        {contract.customer?.firstName} {contract.customer?.lastName}
+                        {contract.customer?.firstName}{" "}
+                        {contract.customer?.lastName}
                       </p>
                       {contract.customer?.email && (
                         <p className="text-xs text-gray-500 mt-1">
@@ -324,7 +343,12 @@ export default function ContractList({
                       (contract.status === "DRAFT" ||
                         contract.status === "PENDING") &&
                       (userRole === "DEALER_STAFF" ||
-                        userRole === "DEALER_MANAGER") && (
+                        userRole === "DEALER_MANAGER") &&
+                      // Ẩn nút chỉnh sửa nếu HĐ đặt cọc đã được chuyển thành HĐ mua
+                      !(
+                        contract.contractType === "DEPOSIT" &&
+                        contract.salesContractId
+                      ) && (
                         <button
                           onClick={() => onEditClick(contract)}
                           className="px-4 py-2 text-green-600 border border-green-600 rounded-lg hover:bg-green-50"

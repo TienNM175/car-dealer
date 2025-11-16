@@ -316,4 +316,38 @@ export class ContractController {
       return next(error);
     }
   }
+
+  /**
+   * Create SALES contract from DEPOSIT contract
+   */
+  async createSalesFromDeposit(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params; // depositContractId
+      const contract = await contractService.createSalesFromDeposit(
+        id,
+        req.body,
+        req.user?.userId || "",
+        req.user?.dealerId,
+        req.user?.role
+      );
+      return ResponseUtil.created(
+        res,
+        contract,
+        "Sales contract created from deposit contract successfully"
+      );
+    } catch (error: any) {
+      const message = error.message?.toLowerCase?.() || "";
+      if (
+        message.includes("not found") ||
+        message.includes("not a deposit") ||
+        message.includes("does not have deposit")
+      ) {
+        return ResponseUtil.badRequest(res, error.message);
+      }
+      if (message.includes("can only create")) {
+        return ResponseUtil.forbidden(res, error.message);
+      }
+      return next(error);
+    }
+  }
 }

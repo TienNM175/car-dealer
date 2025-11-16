@@ -9,6 +9,7 @@ import {
   updateContractStatusValidation,
   contractIdValidation,
   assignVehicleUnitValidation,
+  createSalesFromDepositValidation,
 } from "./contract.validation";
 
 const router = Router();
@@ -131,6 +132,20 @@ router.delete(
   contractIdValidation,
   ValidationMiddleware.validate,
   contractController.deleteContract
+);
+
+/**
+ * @route   POST /api/v1/contracts/:id/create-sales
+ * @desc    Create SALES contract from DEPOSIT contract
+ * @access  Private - Dealer Staff and above
+ */
+router.post(
+  "/:id/create-sales",
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireDealerStaff,
+  createSalesFromDepositValidation,
+  ValidationMiddleware.validate,
+  contractController.createSalesFromDeposit
 );
 
 export default router;

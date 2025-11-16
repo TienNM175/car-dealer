@@ -4,6 +4,7 @@ import {
   ContractStatus,
   PaymentType,
   VehicleUnitStatus,
+  ContractType,
 } from "@prisma/client";
 
 const contractListInclude = Prisma.validator<Prisma.ContractInclude>()({
@@ -177,6 +178,8 @@ interface CreateContractInput {
   staffId: string;
   vehicleId: string;
   vehicleUnitId?: string | null;
+  contractType?: ContractType;
+   depositAmount?: number;
   quotationId?: string;
   promotionId?: string;
   basePrice: number;
@@ -553,6 +556,17 @@ export class ContractService {
       data.interestRate
     );
 
+    // Validate deposit amount for DEPOSIT contracts
+    const isDepositContract = data.contractType === ContractType.DEPOSIT;
+    if (isDepositContract) {
+      if (!data.depositAmount || data.depositAmount <= 0) {
+        throw new Error("Deposit amount must be greater than 0");
+      }
+      if (data.depositAmount > finalPrice) {
+        throw new Error("Deposit amount cannot exceed contract value");
+      }
+    }
+
     // Generate contract code
     const contractCode = await this.generateContractCode();
 
@@ -566,12 +580,14 @@ export class ContractService {
             customerId: data.customerId,
             staffId: data.staffId,
             vehicleId: data.vehicleId,
+            contractType: data.contractType || ContractType.SALES,
             ...(data.quotationId && { quotationId: data.quotationId }),
             ...(data.promotionId && { promotionId: data.promotionId }),
             basePrice: data.basePrice,
             discount: data.discount || 0,
             tax: taxAmount,
             finalPrice,
+            depositAmount: isDepositContract ? data.depositAmount || 0 : null,
             paymentType: data.paymentType,
             installmentMonths: data.installmentMonths,
             monthlyPayment,
@@ -613,8 +629,8 @@ export class ContractService {
           });
         }
 
-        // Update customer status to PURCHASED if not already
-        if (customer.status !== "PURCHASED") {
+        // Update customer status to PURCHASED only for SALES contracts
+        if (!isDepositContract && customer.status !== "PURCHASED") {
           await tx.customer.update({
             where: { id: data.customerId },
             data: { status: "PURCHASED" },
@@ -1163,5 +1179,159 @@ export class ContractService {
       status: item.status,
       count: item._count,
     }));
+  }
+
+  /**
+   * Create SALES contract from DEPOSIT contract
+   * Khấu trừ depositAmount vào finalPrice
+   */
+  async createSalesFromDeposit(
+    depositContractId: string,
+    data: Omit<CreateContractInput, "customerId" | "vehicleId" | "vehicleUnitId" | "staffId"> & {
+      basePrice?: number;
+      discount?: number;
+    },
+    userId: string,
+    userDealerId?: string,
+    userRole?: string
+  ) {
+    // Get deposit contract
+    const depositContract = await prisma.contract.findUnique({
+      where: { id: depositContractId },
+      include: {
+        customer: true,
+        vehicle: true,
+        vehicleUnit: true,
+        staff: {
+          include: { dealer: true },
+        },
+      },
+    });
+
+    if (!depositContract) {
+      throw new Error("Deposit contract not found");
+    }
+
+    if (depositContract.contractType !== "DEPOSIT") {
+      throw new Error("Contract is not a deposit contract");
+    }
+
+    // Check if deposit contract has already been converted to sales contract
+    if (depositContract.salesContractId) {
+      throw new Error("Deposit contract has already been converted to a sales contract");
+    }
+
+    // Check if deposit contract is cancelled - cannot create sales from cancelled deposit
+    if (depositContract.status === "CANCELLED") {
+      throw new Error("Cannot create sales contract from a cancelled deposit contract");
+    }
+
+    // Check dealerId for DEALER roles
+    if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
+      if (depositContract.staff.dealerId !== userDealerId) {
+        throw new Error("You can only create sales contracts from your dealer's deposit contracts");
+      }
+    }
+
+    if (!depositContract.depositAmount) {
+      throw new Error("Deposit contract does not have deposit amount");
+    }
+
+    const depositAmount = Number(depositContract.depositAmount);
+
+    // Use deposit contract's data as base, override with provided data
+    const basePrice = data.basePrice ?? Number(depositContract.basePrice);
+    const discount = data.discount ?? Number(depositContract.discount || 0);
+    const paymentType = data.paymentType || "FULL"; // Default to FULL if not provided
+    const installmentMonths = data.installmentMonths;
+    const interestRate = data.interestRate;
+
+    // Calculate financials
+    const { finalPrice, monthlyPayment, taxAmount } = this.calculateFinancials(
+      basePrice,
+      discount,
+      paymentType,
+      installmentMonths,
+      interestRate
+    );
+
+    // Khấu trừ tiền cọc vào finalPrice
+    const finalPriceAfterDeposit = Math.max(0, finalPrice - depositAmount);
+
+    // Generate contract code
+    const contractCode = await this.generateContractCode();
+
+    // Lưu VIN trước khi release (vì sẽ set null trong transaction)
+    const vehicleUnitId = depositContract.vehicleUnitId;
+
+    // Create SALES contract with transaction
+    const salesContract = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        // Release VIN from deposit contract (set vehicleUnitId to null)
+        // Vì một VIN chỉ có thể được dùng trong 1 contract (unique constraint)
+        if (vehicleUnitId) {
+          await tx.contract.update({
+            where: { id: depositContractId },
+            data: { vehicleUnitId: null },
+          });
+        }
+
+        // Create SALES contract
+        const newContract = await tx.contract.create({
+          data: {
+            contractCode,
+            customerId: depositContract.customerId,
+            staffId: depositContract.staffId,
+            vehicleId: depositContract.vehicleId,
+            vehicleUnitId: vehicleUnitId, // VIN đã được release từ HĐ đặt cọc
+            contractType: "SALES",
+            basePrice,
+            discount,
+            tax: taxAmount,
+            finalPrice: finalPriceAfterDeposit, // Đã khấu trừ tiền cọc
+            paymentType: paymentType,
+            installmentMonths: installmentMonths,
+            monthlyPayment,
+            interestRate: interestRate,
+            status: "DRAFT",
+            deliveryDate: data.deliveryDate,
+            notes: data.notes || `Tạo từ HĐ đặt cọc ${depositContract.contractCode}`,
+          },
+          include: contractDetailInclude,
+        });
+
+        // Đánh dấu HĐ đặt cọc đã được sử dụng (link với HĐ mua)
+        await tx.contract.update({
+          where: { id: depositContractId },
+          data: { salesContractId: newContract.id },
+        });
+
+        // Update customer status to PURCHASED
+        if (depositContract.customer.status !== "PURCHASED") {
+          await tx.customer.update({
+            where: { id: depositContract.customerId },
+            data: { status: "PURCHASED" },
+          });
+
+          await tx.customerLifecycle.create({
+            data: {
+              customerId: depositContract.customerId,
+              status: "PURCHASED",
+              notes: `Sales contract ${contractCode} created from deposit ${depositContract.contractCode}`,
+              changedBy: userId,
+            },
+          });
+        }
+
+        // VIN đã được reserve từ deposit contract, không cần làm gì thêm
+
+        return tx.contract.findUnique({
+          where: { id: newContract.id },
+          include: contractDetailInclude,
+        });
+      }
+    );
+
+    return this.mapContractResponse(salesContract);
   }
 }

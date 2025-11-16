@@ -268,6 +268,7 @@ model Contract {
   customerId        String                  @map("customer_id")
   staffId           String                  @map("staff_id")
   vehicleId         String                  @map("vehicle_id")
+  contractType      ContractType            @default(SALES) @map("contract_type")
   basePrice         Decimal                 @map("base_price")
   discount          Decimal                 @default(0)
   finalPrice        Decimal                 @map("final_price")
@@ -275,6 +276,7 @@ model Contract {
   installmentMonths Int?                    @map("installment_months")
   monthlyPayment    Decimal?                @map("monthly_payment")
   interestRate      Decimal?                @map("interest_rate")
+  depositAmount     Decimal?                @map("deposit_amount")
   status            ContractStatus          @default(DRAFT)
   signedAt          DateTime?               @map("signed_at")
   deliveryDate      DateTime?               @map("delivery_date")
@@ -284,6 +286,7 @@ model Contract {
   updatedAt         DateTime                @updatedAt @map("updated_at")
   promotionId       String?                 @map("promotion_id")
   quotationId       String?                 @map("quotation_id")
+  salesContractId   String?                 @map("sales_contract_id") // Link to SALES contract if this is a DEPOSIT contract that was converted
   tax               Decimal                 @default(0)
   vehicleUnitId     String?                 @unique @map("vehicle_unit_id")
   complaints        Complaint[]
@@ -577,6 +580,11 @@ enum ContractStatus {
   DELIVERING
   COMPLETED
   CANCELLED
+}
+
+enum ContractType {
+  SALES
+  DEPOSIT
 }
 
 enum DiscountType {
