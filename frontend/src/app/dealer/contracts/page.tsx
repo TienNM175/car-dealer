@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import ContractList from "@/components/contracts/ContractList";
 import ContractForm from "@/components/contracts/ContractForm";
+import DepositContractForm from "@/components/contracts/DepositContractForm";
 import ContractDetailModal from "@/components/contracts/ContractDetailModal";
 import {
   Contract,
@@ -37,8 +38,11 @@ export default function ContractsPage() {
 
   // Modal states
   const [showForm, setShowForm] = useState(false);
+  const [showDepositForm, setShowDepositForm] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [editingDepositContract, setEditingDepositContract] = useState<Contract | null>(null);
+  const [isNewFromDeposit, setIsNewFromDeposit] = useState(false);
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);
   const [viewingContractLoading, setViewingContractLoading] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{
@@ -139,8 +143,14 @@ export default function ContractsPage() {
   };
 
   const handleEdit = (contract: Contract) => {
-    setEditingContract(contract);
-    setShowForm(true);
+    // Nếu là HĐ đặt cọc → mở DepositContractForm, ngược lại mở ContractForm
+    if (contract.contractType === "DEPOSIT") {
+      setEditingDepositContract(contract);
+      setShowDepositForm(true);
+    } else {
+      setEditingContract(contract);
+      setShowForm(true);
+    }
   };
 
   const openDeleteDialog = (contract: Contract) => {
@@ -177,6 +187,10 @@ export default function ContractsPage() {
   const handleCreate = () => {
     setEditingContract(null);
     setShowForm(true);
+  };
+
+  const handleCreateDeposit = () => {
+    setShowDepositForm(true);
   };
 
   const handleSave = async (contract: any) => {
@@ -256,6 +270,7 @@ export default function ContractsPage() {
           setPage(1);
         }}
         onCreateClick={handleCreate}
+        onCreateDepositClick={handleCreateDeposit}
         onViewClick={handleView}
         onEditClick={handleEdit}
         onDeleteClick={openDeleteDialog}
@@ -278,9 +293,11 @@ export default function ContractsPage() {
           onClose={() => {
             setShowForm(false);
             setEditingContract(null);
+            setIsNewFromDeposit(false);
           }}
           onSuccess={handleSave}
           contract={editingContract}
+          isNewFromDeposit={isNewFromDeposit}
           dealerId={(user as any)?.dealerId}
           userId={(user as any)?.id} // Pass user.id as staffId
           dealerInfo={{
@@ -293,6 +310,21 @@ export default function ContractsPage() {
             firstName: (user as any)?.firstName || "",
             lastName: (user as any)?.lastName || "",
           }}
+        />
+      )}
+
+      {/* Deposit Contract Form Modal */}
+      {showDepositForm && (
+        <DepositContractForm
+          isOpen={showDepositForm}
+          onClose={() => {
+            setShowDepositForm(false);
+            setEditingDepositContract(null);
+          }}
+          onSuccess={handleSave}
+          contract={editingDepositContract}
+          dealerId={(user as any)?.dealerId}
+          userId={(user as any)?.id}
         />
       )}
 
@@ -323,6 +355,14 @@ export default function ContractsPage() {
           isLoading={viewingContractLoading}
           onStatusChange={handleStatusChange}
           onEditClick={handleEdit}
+          onOpenContractForm={(contract) => {
+            // Mở ContractForm với HĐ mua vừa tạo từ HĐ đặt cọc
+            // Đánh dấu là HĐ mới tạo từ deposit để hiển thị title phù hợp
+            setEditingContract(contract);
+            setIsNewFromDeposit(true);
+            setShowForm(true);
+            setShowDetailModal(false);
+          }}
           userRole={userRole || "DEALER_STAFF"}
           onRefreshContract={async (id) => {
             const updated = await fetchContractDetail(id);

@@ -175,3 +175,53 @@ export const assignVehicleUnitValidation = [
     .custom((value) => value === null || typeof value === "string")
     .withMessage("vehicleUnitId must be a string or null"),
 ];
+
+export const createSalesFromDepositValidation = [
+  param("id")
+    .isString()
+    .withMessage("Contract ID must be a string")
+    .notEmpty()
+    .withMessage("Contract ID is required"),
+  body("basePrice")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Base price must be a positive number"),
+  body("discount")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Discount must be a non-negative number")
+    .custom((value, { req }) => {
+      // Chỉ validate nếu có cả discount và basePrice trong body
+      // Nếu không có basePrice trong body, sẽ lấy từ deposit contract trong service
+      if (value && req.body.basePrice) {
+        const basePrice = Number(req.body.basePrice);
+        const discount = Number(value);
+        if (discount > basePrice) {
+          throw new Error("Discount cannot exceed base price");
+        }
+      }
+      return true;
+    }),
+  body("paymentType")
+    .optional()
+    .isIn(["FULL", "INSTALLMENT"])
+    .withMessage("Payment type must be FULL or INSTALLMENT"),
+  body("installmentMonths")
+    .optional()
+    .isInt({ min: 1, max: 120 })
+    .withMessage("Installment months must be between 1 and 120"),
+  body("interestRate")
+    .optional()
+    .isFloat({ min: 0, max: 100 })
+    .withMessage("Interest rate must be between 0 and 100"),
+  body("deliveryDate")
+    .optional()
+    .isISO8601()
+    .withMessage("Delivery date must be a valid date"),
+  body("notes")
+    .optional()
+    .isString()
+    .withMessage("Notes must be a string")
+    .isLength({ max: 1000 })
+    .withMessage("Notes must not exceed 1000 characters"),
+];

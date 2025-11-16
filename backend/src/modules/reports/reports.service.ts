@@ -287,6 +287,21 @@ export class ReportsService {
     // Vehicle sales by dealer - breakdown xe bán ở đại lý nào
     const vehiclesByDealer = await this.getVehicleSalesByDealer(where);
 
+    // Tiền hủy cọc - tổng depositAmount của HĐ đặt cọc đã hủy
+    const cancelledDeposits = await prisma.contract.aggregate({
+      where: {
+        contractType: "DEPOSIT",
+        status: "CANCELLED",
+        ...(filters.fromDate && { updatedAt: { gte: filters.fromDate } }), // Khi hủy
+        ...(filters.toDate && { updatedAt: { lte: filters.toDate } }),
+        ...(filters.dealerId && { staff: { dealerId: filters.dealerId } }),
+      },
+      _sum: {
+        depositAmount: true,
+      },
+      _count: true,
+    });
+
     return {
       byStatus: byStatus.map((item) => ({
         status: item.status,
@@ -306,6 +321,10 @@ export class ReportsService {
       ),
       monthlyTrend,
       vehiclesByDealer, // Danh sách xe và breakdown theo đại lý
+      cancelledDeposits: {
+        totalAmount: cancelledDeposits._sum.depositAmount || 0,
+        count: cancelledDeposits._count,
+      },
     };
   }
 
@@ -809,11 +828,29 @@ export class ReportsService {
     };
     const vehiclesByDealer = await this.getVehicleSalesByDealer(where);
 
+    // Tổng tiền hủy cọc (tất cả đại lý) - chỉ tổng, không chi tiết
+    const totalCancelledDeposits = await prisma.contract.aggregate({
+      where: {
+        contractType: "DEPOSIT",
+        status: "CANCELLED",
+        ...(filters.fromDate && { updatedAt: { gte: filters.fromDate } }), // Khi hủy
+        ...(filters.toDate && { updatedAt: { lte: filters.toDate } }),
+      },
+      _sum: {
+        depositAmount: true,
+      },
+      _count: true,
+    });
+
     return {
       dealers: performance.sort(
         (a, b) => Number(b.sales.revenue) - Number(a.sales.revenue)
       ),
       vehiclesByDealer, // Danh sách xe và breakdown theo đại lý
+      totalCancelledDeposits: {
+        totalAmount: totalCancelledDeposits._sum.depositAmount || 0,
+        count: totalCancelledDeposits._count,
+      },
     };
   }
 

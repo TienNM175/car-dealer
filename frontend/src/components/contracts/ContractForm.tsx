@@ -36,6 +36,7 @@ interface ContractFormProps {
   contract?: Contract | null; // For editing
   selectedVehicle?: Vehicle | null;
   selectedQuotation?: Quotation | null; // For creating contract from quotation
+  isNewFromDeposit?: boolean; // Flag để biết đây là HĐ mới tạo từ deposit
   dealerId?: string; // Add dealerId for fetching promotions
   userId?: string; // Add userId to set as staffId
   dealerInfo?: {
@@ -57,6 +58,7 @@ export default function ContractForm({
   contract,
   selectedVehicle,
   selectedQuotation,
+  isNewFromDeposit = false,
   dealerId,
   userId,
   dealerInfo,
@@ -700,11 +702,13 @@ export default function ContractForm({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-[60]">
       <div className="bg-white rounded-2xl border-2 border-gray-700 shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
           <h3 className="text-xl font-bold text-white">
-            {contract
+            {isNewFromDeposit
+              ? "Hoàn thiện hợp đồng mua"
+              : contract
               ? "Chỉnh sửa hợp đồng"
               : selectedQuotation
               ? `Tạo hợp đồng từ báo giá ${selectedQuotation.quoteNumber}`
@@ -1370,25 +1374,38 @@ export default function ContractForm({
                         : "Không có khuyến mãi"}
                     </option>
                   ) : (
-                    promotions.map((promotion) => (
-                      <option key={promotion.id} value={promotion.id}>
-                        {promotion.source === "MANUFACTURER" ? "🏭 " : "🏪 "}
-                        {promotion.name} -{" "}
-                        {promotion.discountType === "PERCENTAGE"
-                          ? `${promotion.discountValue}%`
-                          : formatMoney(promotion.discountValue)}
-                        {promotion.description && ` (${promotion.description})`}
-                        {promotion.source === "MANUFACTURER"
-                          ? " - Hãng cấp"
-                          : ""}
-                      </option>
-                    ))
+                    promotions
+                      .filter((promotion) => {
+                        // Chỉ hiển thị promotion nếu đủ điều kiện minPurchase
+                        if (promotion.minPurchase) {
+                          return formData.basePrice >= Number(promotion.minPurchase);
+                        }
+                        return true; // Không có minPurchase thì luôn hiển thị
+                      })
+                      .map((promotion) => (
+                        <option key={promotion.id} value={promotion.id}>
+                          {promotion.source === "MANUFACTURER" ? "🏭 " : "🏪 "}
+                          {promotion.name} -{" "}
+                          {promotion.discountType === "PERCENTAGE"
+                            ? `${promotion.discountValue}%`
+                            : formatMoney(promotion.discountValue)}
+                          {promotion.description && ` (${promotion.description})`}
+                          {promotion.source === "MANUFACTURER"
+                            ? " - Hãng cấp"
+                            : ""}
+                        </option>
+                      ))
                   )}
                 </select>
 
                 {/* Debug info */}
                 <div className="text-xs text-gray-500 mt-1">
-                  Tìm thấy {promotions.length} khuyến mãi
+                  Tìm thấy {promotions.filter((p) => !p.minPurchase || formData.basePrice >= Number(p.minPurchase)).length} khuyến mãi khả dụng
+                  {promotions.length > 0 && (
+                    <span className="text-gray-400">
+                      {" "}(tổng {promotions.length} khuyến mãi)
+                    </span>
+                  )}
                 </div>
                 {selectedPromotionId && (
                   <div className="text-sm">
@@ -1783,7 +1800,11 @@ export default function ContractForm({
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  {contract ? "Cập nhật hợp đồng" : "Tạo hợp đồng"}
+                  {isNewFromDeposit
+                    ? "Lưu hợp đồng"
+                    : contract
+                    ? "Cập nhật hợp đồng"
+                    : "Tạo hợp đồng"}
                 </>
               )}
             </button>
