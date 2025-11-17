@@ -8,6 +8,9 @@ import dealerOrderApi, {
 } from "@/lib/api/dealerOrderApi";
 import { vehicleApi, Vehicle } from "@/lib/api/vehicleApi";
 import { toast } from "react-hot-toast";
+import LoanCalculator from '@/components/calculators/LoanCalculator';
+import PromotionManager from '@/components/promotions/PromotionManager';
+import DeliveryScheduler from '@/components/delivery/DeliveryScheduler';
 
 interface DealerOrderFormProps {
   isOpen: boolean;
@@ -16,6 +19,7 @@ interface DealerOrderFormProps {
   order?: DealerOrder | null;
   dealerId: string;
   userId: string;
+  userRole: 'DEALER_STAFF' | 'DEALER_MANAGER' | 'EVM_STAFF' | 'ADMIN';
   dealerInfo: {
     name: string;
     address?: string;
@@ -35,6 +39,7 @@ export default function DealerOrderForm({
   order,
   dealerId,
   userId,
+  userRole,
   dealerInfo,
   staffInfo,
 }: DealerOrderFormProps) {
@@ -45,9 +50,20 @@ export default function DealerOrderForm({
     vehicleId: "",
     quantity: 1,
     notes: "",
+    promotionId: "",
+    finalPrice: 0,
+    installmentMonths: 0,
+    monthlyPayment: 0,
+    interestRate: 0,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const [appliedPromotion, setAppliedPromotion] = useState<{
+    promotion: any;
+    finalPrice: number;
+    profit: number;
+  } | null>(null);
 
   // Fetch available vehicles
   useEffect(() => {
@@ -80,6 +96,11 @@ export default function DealerOrderForm({
         vehicleId: order.vehicleId,
         quantity: order.quantity,
         notes: order.notes || "",
+        promotionId: "",
+        finalPrice: 0,
+        installmentMonths: 0,
+        monthlyPayment: 0,
+        interestRate: 0,
       });
       // Find and set selected vehicle
       const vehicle = vehicles.find((v) => v.id === order.vehicleId);
@@ -91,8 +112,14 @@ export default function DealerOrderForm({
         vehicleId: "",
         quantity: 1,
         notes: "",
+        promotionId: "",
+        finalPrice: 0,
+        installmentMonths: 0,
+        monthlyPayment: 0,
+        interestRate: 0,
       });
       setSelectedVehicle(null);
+      setAppliedPromotion(null);
     }
     setErrors({});
   }, [order, vehicles]);
@@ -100,7 +127,13 @@ export default function DealerOrderForm({
   const handleVehicleChange = (vehicleId: string) => {
     const vehicle = vehicles.find((v) => v.id === vehicleId);
     setSelectedVehicle(vehicle || null);
-    setFormData((prev) => ({ ...prev, vehicleId }));
+    setFormData((prev) => ({ 
+      ...prev, 
+      vehicleId,
+      promotionId: "",
+      finalPrice: 0 
+    }));
+    setAppliedPromotion(null);
   };
 
   const validateForm = () => {
@@ -116,6 +149,11 @@ export default function DealerOrderForm({
 
     if (formData.quantity > 100) {
       newErrors.quantity = "Số lượng tối đa là 100 xe";
+    }
+
+    // Kiểm tra nếu có áp dụng khuyến mãi mà lợi nhuận âm
+    if (appliedPromotion && appliedPromotion.profit < 0) {
+      newErrors.promotion = "Không thể áp dụng khuyến mãi này vì lợi nhuận âm";
     }
 
     setErrors(newErrors);
@@ -135,6 +173,12 @@ export default function DealerOrderForm({
         vehicleId: formData.vehicleId,
         quantity: formData.quantity,
         notes: formData.notes,
+        // Thêm các field mới nếu backend hỗ trợ
+        ...(formData.promotionId && { promotionId: formData.promotionId }),
+        ...(formData.finalPrice > 0 && { finalPrice: formData.finalPrice }),
+        ...(formData.installmentMonths > 0 && { installmentMonths: formData.installmentMonths }),
+        ...(formData.monthlyPayment > 0 && { monthlyPayment: formData.monthlyPayment }),
+        ...(formData.interestRate > 0 && { interestRate: formData.interestRate }),
       };
 
       let result;
@@ -144,6 +188,7 @@ export default function DealerOrderForm({
         const updateData: UpdateDealerOrderInput = {
           quantity: formData.quantity,
           notes: formData.notes,
+          // Có thể thêm các field khác nếu cần
         };
         result = await dealerOrderApi.updateDealerOrder(order.id, updateData);
         toast.dismiss(loadingToast);
@@ -177,11 +222,19 @@ export default function DealerOrderForm({
     return Number(selectedVehicle.wholesalePrice) * formData.quantity;
   };
 
+  const getCurrentRetailPrice = () => {
+    if (!selectedVehicle) return 0;
+    // Nếu có khuyến mãi áp dụng, dùng giá cuối cùng, ngược lại dùng giá retail
+    return appliedPromotion ? appliedPromotion.finalPrice : Number(selectedVehicle.retailPrice);
+  };
+
+  // Fix: Kiểm tra điều kiện disabled một cách rõ ràng
+  const isSubmitDisabled = loading || (appliedPromotion !== null && appliedPromotion.profit < 0);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
-      {/* Thay đổi chính: Thêm flex-col và loại bỏ overflow-y-auto từ container ngoài */}
       <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col mx-4">
         {/* Header - cố định */}
         <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200">
@@ -213,6 +266,7 @@ export default function DealerOrderForm({
             <p className="text-gray-800">
               {staffInfo.firstName} {staffInfo.lastName}
             </p>
+            <p className="text-gray-600 text-sm mt-1">Vai trò: {userRole}</p>
           </div>
 
           {/* Vehicle Selection */}
@@ -224,13 +278,12 @@ export default function DealerOrderForm({
               value={formData.vehicleId}
               onChange={(e) => handleVehicleChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700"
-              disabled={!!order} // Cannot change vehicle when editing
+              disabled={!!order}
             >
               <option value="">Chọn xe</option>
               {vehicles.map((vehicle) => (
                 <option key={vehicle.id} value={vehicle.id}>
-                  {vehicle.manufacturer?.name} {vehicle.model} {vehicle.variant}{" "}
-                  -
+                  {vehicle.manufacturer?.name} {vehicle.model} {vehicle.variant} -
                   {new Intl.NumberFormat("vi-VN", {
                     style: "currency",
                     currency: "VND",
@@ -271,6 +324,13 @@ export default function DealerOrderForm({
                     currency: "VND",
                   }).format(Number(selectedVehicle.wholesalePrice))}
                 </div>
+                <div>
+                  <span className="text-green-700">Giá lẻ:</span>{" "}
+                  {new Intl.NumberFormat("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  }).format(Number(selectedVehicle.retailPrice))}
+                </div>
               </div>
             </div>
           )}
@@ -306,7 +366,7 @@ export default function DealerOrderForm({
               </h4>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-yellow-700">Đơn giá:</span>
+                  <span className="text-yellow-700">Đơn giá (sỉ):</span>
                   <span>
                     {new Intl.NumberFormat("vi-VN", {
                       style: "currency",
@@ -329,6 +389,106 @@ export default function DealerOrderForm({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Loan Calculator */}
+          {selectedVehicle && (
+            <LoanCalculator 
+              vehiclePrice={getCurrentRetailPrice()}
+              compact={true}
+              onCalculationComplete={(result) => {
+                setFormData(prev => ({
+                  ...prev,
+                  installmentMonths: result.tenureMonths,
+                  monthlyPayment: result.monthlyPayment,
+                  interestRate: result.annualInterestRate
+                }));
+              }}
+            />
+          )}
+
+          {/* Promotion Manager */}
+          {selectedVehicle && (
+            <PromotionManager
+              vehicle={{
+                id: selectedVehicle.id,
+                name: `${selectedVehicle.manufacturer?.name} ${selectedVehicle.model}`,
+                retailPrice: Number(selectedVehicle.retailPrice),
+                wholesalePrice: Number(selectedVehicle.wholesalePrice)
+              }}
+              retailPrice={Number(selectedVehicle.retailPrice)}
+              wholesalePrice={Number(selectedVehicle.wholesalePrice)}
+              userRole={userRole}
+              userId={userId}
+              userName={`${staffInfo.firstName} ${staffInfo.lastName}`}
+              dealerId={dealerId}
+              onPromotionApplied={(promotion, finalPrice, profit) => {
+                setAppliedPromotion({ promotion, finalPrice, profit });
+                setFormData(prev => ({
+                  ...prev,
+                  promotionId: promotion.id,
+                  finalPrice: finalPrice,
+                }));
+              }}
+            />
+          )}
+
+          {/* Hiển thị khuyến mãi đã áp dụng */}
+          {appliedPromotion && (
+            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <h4 className="font-medium text-green-900 mb-2">✅ Khuyến mãi đã áp dụng</h4>
+              <div className="text-sm text-green-800 space-y-1">
+                <div className="flex justify-between">
+                  <span>Mã khuyến mãi:</span>
+                  <span className="font-medium">{appliedPromotion.promotion.code}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Giá bán cuối:</span>
+                  <span className="font-medium">{appliedPromotion.finalPrice.toLocaleString()} VND</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Lợi nhuận dự kiến:</span>
+                  <span className={`font-medium ${
+                    appliedPromotion.profit >= 0 ? 'text-green-700' : 'text-red-600'
+                  }`}>
+                    {appliedPromotion.profit.toLocaleString()} VND
+                  </span>
+                </div>
+              </div>
+              {appliedPromotion.profit < 0 && (
+                <p className="text-red-600 text-sm mt-2 font-medium">
+                  ⚠️ Cảnh báo: Lợi nhuận âm! Không thể tạo đơn hàng.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Lỗi khuyến mãi */}
+          {errors.promotion && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-700 text-sm">{errors.promotion}</p>
+            </div>
+          )}
+
+          {selectedVehicle && (
+            <DeliveryScheduler
+              orderId={order?.id}
+              vehicleId={selectedVehicle.id}
+              customerInfo={{
+                name: dealerInfo.name,
+                phone: dealerInfo.phone || '0000000000' // ✅ LUÔN CÓ GIÁ TRỊ
+              }}
+              vehicleInfo={{
+                model: selectedVehicle.model || '',
+                variant: selectedVehicle.variant || '',
+                color: 'Xanh dương',
+                retailPrice: Number(selectedVehicle.retailPrice)
+              }}
+              compact={true}
+              onScheduleCreated={(schedule) => {
+                console.log('Delivery scheduled:', schedule);
+              }}
+            />
           )}
 
           {/* Notes */}
@@ -369,7 +529,7 @@ export default function DealerOrderForm({
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={isSubmitDisabled}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
