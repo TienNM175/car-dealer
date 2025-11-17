@@ -6,15 +6,18 @@ export interface Contract {
   customerId: string;
   vehicleId: string;
   staffId: string;
+  contractType?: "SALES" | "DEPOSIT";
   dealerId?: string;
   quotationId?: string;
   promotionId?: string;
+  salesContractId?: string; // Link to SALES contract if this is a DEPOSIT contract that was converted
   contractCode: string; // Backend uses contractCode
   contractNumber: string; // Alias for contractCode (display purpose)
   basePrice: number;
   discount: number;
   tax: number; // Thuế VAT
   finalPrice: number;
+  depositAmount?: number;
   paymentType: "FULL" | "INSTALLMENT";
   installmentMonths?: number;
   monthlyPayment?: number;
@@ -158,6 +161,8 @@ export interface CreateContractInput {
   interestRate?: number; // Required for installment calculation
   deliveryDate?: string;
   notes?: string;
+  contractType?: "SALES" | "DEPOSIT";
+  depositAmount?: number;
 }
 
 export interface UpdateContractInput extends Partial<CreateContractInput> {}
@@ -244,4 +249,10 @@ export const contractApi = {
   // Get contract statistics
   getContractStatistics: () =>
     axiosClient.get<{ data: ContractStatistics }>("/contracts/statistics"),
+
+  // Create SALES contract from DEPOSIT contract
+  createSalesFromDeposit: (
+    depositContractId: string,
+    data: Partial<CreateContractInput>
+  ) => axiosClient.post(`/contracts/${depositContractId}/create-sales`, data),
 };

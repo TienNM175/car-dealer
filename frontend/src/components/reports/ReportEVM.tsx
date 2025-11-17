@@ -100,7 +100,11 @@ const getFallbackData = (type: AnyReportType): ReportPayload => {
                 ...baseData,
                 dealers: [],
                 dealerSummary: [],
-                vehiclesByDealer: []
+                vehiclesByDealer: [],
+                totalCancelledDeposits: {
+                    totalAmount: 0,
+                    count: 0
+                }
             };
         case "vehicles-by-dealer":
             return {
@@ -404,6 +408,35 @@ export default function ReportEVM({
                                 </div>
                             ))}
                         </div>
+                    </SectionCard>
+                )}
+
+                {/* Tổng tiền hủy cọc (chỉ tổng, không chi tiết từng đại lý) */}
+                {d.totalCancelledDeposits && Number(d.totalCancelledDeposits.totalAmount || 0) > 0 && (
+                    <SectionCard
+                        title="Tổng tiền hủy cọc (tất cả đại lý)"
+                        color="from-orange-500 to-orange-400"
+                    >
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                <p className="text-sm text-gray-600 mb-1">Tổng tiền hủy cọc</p>
+                                <p className="text-2xl font-bold text-orange-600">
+                                    {new Intl.NumberFormat('vi-VN', {
+                                        style: 'currency',
+                                        currency: 'VND'
+                                    }).format(Number(d.totalCancelledDeposits.totalAmount || 0))}
+                                </p>
+                            </div>
+                            <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                <p className="text-sm text-gray-600 mb-1">Số HĐ đặt cọc đã hủy</p>
+                                <p className="text-2xl font-bold text-gray-900">
+                                    {d.totalCancelledDeposits.count || 0}
+                                </p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-3">
+                            * Tổng tiền cọc không hoàn lại từ tất cả đại lý khi khách hủy HĐ đặt cọc
+                        </p>
                     </SectionCard>
                 )}
 

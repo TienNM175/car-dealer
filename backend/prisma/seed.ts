@@ -19,9 +19,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log(
-    "🌱 Starting ENHANCED 2025 database seeding (Oct-Nov 2025)...\n"
-  );
+  console.log("🌱 Starting ENHANCED 2025 database seeding (Oct-Nov 2025)...\n");
 
   // Helper functions
   const randomDateBetween = (start: Date, end: Date) => {
@@ -1110,9 +1108,7 @@ async function main() {
       finalPrice,
       paymentType,
       installmentMonths:
-        paymentType === "INSTALLMENT"
-          ? randomElement([36, 48, 60])
-          : null,
+        paymentType === "INSTALLMENT" ? randomElement([36, 48, 60]) : null,
       monthlyPayment:
         paymentType === "INSTALLMENT"
           ? Math.round(finalPrice / randomElement([36, 48, 60]))

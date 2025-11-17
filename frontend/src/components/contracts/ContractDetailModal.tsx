@@ -26,6 +26,7 @@ import {
   BatteryCharging,
   Truck,
   FilePlus,
+  FileCheck,
   ShieldCheck,
   AlertCircle,
   Loader2,
@@ -44,6 +45,7 @@ interface ContractDetailModalProps {
   contract: Contract | null;
   onStatusChange?: (contractId: string, newStatus: Contract["status"]) => void;
   onEditClick?: (contract: Contract) => void;
+  onOpenContractForm?: (contract: Contract) => void; // Callback để mở ContractForm với contract mới tạo
   userRole?: "DEALER_STAFF" | "DEALER_MANAGER" | "EVM_STAFF" | "ADMIN";
   isLoading?: boolean;
   onRefreshContract?: (contractId: string) => Promise<Contract | void>;
@@ -109,6 +111,7 @@ export default function ContractDetailModal({
   contract,
   onStatusChange,
   onEditClick,
+  onOpenContractForm,
   userRole = "DEALER_STAFF",
   isLoading = false,
   onRefreshContract,
@@ -132,6 +135,9 @@ export default function ContractDetailModal({
     open: boolean;
     documentId: string;
   }>({ open: false, documentId: "" });
+  const [cancelDepositDialog, setCancelDepositDialog] = useState<{
+    open: boolean;
+  }>({ open: false });
   const [exportForm, setExportForm] = useState({
     recipientName: "",
     recipientPhone: "",
@@ -473,9 +479,118 @@ export default function ContractDetailModal({
     }
   };
 
+  const isDepositContract = contract?.contractType === "DEPOSIT";
+  // HĐ đặt cọc đã được chuyển sang HĐ mua thì không cho chỉnh sửa và không cho tạo lại
+  const isDepositConverted = isDepositContract && !!contract?.salesContractId;
   const canEdit =
-    contract?.status === "DRAFT" || contract?.status === "PENDING";
-  const canChangeStatus = availableTransitions.length > 0 && !loading;
+    (contract?.status === "DRAFT" || contract?.status === "PENDING") &&
+    !isDepositConverted;
+  // HĐ đặt cọc có thể tạo HĐ mua nếu: chưa convert, chưa bị hủy
+  const canCreateSalesFromDeposit =
+    isDepositContract &&
+    !contract?.salesContractId &&
+    contract?.status !== "CANCELLED";
+  // HĐ đặt cọc có thể hủy nếu: chưa convert, chưa bị hủy, chưa hoàn tất
+  const canCancelDeposit =
+    isDepositContract &&
+    !contract?.salesContractId &&
+    contract?.status !== "CANCELLED" &&
+    contract?.status !== "COMPLETED";
+  // HĐ đặt cọc không cho đổi status (chỉ có thể hủy hoặc tạo HĐ mua)
+  const canChangeStatus =
+    !isDepositContract && availableTransitions.length > 0 && !loading;
+  const [creatingSales, setCreatingSales] = useState(false);
+  const [cancellingDeposit, setCancellingDeposit] = useState(false);
+
+  // Tính thời gian hết hạn cho deposit contract (7 ngày từ ngày tạo)
+  const depositExpiryDate = useMemo(() => {
+    if (!isDepositContract || !contract?.createdAt) {
+      return null;
+    }
+    const createdDate = new Date(contract.createdAt);
+    const expiryDate = new Date(createdDate);
+    expiryDate.setDate(expiryDate.getDate() + 7); // 7 ngày
+    return expiryDate;
+  }, [isDepositContract, contract?.createdAt]);
+
+  const isDepositExpired = useMemo(() => {
+    if (!depositExpiryDate) return false;
+    return new Date() > depositExpiryDate;
+  }, [depositExpiryDate]);
+
+  const handleCreateSalesFromDeposit = async () => {
+    if (!contract) return;
+
+    try {
+      setCreatingSales(true);
+      // Tạo HĐ SALES từ HĐ DEPOSIT với dữ liệu mặc định từ deposit contract
+      // HĐ đặt cọc thường là FULL payment, nhưng HĐ mua có thể là INSTALLMENT
+      // Nên mặc định dùng FULL, user sẽ chỉnh trong form sau
+      const payload: any = {
+        basePrice: contract.basePrice,
+        discount: contract.discount || 0,
+        paymentType: "FULL", // Mặc định FULL, user có thể đổi trong form
+        notes: `Tạo từ HĐ đặt cọc ${contract.contractCode}`,
+      };
+
+      // Chỉ thêm installmentMonths và interestRate nếu paymentType là INSTALLMENT
+      // (Nhưng vì mặc định là FULL nên không cần)
+
+      const result = await contractApi.createSalesFromDeposit(
+        contract.id,
+        payload
+      );
+
+      const createdSalesContract: Contract = result.data?.data || result.data;
+      toast.success("Tạo hợp đồng mua thành công!");
+
+      // Đóng modal detail
+      onClose();
+
+      // Mở ContractForm với HĐ mua vừa tạo (edit mode) để điền đủ thông tin
+      if (onOpenContractForm && createdSalesContract) {
+        onOpenContractForm(createdSalesContract);
+      }
+    } catch (error: any) {
+      console.error("Error creating sales contract:", error);
+      const errorMessage =
+        error?.response?.data?.message ||
+        "Không thể tạo hợp đồng mua từ hợp đồng đặt cọc.";
+      toast.error(errorMessage);
+    } finally {
+      setCreatingSales(false);
+    }
+  };
+
+  const handleOpenCancelDepositDialog = () => {
+    setCancelDepositDialog({ open: true });
+  };
+
+  const handleCloseCancelDepositDialog = () => {
+    setCancelDepositDialog({ open: false });
+  };
+
+  const handleCancelDeposit = async () => {
+    if (!contract || !onStatusChange) return;
+
+    setCancellingDeposit(true);
+    try {
+      await onStatusChange(contract.id, "CANCELLED");
+      toast.success("✅ Đã hủy hợp đồng đặt cọc thành công!");
+      setCancelDepositDialog({ open: false });
+      // Refresh contract data if callback exists
+      if (onRefreshContract) {
+        await onRefreshContract(contract.id);
+      }
+    } catch (error: any) {
+      console.error("Error cancelling deposit contract:", error);
+      const errorMessage =
+        error?.response?.data?.message || "Không thể hủy hợp đồng đặt cọc.";
+      toast.error(`❌ ${errorMessage}`);
+    } finally {
+      setCancellingDeposit(false);
+    }
+  };
 
   if (!contract || isLoading) {
     return (
@@ -512,9 +627,11 @@ export default function ContractDetailModal({
 
           <div className="text-center pr-10">
             <h1 className="text-2xl font-bold text-gray-800 mb-3">
-              HỢP ĐỒNG MUA BÁN XE ĐIỆN
+              {isDepositContract
+                ? "HỢP ĐỒNG ĐẶT CỌC XE ĐIỆN"
+                : "HỢP ĐỒNG MUA BÁN XE ĐIỆN"}
             </h1>
-            <div className="flex justify-center items-center gap-8 text-sm text-gray-600">
+            <div className="flex justify-center items-center gap-4 flex-wrap text-sm text-gray-600">
               <div>
                 <p className="font-medium">Số hợp đồng:</p>
                 <p className="text-blue-600 font-bold">
@@ -527,6 +644,27 @@ export default function ContractDetailModal({
                   {new Date(contract.createdAt).toLocaleDateString("vi-VN")}
                 </p>
               </div>
+              {isDepositContract && (
+                <div>
+                  <p className="font-medium">Hết hạn:</p>
+                  {depositExpiryDate ? (
+                    <p
+                      className={`font-semibold ${
+                        isDepositExpired ? "text-red-600" : "text-black"
+                      }`}
+                    >
+                      {depositExpiryDate.toLocaleDateString("vi-VN")}
+                      {isDepositExpired && (
+                        <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                          Đã hết hạn
+                        </span>
+                      )}
+                    </p>
+                  ) : (
+                    <p className="text-gray-500">Đang tính...</p>
+                  )}
+                </div>
+              )}
               <div>
                 <p className="font-medium">Trạng thái:</p>
                 <div
@@ -974,182 +1112,186 @@ export default function ContractDetailModal({
             </div>
           )}
 
-          {/* Export Documents */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-600" />
-                  Giấy xuất kho
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Quản lý chứng từ phục vụ đăng ký xe cho khách hàng
-                </p>
+          {/* Export Documents - Chỉ hiển thị cho HĐ mua (SALES), không hiển thị cho HĐ đặt cọc */}
+          {!isDepositContract && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    Giấy xuất kho
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Quản lý chứng từ phục vụ đăng ký xe cho khách hàng
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {hasPendingExportDocument && (
+                    <span className="text-xs text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                      Đã có giấy xuất kho đang hiệu lực
+                    </span>
+                  )}
+                  <button
+                    onClick={handleOpenExportModal}
+                    disabled={!canCreateExportDocument}
+                    className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+                      canCreateExportDocument
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    }`}
+                  >
+                    <FilePlus className="w-4 h-4" />
+                    Xuất giấy xuất kho
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {hasPendingExportDocument && (
-                  <span className="text-xs text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                    Đã có giấy xuất kho đang hiệu lực
-                  </span>
-                )}
-                <button
-                  onClick={handleOpenExportModal}
-                  disabled={!canCreateExportDocument}
-                  className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
-                    canCreateExportDocument
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  }`}
-                >
-                  <FilePlus className="w-4 h-4" />
-                  Xuất giấy xuất kho
-                </button>
-              </div>
-            </div>
-
-            {exportDocuments.length === 0 ? (
-              <div className="bg-white border border-dashed border-gray-300 rounded-lg p-6 text-center text-gray-500">
-                Chưa có Giấy xuất kho nào cho hợp đồng này.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {exportDocuments.map((doc) => {
-                  const statusInfo =
-                    exportStatusConfig[
-                      doc.status as keyof typeof exportStatusConfig
-                    ] || exportStatusConfig.DRAFT;
-                  return (
-                    <div
-                      key={doc.id}
-                      className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold text-gray-800">
-                            {doc.code}
-                          </span>
-                          <span
-                            className={`inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full ${statusInfo.className}`}
-                          >
-                            <ShieldCheck className="w-3 h-3" />
-                            {statusInfo.label}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-600">
-                          <p>
-                            <span className="text-gray-500">Người nhận:</span>{" "}
-                            <span className="text-gray-800 font-medium">
-                              {doc.recipientName || "(Chưa cập nhật)"}
+              {exportDocuments.length === 0 ? (
+                <div className="bg-white border border-dashed border-gray-300 rounded-lg p-6 text-center text-gray-500">
+                  Chưa có Giấy xuất kho nào cho hợp đồng này.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {exportDocuments.map((doc) => {
+                    const statusInfo =
+                      exportStatusConfig[
+                        doc.status as keyof typeof exportStatusConfig
+                      ] || exportStatusConfig.DRAFT;
+                    return (
+                      <div
+                        key={doc.id}
+                        className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-semibold text-gray-800">
+                              {doc.code}
                             </span>
-                          </p>
-                          <p>
-                            <span className="text-gray-500">SĐT:</span>{" "}
-                            <span className="text-gray-800">
-                              {doc.recipientPhone || "-"}
+                            <span
+                              className={`inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full ${statusInfo.className}`}
+                            >
+                              <ShieldCheck className="w-3 h-3" />
+                              {statusInfo.label}
                             </span>
-                          </p>
-                          <p>
-                            <span className="text-gray-500">CMND/CCCD:</span>{" "}
-                            <span className="text-gray-800">
-                              {doc.recipientId || "-"}
-                            </span>
-                          </p>
-                          <p>
-                            <span className="text-gray-500">Ngày tạo:</span>{" "}
-                            <span className="text-gray-800">
-                              {new Date(doc.createdAt).toLocaleString("vi-VN")}
-                            </span>
-                          </p>
-                          {doc.approvedAt && (
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-600">
                             <p>
-                              <span className="text-gray-500">Duyệt:</span>{" "}
+                              <span className="text-gray-500">Người nhận:</span>{" "}
+                              <span className="text-gray-800 font-medium">
+                                {doc.recipientName || "(Chưa cập nhật)"}
+                              </span>
+                            </p>
+                            <p>
+                              <span className="text-gray-500">SĐT:</span>{" "}
                               <span className="text-gray-800">
-                                {new Date(doc.approvedAt).toLocaleString(
+                                {doc.recipientPhone || "-"}
+                              </span>
+                            </p>
+                            <p>
+                              <span className="text-gray-500">CMND/CCCD:</span>{" "}
+                              <span className="text-gray-800">
+                                {doc.recipientId || "-"}
+                              </span>
+                            </p>
+                            <p>
+                              <span className="text-gray-500">Ngày tạo:</span>{" "}
+                              <span className="text-gray-800">
+                                {new Date(doc.createdAt).toLocaleString(
                                   "vi-VN"
                                 )}
                               </span>
                             </p>
-                          )}
-                          {doc.cancelledAt && (
-                            <p>
-                              <span className="text-gray-500">Hủy:</span>{" "}
-                              <span className="text-gray-800">
-                                {new Date(doc.cancelledAt).toLocaleString(
-                                  "vi-VN"
-                                )}
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                        {doc.notes && (
-                          <p className="text-xs text-gray-500 bg-gray-100 rounded px-3 py-2">
-                            {doc.notes}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 self-start md:self-center">
-                        {doc.status === "APPROVED" ? (
-                          <button
-                            onClick={() =>
-                              handleDownloadDocument(doc.id, doc.code)
-                            }
-                            disabled={downloadingDocumentId === doc.id}
-                            className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm flex items-center gap-2 disabled:opacity-60"
-                          >
-                            {downloadingDocumentId === doc.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Download className="w-4 h-4" />
+                            {doc.approvedAt && (
+                              <p>
+                                <span className="text-gray-500">Duyệt:</span>{" "}
+                                <span className="text-gray-800">
+                                  {new Date(doc.approvedAt).toLocaleString(
+                                    "vi-VN"
+                                  )}
+                                </span>
+                              </p>
                             )}
-                            Tải PDF
-                          </button>
-                        ) : (
-                          <span className="text-xs text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
-                            Chứng từ cần được duyệt để tải PDF
-                          </span>
-                        )}
-
-                        {userRole === "DEALER_MANAGER" &&
-                          doc.status === "DRAFT" && (
-                            <>
-                              <button
-                                onClick={() => handleApproveDocument(doc.id)}
-                                disabled={documentActionLoading === doc.id}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-2 disabled:opacity-60"
-                              >
-                                {documentActionLoading === doc.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <CheckCircle className="w-4 h-4" />
-                                )}
-                                Duyệt
-                              </button>
-                              <button
-                                onClick={() => handleOpenCancelDialog(doc.id)}
-                                disabled={documentActionLoading === doc.id}
-                                className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 text-sm flex items-center gap-2 disabled:opacity-60"
-                              >
-                                {documentActionLoading === doc.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <X className="w-4 h-4" />
-                                )}
-                                Hủy
-                              </button>
-                            </>
+                            {doc.cancelledAt && (
+                              <p>
+                                <span className="text-gray-500">Hủy:</span>{" "}
+                                <span className="text-gray-800">
+                                  {new Date(doc.cancelledAt).toLocaleString(
+                                    "vi-VN"
+                                  )}
+                                </span>
+                              </p>
+                            )}
+                          </div>
+                          {doc.notes && (
+                            <p className="text-xs text-gray-500 bg-gray-100 rounded px-3 py-2">
+                              {doc.notes}
+                            </p>
                           )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                        </div>
 
-          {/* Status Change Section */}
-          {canChangeStatus && (
+                        <div className="flex items-center gap-2 self-start md:self-center">
+                          {doc.status === "APPROVED" ? (
+                            <button
+                              onClick={() =>
+                                handleDownloadDocument(doc.id, doc.code)
+                              }
+                              disabled={downloadingDocumentId === doc.id}
+                              className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm flex items-center gap-2 disabled:opacity-60"
+                            >
+                              {downloadingDocumentId === doc.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Download className="w-4 h-4" />
+                              )}
+                              Tải PDF
+                            </button>
+                          ) : (
+                            <span className="text-xs text-gray-500 bg-gray-100 px-3 py-2 rounded-lg">
+                              Chứng từ cần được duyệt để tải PDF
+                            </span>
+                          )}
+
+                          {userRole === "DEALER_MANAGER" &&
+                            doc.status === "DRAFT" && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveDocument(doc.id)}
+                                  disabled={documentActionLoading === doc.id}
+                                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center gap-2 disabled:opacity-60"
+                                >
+                                  {documentActionLoading === doc.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <CheckCircle className="w-4 h-4" />
+                                  )}
+                                  Duyệt
+                                </button>
+                                <button
+                                  onClick={() => handleOpenCancelDialog(doc.id)}
+                                  disabled={documentActionLoading === doc.id}
+                                  className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 text-sm flex items-center gap-2 disabled:opacity-60"
+                                >
+                                  {documentActionLoading === doc.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <X className="w-4 h-4" />
+                                  )}
+                                  Hủy
+                                </button>
+                              </>
+                            )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Status Change Section - Chỉ hiển thị cho HĐ mua (SALES), HĐ đặt cọc chỉ có thể hủy hoặc tạo HĐ mua */}
+          {!isDepositContract && canChangeStatus && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-blue-800">
@@ -1216,6 +1358,37 @@ export default function ContractDetailModal({
                 <Edit className="w-4 h-4" />
                 Chỉnh sửa
               </button>
+            )}
+
+            {isDepositContract && canCreateSalesFromDeposit && (
+              <button
+                onClick={handleCreateSalesFromDeposit}
+                disabled={creatingSales}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition-colors flex items-center gap-2"
+              >
+                {creatingSales ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FilePlus className="w-4 h-4" />
+                )}
+                Tạo HĐ mua
+              </button>
+            )}
+            {isDepositContract && canCancelDeposit && (
+              <button
+                onClick={handleOpenCancelDepositDialog}
+                disabled={cancellingDeposit}
+                className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition-colors flex items-center gap-2"
+              >
+                <XCircle className="w-4 h-4" />
+                Hủy hợp đồng cọc
+              </button>
+            )}
+            {isDepositContract && contract?.salesContractId && (
+              <div className="px-6 py-3 bg-green-50 border border-green-200 rounded-lg text-green-700 flex items-center gap-2">
+                <FileCheck className="w-4 h-4" />
+                <span>Đã tạo HĐ mua từ hợp đồng đặt cọc này</span>
+              </div>
             )}
 
             <button
@@ -1462,6 +1635,64 @@ export default function ContractDetailModal({
                   <CheckCircle className="w-4 h-4" />
                 )}
                 Xác nhận duyệt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Deposit Contract Dialog */}
+      {cancelDepositDialog.open && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-900/60 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-5">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-red-100 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Hủy hợp đồng đặt cọc
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Bạn có chắc chắn muốn hủy hợp đồng đặt cọc này?
+                  </p>
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm font-medium text-red-800">
+                      ⚠️ Lưu ý: Tiền cọc sẽ không được hoàn lại cho khách hàng.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseCancelDepositDialog}
+                className="p-2 rounded-full hover:bg-gray-100"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleCloseCancelDepositDialog}
+                disabled={cancellingDeposit}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelDeposit}
+                disabled={cancellingDeposit}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 disabled:opacity-60"
+              >
+                {cancellingDeposit ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <XCircle className="w-4 h-4" />
+                )}
+                Xác nhận hủy
               </button>
             </div>
           </div>
