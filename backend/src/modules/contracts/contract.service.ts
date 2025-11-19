@@ -190,6 +190,8 @@ interface CreateContractInput {
   interestRate?: number;
   deliveryDate?: Date;
   notes?: string;
+  customerSignature?: string | null;
+  dealerSignature?: string | null;
 }
 
 interface UpdateContractInput {
@@ -203,6 +205,8 @@ interface UpdateContractInput {
   interestRate?: number;
   deliveryDate?: Date;
   notes?: string;
+  customerSignature?: string | null;
+  dealerSignature?: string | null;
 }
 
 export class ContractService {
@@ -595,6 +599,12 @@ export class ContractService {
             status: "DRAFT",
             deliveryDate: data.deliveryDate,
             notes: data.notes,
+            ...(data.customerSignature && {
+              customerSignature: data.customerSignature,
+            }),
+            ...(data.dealerSignature && {
+              dealerSignature: data.dealerSignature,
+            }),
           },
           include: contractDetailInclude,
         });
@@ -785,6 +795,12 @@ export class ContractService {
         }),
         ...(data.deliveryDate && { deliveryDate: data.deliveryDate }),
         ...(data.notes !== undefined && { notes: data.notes }),
+        ...(data.customerSignature !== undefined && {
+          customerSignature: data.customerSignature,
+        }),
+        ...(data.dealerSignature !== undefined && {
+          dealerSignature: data.dealerSignature,
+        }),
       },
       include: contractDetailInclude,
     });

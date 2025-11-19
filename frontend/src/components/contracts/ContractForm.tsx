@@ -28,6 +28,7 @@ import { promotionApi } from "@/lib/api/promotionApi";
 import { vehicleUnitApi, VehicleUnitSummary } from "@/lib/api/vehicleUnitApi";
 import { Quotation } from "@/lib/api/quotationApi";
 import { formatMoney } from "@/lib/utils/formatMoney";
+import SignaturePad from "@/components/shared/SignaturePad";
 
 interface ContractFormProps {
   isOpen: boolean;
@@ -105,6 +106,15 @@ export default function ContractForm({
   const [selectedPromotionId, setSelectedPromotionId] = useState<string>("");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailFound, setEmailFound] = useState(false);
+  const [foundEmail, setFoundEmail] = useState(""); // Lưu email đã tìm thấy khách hàng
+
+  // Signature state
+  const [customerSignature, setCustomerSignature] = useState<string | null>(
+    null
+  );
+  const [dealerSignature, setDealerSignature] = useState<string | null>(null);
 
   // Calculated values
   const DOWN_PAYMENT_RATE = 0.6; // 60% trả trước bắt buộc khi trả góp
@@ -195,6 +205,10 @@ export default function ContractForm({
           fetchCustomerInfo(contract.customerId);
         }
 
+        // Load signatures from contract
+        setCustomerSignature(contract.customerSignature || null);
+        setDealerSignature(contract.dealerSignature || null);
+
         // Reset promotion selection in edit mode
         setSelectedPromotionId("");
       } else if (selectedQuotation) {
@@ -249,6 +263,10 @@ export default function ContractForm({
             : 0,
         }));
         setSelectedPromotionId("");
+        setEmailFound(false);
+        setFoundEmail("");
+        setCustomerSignature(null);
+        setDealerSignature(null);
       }
     }
   }, [isOpen, contract, selectedVehicle, selectedQuotation]);
@@ -644,6 +662,12 @@ export default function ContractForm({
       if (formData.deliveryDate) {
         contractData.deliveryDate = formData.deliveryDate;
       }
+      if (customerSignature) {
+        contractData.customerSignature = customerSignature;
+      }
+      if (dealerSignature) {
+        contractData.dealerSignature = dealerSignature;
+      }
 
       console.log("📋 Contract Data to submit:", contractData);
 
@@ -825,20 +849,165 @@ export default function ContractForm({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Email *
                   </label>
-                  <input
-                    type="email"
-                    placeholder="example@email.com"
-                    value={customerInfo.email}
-                    onChange={(e) =>
-                      setCustomerInfo((prev) => ({
-                        ...prev,
-                        email: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
-                  />
+                  <div className="relative">
+                    <input
+                      type="email"
+                      placeholder="example@email.com"
+                      value={customerInfo.email}
+                      onChange={(e) => {
+                        const newEmail = e.target.value;
+
+                        // 1. Nếu trước đó đã tìm thấy khách (đang ở trạng thái auto-fill)
+                        // và người dùng thay đổi email (dù chỉ 1 ký tự)
+                        if (emailFound) {
+                          // Reset toàn bộ thông tin về rỗng, chỉ giữ lại email mới đang nhập
+                          setCustomerInfo({
+                            firstName: "",
+                            lastName: "",
+                            phone: "",
+                            address: "",
+                            email: newEmail, // Vẫn phải cập nhật giá trị người dùng đang gõ
+                          });
+
+                          // Xóa các trạng thái "đã tìm thấy"
+                          setEmailFound(false);
+                          setFoundEmail("");
+
+                          // Quan trọng: Xóa customerId để tránh update nhầm vào khách hàng cũ
+                          setFormData((prev) => ({
+                            ...prev,
+                            customerId: "",
+                          }));
+                        } else {
+                          // 2. Nếu chưa tìm thấy gì (nhập bình thường), chỉ update email
+                          setCustomerInfo((prev) => ({
+                            ...prev,
+                            email: newEmail,
+                          }));
+                        }
+                      }}
+                      onBlur={async (e) => {
+                        const email = e.target.value.trim();
+                        if (
+                          !email ||
+                          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+                        ) {
+                          // Nếu email không hợp lệ và đang ở chế độ tạo mới, xóa thông tin cũ
+                          if (!formData.customerId && !contract && foundEmail) {
+                            setCustomerInfo((s) => ({
+                              ...s,
+                              firstName: "",
+                              lastName: "",
+                              phone: "",
+                              address: "",
+                            }));
+                            setFormData((prev) => ({
+                              ...prev,
+                              customerId: "",
+                            }));
+                            setFoundEmail("");
+                            setEmailFound(false);
+                          }
+                          return;
+                        }
+                        // Chỉ check nếu chưa có customerId (tạo mới)
+                        if (!formData.customerId && !contract) {
+                          setCheckingEmail(true);
+                          try {
+                            const searchRes = await customerApi.searchCustomers(
+                              email
+                            );
+                            const customers =
+                              searchRes.data?.data || searchRes.data || [];
+                            const foundCustomer = customers.find(
+                              (c: any) =>
+                                c.email?.toLowerCase() === email.toLowerCase()
+                            );
+                            if (foundCustomer) {
+                              const customerEmail =
+                                foundCustomer.email || email;
+                              console.log(
+                                "✅ Tìm thấy khách hàng, set foundEmail:",
+                                customerEmail
+                              );
+                              // Tự điền thông tin khách hàng
+                              setCustomerInfo({
+                                firstName: foundCustomer.firstName || "",
+                                lastName: foundCustomer.lastName || "",
+                                email: customerEmail,
+                                phone: foundCustomer.phone || "",
+                                address: foundCustomer.address || "",
+                              });
+                              setFormData((prev) => ({
+                                ...prev,
+                                customerId: foundCustomer.id,
+                              }));
+                              setEmailFound(true);
+                              setFoundEmail(customerEmail); // Lưu email đã tìm thấy
+                            } else {
+                              // Không tìm thấy khách hàng → Xóa thông tin cũ (nếu có)
+                              console.log(
+                                "❌ Không tìm thấy khách hàng, xóa thông tin cũ"
+                              );
+                              setCustomerInfo((s) => ({
+                                ...s,
+                                firstName: "",
+                                lastName: "",
+                                phone: "",
+                                address: "",
+                              }));
+                              setFormData((prev) => ({
+                                ...prev,
+                                customerId: "",
+                              }));
+                              setFoundEmail("");
+                              setEmailFound(false);
+                            }
+                          } catch (error) {
+                            console.error("Error checking email:", error);
+                            // Nếu có lỗi, xóa thông tin cũ
+                            if (!formData.customerId && !contract) {
+                              setCustomerInfo((s) => ({
+                                ...s,
+                                firstName: "",
+                                lastName: "",
+                                phone: "",
+                                address: "",
+                              }));
+                              setFormData((prev) => ({
+                                ...prev,
+                                customerId: "",
+                              }));
+                            }
+                            setFoundEmail("");
+                            setEmailFound(false);
+                          } finally {
+                            setCheckingEmail(false);
+                          }
+                        }
+                      }}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
+                    />
+                    {checkingEmail && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                      </div>
+                    )}
+                    {emailFound && !checkingEmail && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                          ✓ Đã tìm thấy
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   {errors.email && (
                     <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                  )}
+                  {emailFound && (
+                    <p className="text-green-600 text-sm mt-1">
+                      Đã tự động điền thông tin khách hàng từ hệ thống
+                    </p>
                   )}
                 </div>
 
@@ -1378,7 +1547,9 @@ export default function ContractForm({
                       .filter((promotion) => {
                         // Chỉ hiển thị promotion nếu đủ điều kiện minPurchase
                         if (promotion.minPurchase) {
-                          return formData.basePrice >= Number(promotion.minPurchase);
+                          return (
+                            formData.basePrice >= Number(promotion.minPurchase)
+                          );
                         }
                         return true; // Không có minPurchase thì luôn hiển thị
                       })
@@ -1389,7 +1560,8 @@ export default function ContractForm({
                           {promotion.discountType === "PERCENTAGE"
                             ? `${promotion.discountValue}%`
                             : formatMoney(promotion.discountValue)}
-                          {promotion.description && ` (${promotion.description})`}
+                          {promotion.description &&
+                            ` (${promotion.description})`}
                           {promotion.source === "MANUFACTURER"
                             ? " - Hãng cấp"
                             : ""}
@@ -1400,10 +1572,19 @@ export default function ContractForm({
 
                 {/* Debug info */}
                 <div className="text-xs text-gray-500 mt-1">
-                  Tìm thấy {promotions.filter((p) => !p.minPurchase || formData.basePrice >= Number(p.minPurchase)).length} khuyến mãi khả dụng
+                  Tìm thấy{" "}
+                  {
+                    promotions.filter(
+                      (p) =>
+                        !p.minPurchase ||
+                        formData.basePrice >= Number(p.minPurchase)
+                    ).length
+                  }{" "}
+                  khuyến mãi khả dụng
                   {promotions.length > 0 && (
                     <span className="text-gray-400">
-                      {" "}(tổng {promotions.length} khuyến mãi)
+                      {" "}
+                      (tổng {promotions.length} khuyến mãi)
                     </span>
                   )}
                 </div>
@@ -1758,15 +1939,45 @@ export default function ContractForm({
                   <h4 className="font-medium text-gray-800 mb-2">
                     Bên mua (Khách hàng)
                   </h4>
-                  <p className="text-gray-600">Ký tên: _________________</p>
-                  <p className="text-gray-600 mt-2">Ngày: _________________</p>
+                  <SignaturePad
+                    label="Chữ ký khách hàng"
+                    onSignatureChange={(dataUrl) => {
+                      setCustomerSignature(dataUrl);
+                    }}
+                  />
+                  {customerSignature && (
+                    <img
+                      src={customerSignature}
+                      alt="Chữ ký khách hàng"
+                      className="mt-2 border border-gray-300 rounded"
+                      style={{ maxWidth: "100%", height: "auto" }}
+                    />
+                  )}
+                  <p className="text-gray-600 mt-2">
+                    Ngày: {new Date().toLocaleDateString("vi-VN")}
+                  </p>
                 </div>
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <h4 className="font-medium text-gray-800 mb-2">
                     Bên bán (Đại lý)
                   </h4>
-                  <p className="text-gray-600">Ký tên: _________________</p>
-                  <p className="text-gray-600 mt-2">Ngày: _________________</p>
+                  <SignaturePad
+                    label="Chữ ký đại lý"
+                    onSignatureChange={(dataUrl) => {
+                      setDealerSignature(dataUrl);
+                    }}
+                  />
+                  {dealerSignature && (
+                    <img
+                      src={dealerSignature}
+                      alt="Chữ ký đại lý"
+                      className="mt-2 border border-gray-300 rounded"
+                      style={{ maxWidth: "100%", height: "auto" }}
+                    />
+                  )}
+                  <p className="text-gray-600 mt-2">
+                    Ngày: {new Date().toLocaleDateString("vi-VN")}
+                  </p>
                 </div>
               </div>
             </div>

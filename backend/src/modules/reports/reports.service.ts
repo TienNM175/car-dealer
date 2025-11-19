@@ -239,8 +239,6 @@ export class ReportsService {
       },
     });
 
-
-
     const staffPerformance = await Promise.all(
       byStaff.map(async (item) => {
         const staff = await prisma.user.findUnique({
@@ -250,9 +248,10 @@ export class ReportsService {
             firstName: true,
             lastName: true,
             email: true,
-            role: true,       // ✅ thêm role
-            dealerId: true,   // ✅ thêm dealerId
-            dealer: {         // ✅ lấy thông tin đại lý cho rõ
+            role: true, // ✅ thêm role
+            dealerId: true, // ✅ thêm dealerId
+            dealer: {
+              // ✅ lấy thông tin đại lý cho rõ
               select: {
                 id: true,
                 name: true,
@@ -268,16 +267,17 @@ export class ReportsService {
             firstName: staff?.firstName,
             lastName: staff?.lastName,
             email: staff?.email,
-            role: staff?.role,               // ✅ thêm role
-            dealerId: staff?.dealerId,       // ✅ để frontend lọc
-            dealer: staff?.dealer || null,   // ✅ hiển thị tên đại lý
+            role: staff?.role, // ✅ thêm role
+            dealerId: staff?.dealerId, // ✅ để frontend lọc
+            dealer: staff?.dealer || null, // ✅ hiển thị tên đại lý
           },
           salesCount: item._count,
           totalRevenue: Number(item._sum.finalPrice || 0),
           averageOrderValue:
-            item._count > 0 ? Number(item._sum.finalPrice || 0) / item._count : 0,
+            item._count > 0
+              ? Number(item._sum.finalPrice || 0) / item._count
+              : 0,
         };
-
       })
     );
 
@@ -807,15 +807,15 @@ export class ReportsService {
           staffCount,
           target: target
             ? {
-              targetAmount: target.targetAmount,
-              achievedAmount: target.achievedAmount,
-              achievementRate:
-                Number(target.targetAmount) > 0
-                  ? (Number(target.achievedAmount) /
-                    Number(target.targetAmount)) *
-                  100
-                  : 0,
-            }
+                targetAmount: target.targetAmount,
+                achievedAmount: target.achievedAmount,
+                achievementRate:
+                  Number(target.targetAmount) > 0
+                    ? (Number(target.achievedAmount) /
+                        Number(target.targetAmount)) *
+                      100
+                    : 0,
+              }
             : null,
         };
       })

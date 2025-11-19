@@ -279,6 +279,8 @@ model Contract {
   depositAmount     Decimal?                @map("deposit_amount")
   status            ContractStatus          @default(DRAFT)
   signedAt          DateTime?               @map("signed_at")
+  customerSignature String?                 @map("customer_signature") @db.Text
+  dealerSignature   String?                 @map("dealer_signature") @db.Text
   deliveryDate      DateTime?               @map("delivery_date")
   deliveredAt       DateTime?               @map("delivered_at")
   notes             String?
