@@ -398,21 +398,37 @@ export async function fetchReport(
     }
 
     if (type === "dealer-debts") {
-      try {
-        const res = await axiosClient.get(`/debts/dealers/detail`, { params });
-        const data = res.data?.data || res.data;
+  try {
+    console.log("[DEBUG] Fetching dealer debts from:", `/debts/dealers/detail`);
+    const res = await axiosClient.get(`/debts/dealers/detail`, { params });
+    const data = res.data?.data || res.data;
+    console.log("[DEBUG] Dealer debts data:", data);
 
-        return {
-          title: getReportTitle(type),
-          unit: getReportUnit(type),
-          total: data.summary?.totalDebt || 0,
-          ...data
-        };
-      } catch (error: any) {
-        console.error("[ERROR] Dealer debts report failed:", error.message);
-        return getFallbackData(type);
+    return {
+      title: getReportTitle(type),
+      unit: getReportUnit(type),
+      total: data.summary?.totalDebt || 0,
+      ...data
+    };
+  } catch (error: any) {
+    console.error("[ERROR] Dealer debts report failed:", error.message);
+    
+    // Fallback chi tiết hơn
+    return {
+      title: getReportTitle(type),
+      unit: getReportUnit(type),
+      total: 0,
+      detailedDebts: [],
+      summary: {
+        totalDebt: 0,
+        totalOrders: 0,
+        unpaidOrders: 0,
+        overdueOrders: 0,
+        totalPaid: 0
       }
-    }
+    };
+  }
+}
 
     if (type === "dealer-performance") {
       try {

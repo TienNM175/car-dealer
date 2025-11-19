@@ -134,6 +134,14 @@ router.get(
   debtsController.getDealerDebtsDetail
 );
 
+// Thêm route mới cho dealer debts summary
+router.get(
+  "/dealers",
+  AuthMiddleware.authenticate,
+  RoleMiddleware.requireEVMStaff,
+  debtsController.getDealerDebts
+);
+
 console.log("✅ Debts routes defined");
 
 export default router;

@@ -15,7 +15,10 @@ import {
   MoreVertical,
   CheckCircle,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  DollarSign, // THÊM
+  BarChart3, // THÊM
+  X // THÊM
 } from 'lucide-react';
 import { dealerApi } from '@/lib/api/dealerApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +27,7 @@ import EditDealerModal from '@/components/dealers/EditDealerModal';
 import DealerDetailsModal from '@/components/dealers/DealerDetailsModal';
 import DealerStaffModal from '@/components/dealers/DealerStaffModal';
 import DealerTargetsModal from '@/components/dealers/DealerTargetsModal';
+import DebtTracker from '@/components/dealers/DebtTracker'; // THÊM
 import type { Dealer, Region, DealerFilters } from '@/components/dealers/types';
 
 // Toast Component
@@ -48,17 +52,23 @@ function Toast({ message, isVisible, onClose, type = 'success' }: {
     warning: 'bg-yellow-600'
   }[type];
 
+  const iconColor = {
+    success: 'text-green-100',
+    error: 'text-red-100', 
+    warning: 'text-yellow-100'
+  }[type];
+
   return (
     <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top duration-300">
       <div className={`${bgColor} text-white px-6 py-4 rounded-xl shadow-xl flex items-center space-x-3`}>
-        <CheckCircle className="w-5 h-5" />
+        <CheckCircle className={`w-5 h-5 ${iconColor}`} />
         <span className="font-semibold">{message}</span>
       </div>
     </div>
   );
 }
 
-// Confirmation Modal Component - CẬP NHẬT với cảnh báo
+// Confirmation Modal Component
 function ConfirmModal({ 
   isOpen, 
   onClose, 
@@ -165,6 +175,8 @@ export default function DealersPage() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showTargetsModal, setShowTargetsModal] = useState(false);
+  const [showDebtTracker, setShowDebtTracker] = useState(false); // THÊM
+  const [showPerformanceDashboard, setShowPerformanceDashboard] = useState(false); // THÊM
   const [selectedDealer, setSelectedDealer] = useState<Dealer | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -536,6 +548,17 @@ export default function DealersPage() {
                               <button
                                 onClick={() => {
                                   setSelectedDealer(dealer);
+                                  setShowDebtTracker(true);
+                                  setOpenMenuId(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-red-50 transition-colors"
+                              >
+                                <DollarSign className="w-4 h-4" />
+                                Theo dõi Công nợ
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedDealer(dealer);
                                   setShowStaffModal(true);
                                   setOpenMenuId(null);
                                 }}
@@ -696,6 +719,16 @@ export default function DealersPage() {
             }}
             onSuccess={(message?: string) => {
               if (message) showToast(message, 'success');
+            }}
+          />
+        )}
+
+        {showDebtTracker && selectedDealer && (
+          <DebtTracker
+            dealer={selectedDealer}
+            onClose={() => {
+              setShowDebtTracker(false);
+              setSelectedDealer(null);
             }}
           />
         )}
