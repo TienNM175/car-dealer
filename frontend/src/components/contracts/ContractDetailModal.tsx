@@ -1341,6 +1341,56 @@ export default function ContractDetailModal({
             </div>
           )}
 
+          {/* Signatures Section */}
+          {(contract.customerSignature || contract.dealerSignature) && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                CHỮ KÝ HỢP ĐỒNG
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {contract.customerSignature && (
+                  <div className="bg-white p-4 border border-gray-200 rounded-lg">
+                    <h4 className="font-medium text-gray-800 mb-2">
+                      Chữ ký khách hàng
+                    </h4>
+                    <img
+                      src={contract.customerSignature}
+                      alt="Chữ ký khách hàng"
+                      className="w-full border border-gray-300 rounded"
+                      style={{ maxHeight: "150px", objectFit: "contain" }}
+                    />
+                    {contract.signedAt && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Ngày ký:{" "}
+                        {new Date(contract.signedAt).toLocaleDateString("vi-VN")}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {contract.dealerSignature && (
+                  <div className="bg-white p-4 border border-gray-200 rounded-lg">
+                    <h4 className="font-medium text-gray-800 mb-2">
+                      Chữ ký đại lý
+                    </h4>
+                    <img
+                      src={contract.dealerSignature}
+                      alt="Chữ ký đại lý"
+                      className="w-full border border-gray-300 rounded"
+                      style={{ maxHeight: "150px", objectFit: "contain" }}
+                    />
+                    {contract.signedAt && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Ngày ký:{" "}
+                        {new Date(contract.signedAt).toLocaleDateString("vi-VN")}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex flex-wrap gap-3 pt-6 border-t">
             <button

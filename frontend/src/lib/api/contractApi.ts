@@ -34,6 +34,8 @@ export interface Contract {
   deliveredAt?: string;
   notes?: string;
   signedAt?: string;
+  customerSignature?: string | null;
+  dealerSignature?: string | null;
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -163,6 +165,8 @@ export interface CreateContractInput {
   notes?: string;
   contractType?: "SALES" | "DEPOSIT";
   depositAmount?: number;
+  customerSignature?: string | null;
+  dealerSignature?: string | null;
 }
 
 export interface UpdateContractInput extends Partial<CreateContractInput> {}
