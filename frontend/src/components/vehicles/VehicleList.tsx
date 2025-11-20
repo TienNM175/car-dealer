@@ -475,7 +475,7 @@ export default function VehicleList({
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs">
                               <Package className="w-3 h-3" />
                               {vehicle.dealerInventories?.reduce(
-                                (sum, inv) => sum + inv.quantity,
+                                (sum, inv) => sum + inv.quantity!,
                                 0
                               ) || 0}{" "}
                               DL
@@ -696,7 +696,7 @@ export default function VehicleList({
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs">
                             <Package className="w-3 h-3" />
                             {vehicle.dealerInventories?.reduce(
-                              (sum, inv) => sum + inv.quantity,
+                              (sum, inv) => sum + (inv.quantity ?? 0),
                               0
                             ) || 0}{" "}
                             DL
@@ -709,7 +709,7 @@ export default function VehicleList({
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
                           <Package className="w-3 h-3" />
                           {vehicle.dealerInventories?.reduce(
-                            (sum, inv) => sum + inv.quantity,
+                            (sum, inv) => sum + (inv.quantity ?? 0),
                             0
                           ) || 0}{" "}
                           kho

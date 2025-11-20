@@ -25,6 +25,7 @@ export interface Vehicle {
   specifications?: string;
   createdAt: string;
   updatedAt: string;
+
   manufacturer?: {
     id: string;
     name: string;
@@ -32,7 +33,27 @@ export interface Vehicle {
     country: string;
     logo?: string;
   };
+
   images?: VehicleImage[];
+
+  // ⭐ EVM INVENTORY — thêm mới
+  evmInventories?: {
+    id?: string;
+    vehicleId?: string;
+    quantity: number;
+    wholesalePrice?: number;
+    retailPrice?: number;
+  };
+
+  // ⭐ DEALER INVENTORY — sửa lại quantity
+  dealerInventories?: {
+    id?: string;
+    dealerId: string;
+    quantity: number;   // <--- Đã sửa: quantity thay vì stock
+    wholesalePrice?: number;
+    retailPrice?: number;
+  }[];
+
   _count?: {
     evmInventories: number;
     dealerInventories: number;
@@ -42,6 +63,7 @@ export interface Vehicle {
     testDrives: number;
   };
 }
+
 
 export interface VehicleImage {
   id: string;
