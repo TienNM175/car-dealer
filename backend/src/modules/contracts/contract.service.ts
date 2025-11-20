@@ -179,7 +179,7 @@ interface CreateContractInput {
   vehicleId: string;
   vehicleUnitId?: string | null;
   contractType?: ContractType;
-   depositAmount?: number;
+  depositAmount?: number;
   quotationId?: string;
   promotionId?: string;
   basePrice: number;
@@ -570,7 +570,9 @@ export class ContractService {
         throw new Error("Deposit amount cannot exceed contract value");
       }
       if (!data.customerSignature || !data.dealerSignature) {
-        throw new Error("Deposit contracts require both customer and dealer signatures");
+        throw new Error(
+          "Deposit contracts require both customer and dealer signatures"
+        );
       }
     }
 
@@ -738,12 +740,15 @@ export class ContractService {
       }
     }
 
-    // Can only update DRAFT or PENDING contracts
+    // Allow updating contracts in DRAFT, PENDING, SIGNED, DELIVERING status
+    // Block updates for COMPLETED and CANCELLED contracts (final states)
+    // This allows editing SALES contracts created from DEPOSIT (status PENDING with signatures)
+    // and other cases where updates may be needed after signing
     if (
-      existingContract.status !== "DRAFT" &&
-      existingContract.status !== "PENDING"
+      existingContract.status === "COMPLETED" ||
+      existingContract.status === "CANCELLED"
     ) {
-      throw new Error("Can only update draft or pending contracts");
+      throw new Error("Cannot update completed or cancelled contracts");
     }
 
     // Calculate new financials if price/discount changed (VAT 10% tự động)
@@ -1206,7 +1211,10 @@ export class ContractService {
    */
   async createSalesFromDeposit(
     depositContractId: string,
-    data: Omit<CreateContractInput, "customerId" | "vehicleId" | "vehicleUnitId" | "staffId"> & {
+    data: Omit<
+      CreateContractInput,
+      "customerId" | "vehicleId" | "vehicleUnitId" | "staffId"
+    > & {
       basePrice?: number;
       discount?: number;
     },
@@ -1237,18 +1245,24 @@ export class ContractService {
 
     // Check if deposit contract has already been converted to sales contract
     if (depositContract.salesContractId) {
-      throw new Error("Deposit contract has already been converted to a sales contract");
+      throw new Error(
+        "Deposit contract has already been converted to a sales contract"
+      );
     }
 
     // Check if deposit contract is cancelled - cannot create sales from cancelled deposit
     if (depositContract.status === "CANCELLED") {
-      throw new Error("Cannot create sales contract from a cancelled deposit contract");
+      throw new Error(
+        "Cannot create sales contract from a cancelled deposit contract"
+      );
     }
 
     // Check dealerId for DEALER roles
     if (userRole === "DEALER_STAFF" || userRole === "DEALER_MANAGER") {
       if (depositContract.staff.dealerId !== userDealerId) {
-        throw new Error("You can only create sales contracts from your dealer's deposit contracts");
+        throw new Error(
+          "You can only create sales contracts from your dealer's deposit contracts"
+        );
       }
     }
 
@@ -1259,7 +1273,9 @@ export class ContractService {
       !depositContract.customerSignature ||
       !depositContract.dealerSignature
     ) {
-      throw new Error("Deposit contract must be signed before creating a sales contract");
+      throw new Error(
+        "Deposit contract must be signed before creating a sales contract"
+      );
     }
 
     const depositAmount = Number(depositContract.depositAmount);
@@ -1302,6 +1318,8 @@ export class ContractService {
         }
 
         // Create SALES contract
+        // Set status to PENDING (not SIGNED) to allow editing after creation
+        // Even though it has signatures from DEPOSIT, user may need to adjust payment details
         const newContract = await tx.contract.create({
           data: {
             contractCode,
@@ -1318,10 +1336,11 @@ export class ContractService {
             installmentMonths: installmentMonths,
             monthlyPayment,
             interestRate: interestRate,
-            status: "SIGNED",
-            signedAt: new Date(),
+            status: "PENDING", // Changed from SIGNED to PENDING to allow editing
+            // Don't set signedAt here - will be set when status changes to SIGNED
             deliveryDate: data.deliveryDate,
-            notes: data.notes || `Tạo từ HĐ đặt cọc ${depositContract.contractCode}`,
+            notes:
+              data.notes || `Tạo từ HĐ đặt cọc ${depositContract.contractCode}`,
             customerSignature: depositContract.customerSignature,
             dealerSignature: depositContract.dealerSignature,
           },

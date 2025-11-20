@@ -13,7 +13,6 @@ import {
   AlertTriangle,
   ChevronDown,
   Truck,
-  Hash,
   RefreshCcw,
   Loader2,
 } from "lucide-react";
@@ -703,13 +702,13 @@ export default function ContractForm({
       let updatedContract: Contract;
       if (contract) {
         // Update existing contract
-        console.log("🔄 Updating contract:", contract.id);
-        console.log("📋 Update data:", JSON.stringify(contractData, null, 2));
+        console.log(" Updating contract:", contract.id);
+        console.log(" Update data:", JSON.stringify(contractData, null, 2));
         result = await contractApi.updateContract(contract.id, contractData);
-        console.log("✅ Update result:", result.data);
+        console.log(" Update result:", result.data);
         // Extract contract from response
         updatedContract = result.data?.data || result.data;
-        setSuccessMessage("✅ Cập nhật hợp đồng thành công!");
+        setSuccessMessage("Cập nhật hợp đồng thành công!");
       } else {
         // Create new contract
         console.log(
@@ -719,7 +718,7 @@ export default function ContractForm({
         result = await contractApi.createContract(contractData);
         // Extract contract from response
         updatedContract = result.data?.data || result.data;
-        setSuccessMessage("✅ Tạo hợp đồng thành công!");
+        setSuccessMessage("Tạo hợp đồng thành công!");
       }
 
       // Show success popup
@@ -1038,7 +1037,7 @@ export default function ContractForm({
                     {emailFound && !checkingEmail && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
                         <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                          ✓ Đã tìm thấy
+                          Đã tìm thấy
                         </span>
                       </div>
                     )}
@@ -1588,6 +1587,10 @@ export default function ContractForm({
                   ) : (
                     promotions
                       .filter((promotion) => {
+                        // Chỉ hiển thị voucher từ đại lý (DEALER), không hiển thị voucher từ hãng (MANUFACTURER)
+                        if (promotion.source === "MANUFACTURER") {
+                          return false;
+                        }
                         // Chỉ hiển thị promotion nếu đủ điều kiện minPurchase
                         if (promotion.minPurchase) {
                           return (
@@ -1598,16 +1601,12 @@ export default function ContractForm({
                       })
                       .map((promotion) => (
                         <option key={promotion.id} value={promotion.id}>
-                          {promotion.source === "MANUFACTURER" ? "🏭 " : "🏪 "}
                           {promotion.name} -{" "}
                           {promotion.discountType === "PERCENTAGE"
                             ? `${promotion.discountValue}%`
                             : formatMoney(promotion.discountValue)}
                           {promotion.description &&
                             ` (${promotion.description})`}
-                          {promotion.source === "MANUFACTURER"
-                            ? " - Hãng cấp"
-                            : ""}
                         </option>
                       ))
                   )}
@@ -1619,15 +1618,21 @@ export default function ContractForm({
                   {
                     promotions.filter(
                       (p) =>
-                        !p.minPurchase ||
-                        formData.basePrice >= Number(p.minPurchase)
+                        p.source !== "MANUFACTURER" &&
+                        (!p.minPurchase ||
+                          formData.basePrice >= Number(p.minPurchase))
                     ).length
                   }{" "}
                   khuyến mãi khả dụng
                   {promotions.length > 0 && (
                     <span className="text-gray-400">
                       {" "}
-                      (tổng {promotions.length} khuyến mãi)
+                      (tổng{" "}
+                      {
+                        promotions.filter((p) => p.source !== "MANUFACTURER")
+                          .length
+                      }{" "}
+                      khuyến mãi đại lý)
                     </span>
                   )}
                 </div>
@@ -1644,14 +1649,14 @@ export default function ContractForm({
                       ) {
                         return (
                           <p className="text-red-600">
-                            ⚠️ Đơn hàng tối thiểu:{" "}
+                            Đơn hàng tối thiểu:{" "}
                             {formatMoney(selectedPromotion.minPurchase)}
                           </p>
                         );
                       }
                       return (
                         <p className="text-green-600">
-                          ✅ Đã áp dụng mã khuyến mãi
+                          Đã áp dụng mã khuyến mãi
                         </p>
                       );
                     })()}
@@ -1996,7 +2001,7 @@ export default function ContractForm({
                       ) : (
                         <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                           <p className="text-sm text-gray-600 mb-2">
-                            ✓ Đã có chữ ký từ hợp đồng đặt cọc
+                            Đã có chữ ký từ hợp đồng đặt cọc
                           </p>
                         </div>
                       )}
@@ -2036,7 +2041,7 @@ export default function ContractForm({
                       ) : (
                         <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                           <p className="text-sm text-gray-600 mb-2">
-                            ✓ Đã có chữ ký từ hợp đồng đặt cọc
+                            Đã có chữ ký từ hợp đồng đặt cọc
                           </p>
                         </div>
                       )}
@@ -2107,27 +2112,10 @@ export default function ContractForm({
       {/* Success Toast Notification */}
       {showSuccessPopup && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in">
-          <div className="bg-white rounded-lg shadow-lg border border-green-200 p-4 flex items-center gap-3 max-w-sm">
-            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg
-                className="w-5 h-5 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">
-                {successMessage}
-              </p>
-            </div>
+          <div className="bg-white rounded-lg shadow-lg border border-green-200 p-4 max-w-sm">
+            <p className="text-sm font-medium text-gray-900">
+              {successMessage}
+            </p>
           </div>
         </div>
       )}
