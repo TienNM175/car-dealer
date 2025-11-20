@@ -382,6 +382,7 @@ export default function OrdersPage() {
             order={editingOrder}
             dealerId={(user as any)?.dealerId}
             userId={(user as any)?.id}
+            userRole={userRole || "DEALER_MANAGER"}
             dealerInfo={{
               name: (user as any)?.dealer?.name || "N/A",
               address: (user as any)?.dealer?.address,
