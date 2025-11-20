@@ -247,6 +247,15 @@ export default function DepositContractForm({
     if (!form.vehicleUnitId) e.vehicleUnitId = "Vui lòng chọn VIN";
     if (retailPrice <= 0)
       e.depositAmount = "Không xác định được giá niêm yết để tính tiền cọc";
+    const requiresSignature = !contract || contract.status === "DRAFT";
+    if (requiresSignature) {
+      if (!customerSignature) {
+        e.customerSignature = "Vui lòng ký xác nhận của khách hàng";
+      }
+      if (!dealerSignature) {
+        e.dealerSignature = "Vui lòng ký xác nhận của đại lý";
+      }
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -509,28 +518,41 @@ export default function DepositContractForm({
                               setEmailFound(true);
                               setFoundEmail(customerEmail); // Lưu email đã tìm thấy
                             } else {
-                              // Không tìm thấy khách hàng → Xóa thông tin cũ (nếu có)
-                              console.log(
-                                "❌ Không tìm thấy khách hàng, xóa thông tin cũ"
-                              );
-                              setCustomerInfo((s) => ({
-                                ...s,
-                                firstName: "",
-                                lastName: "",
-                                phone: "",
-                                address: "",
-                              }));
-                              setForm((s) => ({
-                                ...s,
-                                customerId: undefined,
-                              }));
-                              setFoundEmail("");
-                              setEmailFound(false);
+                              // Không tìm thấy khách hàng → Chỉ xóa nếu đã từng tìm thấy (auto-fill)
+                              if (emailFound && foundEmail) {
+                                console.log(
+                                  "❌ Không tìm thấy khách hàng, xóa thông tin đã auto-fill"
+                                );
+                                setCustomerInfo((s) => ({
+                                  ...s,
+                                  firstName: "",
+                                  lastName: "",
+                                  phone: "",
+                                  address: "",
+                                }));
+                                setForm((s) => ({
+                                  ...s,
+                                  customerId: undefined,
+                                }));
+                                setFoundEmail("");
+                                setEmailFound(false);
+                              } else {
+                                // Chưa từng tìm thấy → giữ nguyên thông tin đã nhập
+                                console.log(
+                                  "ℹ️ Không tìm thấy khách hàng, giữ nguyên thông tin đã nhập"
+                                );
+                                setFoundEmail("");
+                                setEmailFound(false);
+                              }
                             }
                           } catch (error) {
                             console.error("Error checking email:", error);
-                            // Nếu có lỗi, xóa thông tin cũ
-                            if (!contract?.customerId) {
+                            // Nếu có lỗi, chỉ xóa nếu đã từng tìm thấy (auto-fill)
+                            if (
+                              emailFound &&
+                              foundEmail &&
+                              !contract?.customerId
+                            ) {
                               setCustomerInfo((s) => ({
                                 ...s,
                                 firstName: "",
@@ -842,7 +864,7 @@ export default function DepositContractForm({
             </h2>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <h4 className="font-medium text-gray-800 mb-2">
                     Bên mua (Khách hàng)
@@ -860,6 +882,11 @@ export default function DepositContractForm({
                       className="mt-2 border border-gray-300 rounded"
                       style={{ maxWidth: "100%", height: "auto" }}
                     />
+                  )}
+                  {errors.customerSignature && (
+                    <p className="text-red-500 text-sm mt-2">
+                      {errors.customerSignature}
+                    </p>
                   )}
                   <p className="text-gray-600 mt-2">
                     Ngày: {new Date().toLocaleDateString("vi-VN")}
@@ -882,6 +909,11 @@ export default function DepositContractForm({
                       className="mt-2 border border-gray-300 rounded"
                       style={{ maxWidth: "100%", height: "auto" }}
                     />
+                  )}
+                  {errors.dealerSignature && (
+                    <p className="text-red-500 text-sm mt-2">
+                      {errors.dealerSignature}
+                    </p>
                   )}
                   <p className="text-gray-600 mt-2">
                     Ngày: {new Date().toLocaleDateString("vi-VN")}

@@ -569,6 +569,9 @@ export class ContractService {
       if (data.depositAmount > finalPrice) {
         throw new Error("Deposit amount cannot exceed contract value");
       }
+      if (!data.customerSignature || !data.dealerSignature) {
+        throw new Error("Deposit contracts require both customer and dealer signatures");
+      }
     }
 
     // Generate contract code
@@ -1252,6 +1255,12 @@ export class ContractService {
     if (!depositContract.depositAmount) {
       throw new Error("Deposit contract does not have deposit amount");
     }
+    if (
+      !depositContract.customerSignature ||
+      !depositContract.dealerSignature
+    ) {
+      throw new Error("Deposit contract must be signed before creating a sales contract");
+    }
 
     const depositAmount = Number(depositContract.depositAmount);
 
@@ -1309,9 +1318,12 @@ export class ContractService {
             installmentMonths: installmentMonths,
             monthlyPayment,
             interestRate: interestRate,
-            status: "DRAFT",
+            status: "SIGNED",
+            signedAt: new Date(),
             deliveryDate: data.deliveryDate,
             notes: data.notes || `Tạo từ HĐ đặt cọc ${depositContract.contractCode}`,
+            customerSignature: depositContract.customerSignature,
+            dealerSignature: depositContract.dealerSignature,
           },
           include: contractDetailInclude,
         });
@@ -1319,7 +1331,11 @@ export class ContractService {
         // Đánh dấu HĐ đặt cọc đã được sử dụng (link với HĐ mua)
         await tx.contract.update({
           where: { id: depositContractId },
-          data: { salesContractId: newContract.id },
+          data: {
+            salesContractId: newContract.id,
+            status: "SIGNED",
+            signedAt: depositContract.signedAt ?? new Date(),
+          },
         });
 
         // Update customer status to PURCHASED
