@@ -2,7 +2,8 @@ version: 1
 application:
   name: EVM
   type: node
-  start: npm start
   build:
     - npm install
+    - npx prisma generate
     - npm run build
+  start: npm start

@@ -101,7 +101,7 @@ export const TestDriveForm: React.FC<TestDriveFormProps> = ({
           [];
 
         const staffData: User[] =
-          staffRes?.data?.data || staffRes?.data?.users || staffRes?.data || [];
+          staffRes?.data?.users || staffRes?.data?.users || staffRes?.data || [];
 
         const activeVehicles = vehiclesData.filter(
           (v) => v.status === "AVAILABLE" || v.status === "ACTIVE"

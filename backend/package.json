@@ -6,8 +6,6 @@
   "scripts": {
     "start": "node dist/src/server.js",
     "build": "tsc",
-    "prebuild": "npm run prisma:generate",
-    "postinstall": "npm run prisma:generate",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate deploy",
