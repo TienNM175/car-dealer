@@ -226,6 +226,11 @@ export default function ContractDetailModal({
     try {
       await onStatusChange(contract.id, newStatus);
       setShowStatusChange(false);
+      if (contract.status === "DRAFT" && newStatus === "PENDING") {
+        toast.success(
+          "✅ Đã chuyển hợp đồng sang trạng thái chờ ký. Vui lòng chỉnh sửa hợp đồng để thêm chữ ký."
+        );
+      }
     } catch (error: any) {
       console.error("Error updating status:", error);
       const errorMessage =
@@ -480,6 +485,8 @@ export default function ContractDetailModal({
   };
 
   const isDepositContract = contract?.contractType === "DEPOSIT";
+  const depositHasSignatures =
+    !!contract?.customerSignature && !!contract?.dealerSignature;
   // HĐ đặt cọc đã được chuyển sang HĐ mua thì không cho chỉnh sửa và không cho tạo lại
   const isDepositConverted = isDepositContract && !!contract?.salesContractId;
   const canEdit =
@@ -489,7 +496,8 @@ export default function ContractDetailModal({
   const canCreateSalesFromDeposit =
     isDepositContract &&
     !contract?.salesContractId &&
-    contract?.status !== "CANCELLED";
+    contract?.status !== "CANCELLED" &&
+    depositHasSignatures;
   // HĐ đặt cọc có thể hủy nếu: chưa convert, chưa bị hủy, chưa hoàn tất
   const canCancelDeposit =
     isDepositContract &&
@@ -520,6 +528,11 @@ export default function ContractDetailModal({
 
   const handleCreateSalesFromDeposit = async () => {
     if (!contract) return;
+
+    if (!contract.customerSignature || !contract.dealerSignature) {
+      toast.error("Hợp đồng đặt cọc phải có chữ ký trước khi tạo HĐ mua.");
+      return;
+    }
 
     try {
       setCreatingSales(true);
@@ -1342,7 +1355,7 @@ export default function ContractDetailModal({
           )}
 
           {/* Signatures Section */}
-          {(contract.customerSignature || contract.dealerSignature) && (
+          {contract.customerSignature || contract.dealerSignature ? (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <FileText className="w-5 h-5" />
@@ -1363,7 +1376,9 @@ export default function ContractDetailModal({
                     {contract.signedAt && (
                       <p className="text-xs text-gray-500 mt-2">
                         Ngày ký:{" "}
-                        {new Date(contract.signedAt).toLocaleDateString("vi-VN")}
+                        {new Date(contract.signedAt).toLocaleDateString(
+                          "vi-VN"
+                        )}
                       </p>
                     )}
                   </div>
@@ -1382,13 +1397,42 @@ export default function ContractDetailModal({
                     {contract.signedAt && (
                       <p className="text-xs text-gray-500 mt-2">
                         Ngày ký:{" "}
-                        {new Date(contract.signedAt).toLocaleDateString("vi-VN")}
+                        {new Date(contract.signedAt).toLocaleDateString(
+                          "vi-VN"
+                        )}
                       </p>
                     )}
                   </div>
                 )}
               </div>
             </div>
+          ) : (
+            // Hiển thị thông báo khi status = PENDING mà chưa có chữ ký
+            contract.status === "PENDING" &&
+            contract.contractType === "SALES" && (
+              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-6 space-y-4">
+                <h3 className="text-lg font-semibold text-yellow-800 flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  CHỮ KÝ HỢP ĐỒNG
+                </h3>
+                <div className="bg-white p-4 border border-yellow-200 rounded-lg">
+                  <p className="text-yellow-800 mb-4">
+                    ⚠️ Hợp đồng đang ở trạng thái <strong>Chờ duyệt</strong>.
+                    Vui lòng thêm chữ ký khách hàng và đại lý để hoàn tất hợp
+                    đồng.
+                  </p>
+                  {canEdit && onEditClick && (
+                    <button
+                      onClick={() => onEditClick(contract)}
+                      className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors flex items-center gap-2"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Chỉnh sửa để thêm chữ ký
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
           )}
 
           {/* Actions */}
@@ -1424,6 +1468,14 @@ export default function ContractDetailModal({
                 Tạo HĐ mua
               </button>
             )}
+            {isDepositContract &&
+              !depositHasSignatures &&
+              !contract?.salesContractId &&
+              contract?.status !== "CANCELLED" && (
+                <div className="px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+                  Hợp đồng đặt cọc cần đầy đủ chữ ký trước khi tạo HĐ mua.
+                </div>
+              )}
             {isDepositContract && canCancelDeposit && (
               <button
                 onClick={handleOpenCancelDepositDialog}

@@ -190,9 +190,9 @@ export default function ContractForm({
           vehicleId: contract.vehicleId,
           vehicleUnitId: contract.vehicleUnitId || "",
           staffId: contract.staffId,
-          basePrice: contract.basePrice,
-          discount: contract.discount || 0,
-          tax: contract.tax,
+          basePrice: Number(contract.basePrice) || 0,
+          discount: Number(contract.discount) || 0,
+          tax: contract.tax ? Number(contract.tax) : undefined,
           paymentType: contract.paymentType,
           installmentMonths: contract.installmentMonths || 24,
           interestRate: contract.interestRate || 12,
@@ -490,16 +490,17 @@ export default function ContractForm({
     const newBasePrice = Number(vehicle.retailPrice || 0);
 
     // Recalculate discount if promotion is selected
-    let newDiscount = formData.discount;
+    let newDiscount = Number(formData.discount) || 0;
     if (selectedPromotionId && newBasePrice > 0) {
       const selectedPromotion = promotions.find(
         (p) => p.id === selectedPromotionId
       );
       if (selectedPromotion) {
+        const discountValueNum = Number(selectedPromotion.discountValue) || 0;
         if (selectedPromotion.discountType === "PERCENTAGE") {
-          newDiscount = (newBasePrice * selectedPromotion.discountValue) / 100;
+          newDiscount = (newBasePrice * discountValueNum) / 100;
         } else {
-          newDiscount = selectedPromotion.discountValue;
+          newDiscount = discountValueNum;
         }
       }
     }
@@ -509,7 +510,7 @@ export default function ContractForm({
       vehicleId: vehicle.id,
       vehicleUnitId: "",
       basePrice: newBasePrice,
-      discount: newDiscount,
+      discount: Math.round(newDiscount), // Làm tròn để tránh số thập phân
     }));
 
     setVehicleUnits([]);
@@ -565,7 +566,10 @@ export default function ContractForm({
       newErrors.vehicleUnitId = "Vui lòng chọn xe (VIN) cụ thể";
     if (!formData.staffId) newErrors.staffId = "Thiếu thông tin nhân viên";
     if (formData.basePrice <= 0) newErrors.basePrice = "Giá xe phải lớn hơn 0";
-    if (formData.discount && formData.discount > formData.basePrice) {
+    // Convert sang number để so sánh chính xác
+    const basePriceNum = Number(formData.basePrice) || 0;
+    const discountNum = Number(formData.discount) || 0;
+    if (discountNum > 0 && discountNum > basePriceNum) {
       newErrors.discount = "Chiết khấu không thể lớn hơn giá xe";
     }
     if (formData.paymentType === "INSTALLMENT") {
@@ -593,6 +597,24 @@ export default function ContractForm({
         newErrors.promotion = `Đơn hàng tối thiểu: ${formatMoney(
           selectedPromotion.minPurchase
         )}`;
+      }
+    }
+
+    // Validate signatures: Nếu status là PENDING (SALES) hoặc DEPOSIT, cần có chữ ký
+    if (contract) {
+      const currentStatus = contract.status;
+      const contractType = contract.contractType || "SALES";
+
+      if (
+        (currentStatus === "PENDING" && contractType === "SALES") ||
+        (contractType === "DEPOSIT" && currentStatus === "DRAFT")
+      ) {
+        if (!customerSignature && !contract.customerSignature) {
+          newErrors.customerSignature = "Vui lòng thêm chữ ký khách hàng";
+        }
+        if (!dealerSignature && !contract.dealerSignature) {
+          newErrors.dealerSignature = "Vui lòng thêm chữ ký đại lý";
+        }
       }
     }
 
@@ -662,22 +684,31 @@ export default function ContractForm({
       if (formData.deliveryDate) {
         contractData.deliveryDate = formData.deliveryDate;
       }
-      if (customerSignature) {
-        contractData.customerSignature = customerSignature;
-      }
-      if (dealerSignature) {
-        contractData.dealerSignature = dealerSignature;
+      // Chỉ gửi chữ ký khi hợp đồng đã tồn tại và (không phải DRAFT hoặc là HĐ đặt cọc)
+      if (
+        contract &&
+        (contract.contractType === "DEPOSIT" || contract.status !== "DRAFT")
+      ) {
+        if (customerSignature) {
+          contractData.customerSignature = customerSignature;
+        }
+        if (dealerSignature) {
+          contractData.dealerSignature = dealerSignature;
+        }
       }
 
       console.log("📋 Contract Data to submit:", contractData);
 
       let result;
+      let updatedContract: Contract;
       if (contract) {
         // Update existing contract
         console.log("🔄 Updating contract:", contract.id);
         console.log("📋 Update data:", JSON.stringify(contractData, null, 2));
         result = await contractApi.updateContract(contract.id, contractData);
         console.log("✅ Update result:", result.data);
+        // Extract contract from response
+        updatedContract = result.data?.data || result.data;
         setSuccessMessage("✅ Cập nhật hợp đồng thành công!");
       } else {
         // Create new contract
@@ -686,6 +717,8 @@ export default function ContractForm({
           JSON.stringify(contractData, null, 2)
         );
         result = await contractApi.createContract(contractData);
+        // Extract contract from response
+        updatedContract = result.data?.data || result.data;
         setSuccessMessage("✅ Tạo hợp đồng thành công!");
       }
 
@@ -695,7 +728,7 @@ export default function ContractForm({
       // Refresh list and close modal after delay
       setTimeout(() => {
         setShowSuccessPopup(false);
-        onSuccess(result.data);
+        onSuccess(updatedContract);
         onClose();
       }, 1500);
     } catch (error: any) {
@@ -945,28 +978,37 @@ export default function ContractForm({
                               setEmailFound(true);
                               setFoundEmail(customerEmail); // Lưu email đã tìm thấy
                             } else {
-                              // Không tìm thấy khách hàng → Xóa thông tin cũ (nếu có)
-                              console.log(
-                                "❌ Không tìm thấy khách hàng, xóa thông tin cũ"
-                              );
-                              setCustomerInfo((s) => ({
-                                ...s,
-                                firstName: "",
-                                lastName: "",
-                                phone: "",
-                                address: "",
-                              }));
-                              setFormData((prev) => ({
-                                ...prev,
-                                customerId: "",
-                              }));
-                              setFoundEmail("");
-                              setEmailFound(false);
+                              // Không tìm thấy khách hàng → Chỉ xóa nếu đã từng tìm thấy (auto-fill)
+                              if (emailFound && foundEmail) {
+                                console.log(
+                                  "❌ Không tìm thấy khách hàng, xóa thông tin đã auto-fill"
+                                );
+                                setCustomerInfo((s) => ({
+                                  ...s,
+                                  firstName: "",
+                                  lastName: "",
+                                  phone: "",
+                                  address: "",
+                                }));
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  customerId: "",
+                                }));
+                                setFoundEmail("");
+                                setEmailFound(false);
+                              } else {
+                                // Chưa từng tìm thấy → giữ nguyên thông tin đã nhập
+                                console.log(
+                                  "ℹ️ Không tìm thấy khách hàng, giữ nguyên thông tin đã nhập"
+                                );
+                                setFoundEmail("");
+                                setEmailFound(false);
+                              }
                             }
                           } catch (error) {
                             console.error("Error checking email:", error);
-                            // Nếu có lỗi, xóa thông tin cũ
-                            if (!formData.customerId && !contract) {
+                            // Nếu có lỗi, chỉ xóa nếu đã từng tìm thấy (auto-fill)
+                            if (emailFound && foundEmail) {
                               setCustomerInfo((s) => ({
                                 ...s,
                                 firstName: "",
@@ -1517,20 +1559,21 @@ export default function ContractForm({
                     );
 
                     let calculatedDiscount = 0;
-                    if (selectedPromotion && formData.basePrice > 0) {
+                    const basePriceNum = Number(formData.basePrice) || 0;
+                    if (selectedPromotion && basePriceNum > 0) {
+                      const discountValueNum =
+                        Number(selectedPromotion.discountValue) || 0;
                       if (selectedPromotion.discountType === "PERCENTAGE") {
                         calculatedDiscount =
-                          (formData.basePrice *
-                            selectedPromotion.discountValue) /
-                          100;
+                          (basePriceNum * discountValueNum) / 100;
                       } else {
-                        calculatedDiscount = selectedPromotion.discountValue;
+                        calculatedDiscount = discountValueNum;
                       }
                     }
 
                     setFormData((prev) => ({
                       ...prev,
-                      discount: calculatedDiscount,
+                      discount: Math.round(calculatedDiscount), // Làm tròn để tránh số thập phân
                     }));
                   }}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
@@ -1926,62 +1969,100 @@ export default function ContractForm({
             </div>
           </div>
 
-          {/* Section 5: Xác nhận & Ký kết */}
-          <div className="bg-white border-2 border-gray-300 p-6 rounded-lg">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              XÁC NHẬN & KÝ KẾT
-            </h2>
+          {/* Section 5: Xác nhận & Ký kết - Chỉ hiển thị khi HĐ đã tồn tại và không ở trạng thái nháp (trừ HĐ đặt cọc) */}
+          {contract &&
+            (contract.contractType === "DEPOSIT" ||
+              contract.status !== "DRAFT") && (
+              <div className="bg-white border-2 border-gray-300 p-6 rounded-lg">
+                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  XÁC NHẬN & KÝ KẾT
+                </h2>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <h4 className="font-medium text-gray-800 mb-2">
-                    Bên mua (Khách hàng)
-                  </h4>
-                  <SignaturePad
-                    label="Chữ ký khách hàng"
-                    onSignatureChange={(dataUrl) => {
-                      setCustomerSignature(dataUrl);
-                    }}
-                  />
-                  {customerSignature && (
-                    <img
-                      src={customerSignature}
-                      alt="Chữ ký khách hàng"
-                      className="mt-2 border border-gray-300 rounded"
-                      style={{ maxWidth: "100%", height: "auto" }}
-                    />
-                  )}
-                  <p className="text-gray-600 mt-2">
-                    Ngày: {new Date().toLocaleDateString("vi-VN")}
-                  </p>
-                </div>
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <h4 className="font-medium text-gray-800 mb-2">
-                    Bên bán (Đại lý)
-                  </h4>
-                  <SignaturePad
-                    label="Chữ ký đại lý"
-                    onSignatureChange={(dataUrl) => {
-                      setDealerSignature(dataUrl);
-                    }}
-                  />
-                  {dealerSignature && (
-                    <img
-                      src={dealerSignature}
-                      alt="Chữ ký đại lý"
-                      className="mt-2 border border-gray-300 rounded"
-                      style={{ maxWidth: "100%", height: "auto" }}
-                    />
-                  )}
-                  <p className="text-gray-600 mt-2">
-                    Ngày: {new Date().toLocaleDateString("vi-VN")}
-                  </p>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="p-4 border border-gray-200 rounded-lg">
+                      <h4 className="font-medium text-gray-800 mb-2">
+                        Bên mua (Khách hàng) *
+                      </h4>
+                      {/* Chỉ hiển thị SignaturePad nếu chưa có chữ ký */}
+                      {!(contract?.customerSignature || customerSignature) ? (
+                        <SignaturePad
+                          label="Chữ ký khách hàng"
+                          onSignatureChange={(dataUrl) => {
+                            setCustomerSignature(dataUrl);
+                          }}
+                        />
+                      ) : (
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <p className="text-sm text-gray-600 mb-2">
+                            ✓ Đã có chữ ký từ hợp đồng đặt cọc
+                          </p>
+                        </div>
+                      )}
+                      {(customerSignature || contract?.customerSignature) && (
+                        <img
+                          src={
+                            customerSignature ||
+                            contract?.customerSignature ||
+                            ""
+                          }
+                          alt="Chữ ký khách hàng"
+                          className="mt-2 border border-gray-300 rounded"
+                          style={{ maxWidth: "100%", height: "auto" }}
+                        />
+                      )}
+                      {errors.customerSignature && (
+                        <p className="text-red-500 text-sm mt-2">
+                          {errors.customerSignature}
+                        </p>
+                      )}
+                      <p className="text-gray-600 mt-2">
+                        Ngày: {new Date().toLocaleDateString("vi-VN")}
+                      </p>
+                    </div>
+                    <div className="p-4 border border-gray-200 rounded-lg">
+                      <h4 className="font-medium text-gray-800 mb-2">
+                        Bên bán (Đại lý) *
+                      </h4>
+                      {/* Chỉ hiển thị SignaturePad nếu chưa có chữ ký */}
+                      {!(contract?.dealerSignature || dealerSignature) ? (
+                        <SignaturePad
+                          label="Chữ ký đại lý"
+                          onSignatureChange={(dataUrl) => {
+                            setDealerSignature(dataUrl);
+                          }}
+                        />
+                      ) : (
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <p className="text-sm text-gray-600 mb-2">
+                            ✓ Đã có chữ ký từ hợp đồng đặt cọc
+                          </p>
+                        </div>
+                      )}
+                      {(dealerSignature || contract?.dealerSignature) && (
+                        <img
+                          src={
+                            dealerSignature || contract?.dealerSignature || ""
+                          }
+                          alt="Chữ ký đại lý"
+                          className="mt-2 border border-gray-300 rounded"
+                          style={{ maxWidth: "100%", height: "auto" }}
+                        />
+                      )}
+                      {errors.dealerSignature && (
+                        <p className="text-red-500 text-sm mt-2">
+                          {errors.dealerSignature}
+                        </p>
+                      )}
+                      <p className="text-gray-600 mt-2">
+                        Ngày: {new Date().toLocaleDateString("vi-VN")}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            )}
 
           {/* Validation Errors */}
           {errors.general && (

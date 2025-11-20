@@ -41,7 +41,8 @@ export default function ContractsPage() {
   const [showDepositForm, setShowDepositForm] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
-  const [editingDepositContract, setEditingDepositContract] = useState<Contract | null>(null);
+  const [editingDepositContract, setEditingDepositContract] =
+    useState<Contract | null>(null);
   const [isNewFromDeposit, setIsNewFromDeposit] = useState(false);
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);
   const [viewingContractLoading, setViewingContractLoading] = useState(false);
@@ -199,6 +200,15 @@ export default function ContractsPage() {
     console.log("✅ Contract saved, refreshing list...", contract);
     fetchContracts();
     fetchStatistics();
+
+    // Nếu đang xem contract detail của contract vừa update, refresh lại
+    if (contract?.id && viewingContract?.id === contract.id) {
+      try {
+        await fetchContractDetail(contract.id);
+      } catch (err) {
+        console.error("Error refreshing contract detail:", err);
+      }
+    }
   };
 
   const handleStatusChange = async (
