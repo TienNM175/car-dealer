@@ -175,6 +175,7 @@ export class ReportsService {
       _count: true,
       _sum: {
         finalPrice: true,
+        depositAmount: true, // Cần để tính revenue cho CANCELLED DEPOSIT
       },
     });
 
@@ -288,13 +289,14 @@ export class ReportsService {
     const vehiclesByDealer = await this.getVehicleSalesByDealer(where);
 
     // Tiền hủy cọc - tổng depositAmount của HĐ đặt cọc đã hủy
+    // Dùng cho cả cancelledDeposits info và revenue cho CANCELLED status
     const cancelledDeposits = await prisma.contract.aggregate({
       where: {
         contractType: "DEPOSIT",
         status: "CANCELLED",
         ...(filters.fromDate && { updatedAt: { gte: filters.fromDate } }), // Khi hủy
-        ...(filters.toDate && { updatedAt: { lte: filters.toDate } }),
-        ...(filters.dealerId && { staff: { dealerId: filters.dealerId } }),
+        ...(filters.toDate && { updatedAt: { lte: filters.toDate } }), // Khi hủy
+        ...(filters.dealerId && { staff: { dealerId: filters.dealerId } }), // Filter theo dealer
       },
       _sum: {
         depositAmount: true,
@@ -302,12 +304,28 @@ export class ReportsService {
       _count: true,
     });
 
+    // Revenue cho CANCELLED chỉ là tổng depositAmount của các DEPOSIT đã hủy
+    // KHÔNG phải finalPrice (giá xe)
+    // Ví dụ: Đặt cọc 10 triệu rồi hủy → revenue = 10 triệu (tiền cọc), không phải giá xe
+    const cancelledRevenue = Number(cancelledDeposits._sum.depositAmount || 0);
+
     return {
-      byStatus: byStatus.map((item) => ({
-        status: item.status,
-        count: item._count,
-        revenue: item._sum.finalPrice || 0,
-      })),
+      byStatus: byStatus.map((item) => {
+        // Với CANCELLED, tính revenue từ depositAmount (chỉ tính tiền cọc, không tính giá xe)
+        if (item.status === "CANCELLED") {
+          return {
+            status: item.status,
+            count: item._count,
+            revenue: cancelledRevenue, // Chỉ là tổng depositAmount của DEPOSIT cancelled
+          };
+        }
+        // Các status khác dùng finalPrice
+        return {
+          status: item.status,
+          count: item._count,
+          revenue: item._sum.finalPrice || 0,
+        };
+      }),
       byPaymentType: byPaymentType.map((item) => ({
         type: item.paymentType,
         count: item._count,

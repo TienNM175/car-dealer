@@ -313,14 +313,14 @@ export default function DepositContractForm({
       if (contract) {
         // Update existing contract
         result = await contractApi.updateContract(contract.id, payload);
-        toast.success("✅ Cập nhật hợp đồng đặt cọc thành công!");
+        toast.success("Cập nhật hợp đồng đặt cọc thành công!");
       } else {
         // Create new contract
         const res = await contractApi.createContract(
           payload as CreateContractInput
         );
         result = res;
-        toast.success("✅ Tạo hợp đồng đặt cọc thành công!");
+        toast.success("Tạo hợp đồng đặt cọc thành công!");
       }
 
       const created: Contract = result.data?.data || result.data;
@@ -583,7 +583,7 @@ export default function DepositContractForm({
                     {emailFound && !checkingEmail && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
                         <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                          ✓ Đã tìm thấy
+                          Đã tìm thấy
                         </span>
                       </div>
                     )}
