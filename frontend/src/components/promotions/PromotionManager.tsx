@@ -13,7 +13,8 @@ import {
   Shield,
   Loader,
   Edit,
-  Building // Icon cho manufacturer
+  Building,
+  Package // Thêm icon cho giá sỉ
 } from 'lucide-react';
 import { promotionApi } from '@/lib/api/promotionApi';
 import { Promotion, AvailablePromotionsResponse } from '@/lib/types/promotion.types';
@@ -29,12 +30,11 @@ interface Vehicle {
 interface PromotionManagerProps {
   vehicle?: Vehicle;
   retailPrice: number;
-  wholesalePrice: number;
+  wholesalePrice: number; // Thêm wholesalePrice
   userRole: 'DEALER_STAFF' | 'DEALER_MANAGER' | 'EVM_STAFF' | 'ADMIN';
   userId: string;
   userName: string;
   dealerId: string;
-  // THÊM: Chỉ cho phép các nguồn khuyến mãi được phép
   allowedPromotionSources?: ('DEALER' | 'MANUFACTURER')[];
   onPromotionApplied?: (promotion: Promotion, finalPrice: number, profit: number) => void;
 }
@@ -42,12 +42,12 @@ interface PromotionManagerProps {
 export default function PromotionManager({
   vehicle,
   retailPrice,
-  wholesalePrice,
+  wholesalePrice, // Nhận wholesalePrice từ props
   userRole,
   userId,
   userName,
   dealerId,
-  allowedPromotionSources = ['DEALER', 'MANUFACTURER'], // Mặc định cho phép cả hai
+  allowedPromotionSources = ['DEALER', 'MANUFACTURER'],
   onPromotionApplied
 }: PromotionManagerProps) {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -66,13 +66,6 @@ export default function PromotionManager({
     profit: number;
     isValid: boolean;
   } | null>(null);
-
-  // Lọc promotions theo allowedPromotionSources
-  const filterPromotionsBySource = (promotionsList: Promotion[]) => {
-    return promotionsList.filter(promotion => 
-      allowedPromotionSources.includes(promotion.source)
-    );
-  };
 
   // Fetch promotions từ API
   useEffect(() => {
@@ -106,6 +99,13 @@ export default function PromotionManager({
     }
   }, [dealerId, allowedPromotionSources]);
 
+  // Lọc promotions theo allowedPromotionSources
+  const filterPromotionsBySource = (promotionsList: Promotion[]) => {
+    return promotionsList.filter(promotion => 
+      allowedPromotionSources.includes(promotion.source)
+    );
+  };
+
   // Lọc promotions theo tab active và nguồn được phép
   const getFilteredPromotions = () => {
     let filtered = [];
@@ -124,31 +124,36 @@ export default function PromotionManager({
     return filtered;
   };
 
-  // Tính toán giá và lợi nhuận khi chọn promotion
+  // SỬA LẠI: Tính toán giá và lợi nhuận - GIẢM TRÊN GIÁ SỈ
   const calculatePromotion = async (promotion: Promotion) => {
     try {
       setApplying(true);
       
       let discountAmount = 0;
       
+      // SỬA: Tính giảm giá trên wholesalePrice thay vì retailPrice
       if (promotion.discountType === 'PERCENTAGE') {
-        discountAmount = retailPrice * (promotion.discountValue / 100);
+        discountAmount = wholesalePrice * (promotion.discountValue / 100);
       } else {
         discountAmount = promotion.discountValue;
       }
 
-      // Kiểm tra điều kiện min purchase
+      // Kiểm tra điều kiện min purchase (vẫn dùng retail price để kiểm tra)
       if (promotion.minPurchase && retailPrice < promotion.minPurchase) {
         toast.error(`Khuyến mãi yêu cầu giá trị đơn hàng tối thiểu ${promotion.minPurchase.toLocaleString()} VND`);
         return;
       }
 
-      const finalPrice = retailPrice - discountAmount;
-      const profit = finalPrice - wholesalePrice;
+      // SỬA: Tính giá cuối cùng sau khuyến mãi (trên giá sỉ)
+      const finalPrice = wholesalePrice - discountAmount;
+      
+      // SỬA: Tính lợi nhuận = giá bán lẻ - giá sỉ sau khuyến mãi
+      const profit = retailPrice - finalPrice;
+      
       const isValid = profit >= 0;
 
       setCalculation({
-        originalPrice: retailPrice,
+        originalPrice: wholesalePrice, // Hiển thị giá sỉ gốc
         discountAmount,
         finalPrice,
         profit,
@@ -230,14 +235,14 @@ export default function PromotionManager({
   const canEditPromotion = (promotion: Promotion) => 
     promotion.source === 'DEALER' && (userRole === 'DEALER_MANAGER' || userRole === 'ADMIN' || userRole === 'EVM_STAFF');
 
-  const filteredPromotions = getFilteredPromotions();
-
   // Kiểm tra xem tab có bị disable không
   const isTabDisabled = (tab: 'dealer' | 'manufacturer') => {
     if (tab === 'dealer' && !allowedPromotionSources.includes('DEALER')) return true;
     if (tab === 'manufacturer' && !allowedPromotionSources.includes('MANUFACTURER')) return true;
     return false;
   };
+
+  const filteredPromotions = getFilteredPromotions();
 
   if (loading) {
     return (
@@ -272,48 +277,6 @@ export default function PromotionManager({
           </button>
         )}
       </div>
-
-      {/* Tabs
-      <div className="flex border-b border-gray-200 mb-4">
-        <button
-          onClick={() => setActiveTab('all')}
-          className={`px-4 py-2 font-medium text-sm ${
-            activeTab === 'all'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Tất cả ({promotions.length})
-        </button>
-        <button
-          onClick={() => !isTabDisabled('dealer') && setActiveTab('dealer')}
-          disabled={isTabDisabled('dealer')}
-          className={`px-4 py-2 font-medium text-sm ${
-            activeTab === 'dealer'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : isTabDisabled('dealer') 
-                ? 'text-gray-300 cursor-not-allowed' 
-                : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Từ đại lý ({dealerPromotions.length})
-          {isTabDisabled('dealer') && <span className="ml-1 text-xs">(Không được phép)</span>}
-        </button>
-        <button
-          onClick={() => !isTabDisabled('manufacturer') && setActiveTab('manufacturer')}
-          disabled={isTabDisabled('manufacturer')}
-          className={`px-4 py-2 font-medium text-sm ${
-            activeTab === 'manufacturer'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : isTabDisabled('manufacturer') 
-                ? 'text-gray-300 cursor-not-allowed' 
-                : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Từ hãng ({manufacturerPromotions.length})
-          {isTabDisabled('manufacturer') && <span className="ml-1 text-xs">(Không được phép)</span>}
-        </button>
-      </div> */}
 
       {/* Thông báo khi không có khuyến mãi nào được phép */}
       {allowedPromotionSources.length === 0 && (
@@ -492,7 +455,7 @@ export default function PromotionManager({
           
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Giá gốc:</span>
+              <span className="text-gray-600">Giá sỉ gốc:</span>
               <p className="font-semibold text-gray-900">{calculation.originalPrice.toLocaleString()} VND</p>
             </div>
             <div>
@@ -500,7 +463,7 @@ export default function PromotionManager({
               <p className="font-semibold text-red-600">-{calculation.discountAmount.toLocaleString()} VND</p>
             </div>
             <div>
-              <span className="text-gray-600">Giá bán sau KM:</span>
+              <span className="text-gray-600">Giá sỉ sau KM:</span>
               <p className="font-semibold text-green-600">{calculation.finalPrice.toLocaleString()} VND</p>
             </div>
             <div>
@@ -509,6 +472,11 @@ export default function PromotionManager({
                 calculation.profit >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
                 {calculation.profit.toLocaleString()} VND
+                {calculation.profit >= 0 ? (
+                  <TrendingUp className="w-4 h-4 inline ml-1" />
+                ) : (
+                  <TrendingDown className="w-4 h-4 inline ml-1" />
+                )}
               </p>
             </div>
           </div>
@@ -520,7 +488,7 @@ export default function PromotionManager({
                 <span className="font-medium">Cảnh báo: Lợi nhuận âm!</span>
               </div>
               <p className="text-sm text-red-600 mt-1">
-                Giá bán sau khuyến mãi thấp hơn giá nhập từ hãng. 
+                Giá sỉ sau khuyến mãi thấp hơn giá nhập từ hãng. 
                 Không thể áp dụng khuyến mãi này.
               </p>
             </div>
@@ -529,8 +497,9 @@ export default function PromotionManager({
           {calculation.isValid && (
             <button
               onClick={handleApplyPromotion}
-              className="mt-4 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+              className="mt-4 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center justify-center gap-2"
             >
+              <CheckCircle className="w-4 h-4" />
               Áp dụng khuyến mãi
             </button>
           )}
