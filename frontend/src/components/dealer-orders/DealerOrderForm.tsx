@@ -34,7 +34,7 @@ interface DealerOrderFormProps {
 }
 
 // Config - ngưỡng công nợ tối đa (có thể điều chỉnh)
-const MAX_DEBT_THRESHOLD = 1000000000; // 1 tỷ VND
+const MAX_DEBT_THRESHOLD = 50000000000; // 1 tỷ VND
 
 export default function DealerOrderForm({
   isOpen,
