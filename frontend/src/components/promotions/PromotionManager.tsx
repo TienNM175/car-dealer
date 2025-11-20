@@ -12,7 +12,8 @@ import {
   User,
   Shield,
   Loader,
-  Edit
+  Edit,
+  Building // Icon cho manufacturer
 } from 'lucide-react';
 import { promotionApi } from '@/lib/api/promotionApi';
 import { Promotion, AvailablePromotionsResponse } from '@/lib/types/promotion.types';
@@ -33,6 +34,8 @@ interface PromotionManagerProps {
   userId: string;
   userName: string;
   dealerId: string;
+  // THÊM: Chỉ cho phép các nguồn khuyến mãi được phép
+  allowedPromotionSources?: ('DEALER' | 'MANUFACTURER')[];
   onPromotionApplied?: (promotion: Promotion, finalPrice: number, profit: number) => void;
 }
 
@@ -44,6 +47,7 @@ export default function PromotionManager({
   userId,
   userName,
   dealerId,
+  allowedPromotionSources = ['DEALER', 'MANUFACTURER'], // Mặc định cho phép cả hai
   onPromotionApplied
 }: PromotionManagerProps) {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -63,6 +67,13 @@ export default function PromotionManager({
     isValid: boolean;
   } | null>(null);
 
+  // Lọc promotions theo allowedPromotionSources
+  const filterPromotionsBySource = (promotionsList: Promotion[]) => {
+    return promotionsList.filter(promotion => 
+      allowedPromotionSources.includes(promotion.source)
+    );
+  };
+
   // Fetch promotions từ API
   useEffect(() => {
     const fetchPromotions = async () => {
@@ -71,9 +82,14 @@ export default function PromotionManager({
         
         const response: AvailablePromotionsResponse = await promotionApi.getAvailablePromotions(dealerId, false);
         
-        setDealerPromotions(response.dealerPromotions || []);
-        setManufacturerPromotions(response.manufacturerPromotions || []);
-        setPromotions(response.allPromotions || []);
+        // Lọc promotions theo nguồn được phép
+        const filteredDealerPromotions = filterPromotionsBySource(response.dealerPromotions || []);
+        const filteredManufacturerPromotions = filterPromotionsBySource(response.manufacturerPromotions || []);
+        const filteredAllPromotions = filterPromotionsBySource(response.allPromotions || []);
+        
+        setDealerPromotions(filteredDealerPromotions);
+        setManufacturerPromotions(filteredManufacturerPromotions);
+        setPromotions(filteredAllPromotions);
       } catch (error) {
         console.error('Error fetching promotions:', error);
         toast.error('Lỗi khi tải danh sách khuyến mãi');
@@ -88,18 +104,24 @@ export default function PromotionManager({
     if (dealerId) {
       fetchPromotions();
     }
-  }, [dealerId]);
+  }, [dealerId, allowedPromotionSources]);
 
-  // Lọc promotions theo tab active
+  // Lọc promotions theo tab active và nguồn được phép
   const getFilteredPromotions = () => {
+    let filtered = [];
     switch (activeTab) {
       case 'dealer':
-        return dealerPromotions;
+        filtered = dealerPromotions;
+        break;
       case 'manufacturer':
-        return manufacturerPromotions;
+        filtered = manufacturerPromotions;
+        break;
       default:
-        return promotions;
+        filtered = promotions;
+        break;
     }
+    
+    return filtered;
   };
 
   // Tính toán giá và lợi nhuận khi chọn promotion
@@ -142,24 +164,26 @@ export default function PromotionManager({
     }
   };
 
-  // Staff tạo khuyến mãi mới
+  // Staff tạo khuyến mãi mới - CHỈ cho phép tạo khuyến mãi dealer nếu được phép
   const handleCreatePromotion = async (formData: any) => {
     try {
+      // Kiểm tra xem có được phép tạo khuyến mãi dealer không
+      if (!allowedPromotionSources.includes('DEALER')) {
+        toast.error('Bạn không được phép tạo khuyến mãi từ đại lý');
+        return;
+      }
+
       const promotionData = {
         ...formData,
         dealerId,
-        source: userRole === 'DEALER_STAFF' || userRole === 'DEALER_MANAGER' ? 'DEALER' : 'MANUFACTURER',
+        source: 'DEALER', // Luôn là DEALER khi staff tạo
         isActive: userRole === 'DEALER_MANAGER' || userRole === 'ADMIN' || userRole === 'EVM_STAFF'
       };
 
       const newPromotion = await promotionApi.create(promotionData);
       
       setPromotions(prev => [...prev, newPromotion]);
-      if (newPromotion.source === 'DEALER') {
-        setDealerPromotions(prev => [...prev, newPromotion]);
-      } else {
-        setManufacturerPromotions(prev => [...prev, newPromotion]);
-      }
+      setDealerPromotions(prev => [...prev, newPromotion]);
       
       setShowForm(false);
       toast.success('Tạo khuyến mãi thành công!');
@@ -200,12 +224,20 @@ export default function PromotionManager({
     }
   };
 
-  const canCreatePromotion = userRole === 'DEALER_STAFF' || userRole === 'DEALER_MANAGER' || userRole === 'ADMIN' || userRole === 'EVM_STAFF';
+  const canCreatePromotion = (userRole === 'DEALER_STAFF' || userRole === 'DEALER_MANAGER' || userRole === 'ADMIN' || userRole === 'EVM_STAFF') && 
+                            allowedPromotionSources.includes('DEALER');
   const canTogglePromotion = userRole === 'DEALER_MANAGER' || userRole === 'ADMIN' || userRole === 'EVM_STAFF';
   const canEditPromotion = (promotion: Promotion) => 
     promotion.source === 'DEALER' && (userRole === 'DEALER_MANAGER' || userRole === 'ADMIN' || userRole === 'EVM_STAFF');
 
   const filteredPromotions = getFilteredPromotions();
+
+  // Kiểm tra xem tab có bị disable không
+  const isTabDisabled = (tab: 'dealer' | 'manufacturer') => {
+    if (tab === 'dealer' && !allowedPromotionSources.includes('DEALER')) return true;
+    if (tab === 'manufacturer' && !allowedPromotionSources.includes('MANUFACTURER')) return true;
+    return false;
+  };
 
   if (loading) {
     return (
@@ -224,6 +256,12 @@ export default function PromotionManager({
         <div className="flex items-center gap-3">
           <Tag className="w-6 h-6 text-blue-600" />
           <h3 className="text-xl font-semibold text-gray-800">Quản lý khuyến mãi</h3>
+          {/* Hiển thị thông tin về nguồn khuyến mãi được phép */}
+          {allowedPromotionSources.length === 1 && (
+            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+              Chỉ {allowedPromotionSources[0] === 'MANUFACTURER' ? 'khuyến mãi từ hãng' : 'khuyến mãi từ đại lý'}
+            </span>
+          )}
         </div>
         {canCreatePromotion && (
           <button
@@ -235,7 +273,7 @@ export default function PromotionManager({
         )}
       </div>
 
-      {/* Tabs */}
+      {/* Tabs
       <div className="flex border-b border-gray-200 mb-4">
         <button
           onClick={() => setActiveTab('all')}
@@ -248,26 +286,44 @@ export default function PromotionManager({
           Tất cả ({promotions.length})
         </button>
         <button
-          onClick={() => setActiveTab('dealer')}
+          onClick={() => !isTabDisabled('dealer') && setActiveTab('dealer')}
+          disabled={isTabDisabled('dealer')}
           className={`px-4 py-2 font-medium text-sm ${
             activeTab === 'dealer'
               ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              : isTabDisabled('dealer') 
+                ? 'text-gray-300 cursor-not-allowed' 
+                : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           Từ đại lý ({dealerPromotions.length})
+          {isTabDisabled('dealer') && <span className="ml-1 text-xs">(Không được phép)</span>}
         </button>
         <button
-          onClick={() => setActiveTab('manufacturer')}
+          onClick={() => !isTabDisabled('manufacturer') && setActiveTab('manufacturer')}
+          disabled={isTabDisabled('manufacturer')}
           className={`px-4 py-2 font-medium text-sm ${
             activeTab === 'manufacturer'
               ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              : isTabDisabled('manufacturer') 
+                ? 'text-gray-300 cursor-not-allowed' 
+                : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           Từ hãng ({manufacturerPromotions.length})
+          {isTabDisabled('manufacturer') && <span className="ml-1 text-xs">(Không được phép)</span>}
         </button>
-      </div>
+      </div> */}
+
+      {/* Thông báo khi không có khuyến mãi nào được phép */}
+      {allowedPromotionSources.length === 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center gap-2 text-yellow-700">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="font-medium">Không có khuyến mãi nào được phép áp dụng</span>
+          </div>
+        </div>
+      )}
 
       {/* Danh sách khuyến mãi */}
       <div className="space-y-4">
@@ -301,8 +357,16 @@ export default function PromotionManager({
                         {promotion.code}
                       </span>
                     )}
-                    {promotion.source === 'MANUFACTURER' && (
-                      <Shield className="w-4 h-4 text-green-600" />
+                    {promotion.source === 'MANUFACTURER' ? (
+                      <div className="flex items-center gap-1">
+                        <Building className="w-4 h-4 text-green-600" />
+                        <span className="text-xs text-green-600">Từ hãng</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <User className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs text-blue-600">Từ đại lý</span>
+                      </div>
                     )}
                     {!promotion.isActive && (
                       <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
@@ -359,7 +423,13 @@ export default function PromotionManager({
                     {promotion.endDate && (
                       <span>Hết hạn: {new Date(promotion.endDate).toLocaleDateString('vi-VN')}</span>
                     )}
-                    <span className="capitalize">{promotion.source.toLowerCase()}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      promotion.source === 'MANUFACTURER' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {promotion.source === 'MANUFACTURER' ? 'Từ hãng' : 'Từ đại lý'}
+                    </span>
                   </div>
                 </div>
 

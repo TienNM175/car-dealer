@@ -413,7 +413,25 @@ export async function fetchReport(
   } catch (error: any) {
     console.error("[ERROR] Dealer debts report failed:", error.message);
     
-    // Fallback chi tiết hơn
+    // XỬ LÝ LỖI 403 Ở ĐÂY
+    if (error.response?.status === 403) {
+      console.log("[INFO] Dealer debts report access denied (403), returning empty data");
+      return {
+        title: getReportTitle(type),
+        unit: getReportUnit(type),
+        total: 0,
+        detailedDebts: [],
+        summary: {
+          totalDebt: 0,
+          totalOrders: 0,
+          unpaidOrders: 0,
+          overdueOrders: 0,
+          totalPaid: 0
+        }
+      };
+    }
+    
+    // Fallback chi tiết hơn cho các lỗi khác
     return {
       title: getReportTitle(type),
       unit: getReportUnit(type),
@@ -526,3 +544,19 @@ export async function fetchReport(
     return getFallbackData(type);
   }
 }
+
+export async function getDealerDebtReport(dealerId?: string): Promise<any> {
+  try {
+    console.log(`[ReportApi] Fetching dealer debt report for: ${dealerId || 'all dealers'}`);
+    
+    const reportData = await fetchReport('dealer-debts', 'all', dealerId);
+    
+    console.log('[ReportApi] Dealer debt report data:', reportData);
+    return reportData;
+    
+  } catch (error: any) {
+    console.error('[ReportApi] Error fetching dealer debt report:', error.message);
+    throw error;
+  }
+}
+

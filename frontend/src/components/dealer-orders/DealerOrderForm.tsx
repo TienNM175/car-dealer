@@ -1,12 +1,13 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { X, Save, Loader } from "lucide-react";
+import { X, Save, Loader, AlertTriangle, Info, CreditCard } from "lucide-react";
 import dealerOrderApi, {
   DealerOrder,
   CreateDealerOrderInput,
   UpdateDealerOrderInput,
 } from "@/lib/api/dealerOrderApi";
 import { vehicleApi, Vehicle } from "@/lib/api/vehicleApi";
+import { dealerApi, DealerDebtInfo } from "@/lib/api/dealerApi";
 import { toast } from "react-hot-toast";
 import LoanCalculator from '@/components/calculators/LoanCalculator';
 import PromotionManager from '@/components/promotions/PromotionManager';
@@ -32,6 +33,9 @@ interface DealerOrderFormProps {
   };
 }
 
+// Config - ngưỡng công nợ tối đa (có thể điều chỉnh)
+const MAX_DEBT_THRESHOLD = 1000000000; // 1 tỷ VND
+
 export default function DealerOrderForm({
   isOpen,
   onClose,
@@ -46,6 +50,11 @@ export default function DealerOrderForm({
   const [loading, setLoading] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [dealerDebt, setDealerDebt] = useState<number>(0);
+  const [debtLoading, setDebtLoading] = useState(false);
+  const [debtInfo, setDebtInfo] = useState<DealerDebtInfo | null>(null);
+  const [debtApiAvailable, setDebtApiAvailable] = useState<boolean>(true);
+  
   const [formData, setFormData] = useState({
     vehicleId: "",
     quantity: 1,
@@ -88,6 +97,63 @@ export default function DealerOrderForm({
       fetchVehicles();
     }
   }, [isOpen]);
+
+  // Fetch dealer debt information từ report API
+  useEffect(() => {
+    const fetchDealerDebt = async () => {
+      if (!isOpen || !dealerId) return;
+      
+      setDebtLoading(true);
+      try {
+        console.log(`🔄 [DealerOrder] Fetching debt for dealer: ${dealerId}, role: ${userRole}`);
+        
+        // TRUYỀN userRole VÀO ĐÂY - chỉ sửa dòng này
+        const debtData = await dealerApi.getDealerDebt(dealerId, userRole);
+        
+        setDebtInfo(debtData);
+        setDealerDebt(debtData.totalDebt || 0);
+        setDebtApiAvailable(true); // Luôn set là true vì dealer manager có quyền
+        
+        console.log('💰 [DealerOrder] Dealer debt info:', {
+          totalDebt: debtData.totalDebt,
+          overdueDebt: debtData.overdueDebt,
+          creditLimit: debtData.creditLimit,
+          availableCredit: debtData.availableCredit
+        });
+        
+        // Hiển thị thông báo nếu vượt công nợ
+        if (debtData.totalDebt > MAX_DEBT_THRESHOLD) {
+          toast.error(`Đại lý đang vượt quá công nợ cho phép. Vui lòng thanh toán trước khi đặt thêm xe.`, {
+            duration: 5000
+          });
+        }
+        
+      } catch (err: any) {
+        console.error("❌ [DealerOrder] Error fetching dealer debt:", err);
+        
+        // Đánh dấu API không khả dụng nhưng vẫn cho phép đặt hàng
+        setDebtApiAvailable(false);
+        setDealerDebt(0);
+        setDebtInfo({
+          dealerId,
+          totalDebt: 0,
+          overdueDebt: 0,
+          creditLimit: 5000000000,
+          availableCredit: 5000000000,
+          lastUpdated: new Date().toISOString()
+        });
+        
+        toast("Tạm thời không thể kiểm tra công nợ. Đơn hàng vẫn có thể được tạo.", {
+          icon: '⚠️',
+          duration: 4000
+        });
+      } finally {
+        setDebtLoading(false);
+      }
+    };
+
+    fetchDealerDebt();
+  }, [isOpen, dealerId, userRole]);
 
   // Initialize form when editing
   useEffect(() => {
@@ -136,8 +202,20 @@ export default function DealerOrderForm({
     setAppliedPromotion(null);
   };
 
+  // Kiểm tra xem đại lý có vượt quá công nợ cho phép không
+  const isDebtExceeded = () => {
+    // Nếu API debt không khả dụng, luôn trả về false để cho phép đặt hàng
+    if (!debtApiAvailable) return false;
+    return dealerDebt > MAX_DEBT_THRESHOLD;
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+
+    // Chỉ kiểm tra công nợ nếu API khả dụng
+    if (debtApiAvailable && isDebtExceeded()) {
+      newErrors.debt = `Đại lý đang vượt quá công nợ cho phép (${MAX_DEBT_THRESHOLD.toLocaleString()} VND). Vui lòng thanh toán công nợ trước khi đặt thêm xe.`;
+    }
 
     if (!formData.vehicleId) {
       newErrors.vehicleId = "Vui lòng chọn xe";
@@ -173,7 +251,7 @@ export default function DealerOrderForm({
         vehicleId: formData.vehicleId,
         quantity: formData.quantity,
         notes: formData.notes,
-        // Thêm các field mới nếu backend hỗ trợ
+        // Chỉ gửi promotionId nếu có (và chỉ áp dụng mã từ hãng)
         ...(formData.promotionId && { promotionId: formData.promotionId }),
         ...(formData.finalPrice > 0 && { finalPrice: formData.finalPrice }),
         ...(formData.installmentMonths > 0 && { installmentMonths: formData.installmentMonths }),
@@ -188,7 +266,6 @@ export default function DealerOrderForm({
         const updateData: UpdateDealerOrderInput = {
           quantity: formData.quantity,
           notes: formData.notes,
-          // Có thể thêm các field khác nếu cần
         };
         result = await dealerOrderApi.updateDealerOrder(order.id, updateData);
         toast.dismiss(loadingToast);
@@ -224,14 +301,23 @@ export default function DealerOrderForm({
 
   const getCurrentRetailPrice = () => {
     if (!selectedVehicle) return 0;
-    // Nếu có khuyến mãi áp dụng, dùng giá cuối cùng, ngược lại dùng giá retail
     return appliedPromotion ? appliedPromotion.finalPrice : Number(selectedVehicle.retailPrice);
   };
 
-  // Fix: Kiểm tra điều kiện disabled một cách rõ ràng
-  const isSubmitDisabled = loading || (appliedPromotion !== null && appliedPromotion.profit < 0);
+  // Điều kiện disabled: loading, lợi nhuận âm, hoặc vượt công nợ (chỉ khi API khả dụng)
+  const isSubmitDisabled = loading || 
+    (appliedPromotion !== null && appliedPromotion.profit < 0) || 
+    (debtApiAvailable && isDebtExceeded());
 
   if (!isOpen) return null;
+
+  // Helper function để format tiền
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(amount);
+  };
 
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-gray-900/30 flex items-center justify-center p-4 z-50">
@@ -251,23 +337,137 @@ export default function DealerOrderForm({
 
         {/* Form - scrollable */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Dealer Info */}
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="font-medium text-blue-900 mb-2">Thông tin đại lý</h3>
-            <p className="text-blue-800">{dealerInfo.name}</p>
-            {dealerInfo.address && (
-              <p className="text-blue-700 text-sm">{dealerInfo.address}</p>
-            )}
+          {/* Dealer Info với công nợ - CẢI THIỆN HIỂN THỊ */}
+          <div className={`p-4 rounded-lg border ${
+            isDebtExceeded() ? 'bg-red-50 border-red-200' : 
+            !debtApiAvailable ? 'bg-yellow-50 border-yellow-200' : 'bg-blue-50 border-blue-200'
+          }`}>
+            <div className="flex items-center gap-3 mb-3">
+              <CreditCard className={`w-5 h-5 ${
+                isDebtExceeded() ? 'text-red-600' : 
+                !debtApiAvailable ? 'text-yellow-600' : 'text-blue-600'
+              }`} />
+              <h3 className={`font-semibold ${
+                isDebtExceeded() ? 'text-red-900' : 
+                !debtApiAvailable ? 'text-yellow-900' : 'text-blue-900'
+              }`}>
+                Thông tin đại lý & Công nợ
+              </h3>
+              {isDebtExceeded() && <AlertTriangle className="w-5 h-5 text-red-600" />}
+              {!debtApiAvailable && <Info className="w-5 h-5 text-yellow-600" />}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className={`font-medium ${
+                  isDebtExceeded() ? 'text-red-800' : 
+                  !debtApiAvailable ? 'text-yellow-800' : 'text-blue-800'
+                }`}>
+                  {dealerInfo.name}
+                </p>
+                {dealerInfo.address && (
+                  <p className={`text-sm ${
+                    isDebtExceeded() ? 'text-red-700' : 
+                    !debtApiAvailable ? 'text-yellow-700' : 'text-blue-700'
+                  }`}>
+                    📍 {dealerInfo.address}
+                  </p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                {/* Hiển thị công nợ */}
+                <div className="flex justify-between items-center">
+                  <span className={`text-sm font-medium ${
+                    isDebtExceeded() ? 'text-red-700' : 
+                    !debtApiAvailable ? 'text-yellow-700' : 'text-blue-700'
+                  }`}>
+                    Công nợ hiện tại:
+                  </span>
+                  <span className={`font-bold ${
+                    isDebtExceeded() ? 'text-red-800' : 
+                    !debtApiAvailable ? 'text-yellow-800' : 'text-blue-800'
+                  }`}>
+                    {debtLoading ? (
+                      <Loader className="w-4 h-4 animate-spin" />
+                    ) : (
+                      formatCurrency(dealerDebt)
+                    )}
+                  </span>
+                </div>
+
+                {/* Hiển thị hạn mức tín dụng */}
+                {debtInfo && debtInfo.creditLimit && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className={
+                      isDebtExceeded() ? 'text-red-600' : 
+                      !debtApiAvailable ? 'text-yellow-600' : 'text-blue-600'
+                    }>
+                      Hạn mức tín dụng:
+                    </span>
+                    <span className={
+                      isDebtExceeded() ? 'text-red-700' : 
+                      !debtApiAvailable ? 'text-yellow-700' : 'text-blue-700'
+                    }>
+                      {formatCurrency(debtInfo.creditLimit)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Thông báo trạng thái */}
+            <div className="mt-3 pt-3 border-t border-current/20">
+              {!debtApiAvailable && (
+                <div className="flex items-center gap-2 text-yellow-700 text-sm">
+                  <Info className="w-4 h-4" />
+                  <div>
+                    <p className="font-medium">Hệ thống kiểm tra công nợ tạm thời không khả dụng</p>
+                    <p>Đơn hàng vẫn có thể được tạo. Liên hệ EVM nếu cần kiểm tra công nợ.</p>
+                  </div>
+                </div>
+              )}
+              
+              {isDebtExceeded() && (
+                <div className="flex items-center gap-2 text-red-700 text-sm">
+                  <AlertTriangle className="w-4 h-4" />
+                  <div>
+                    <p className="font-medium">⚠️ Vượt quá công nợ cho phép</p>
+                    <p>Giới hạn: {formatCurrency(MAX_DEBT_THRESHOLD)}. Vui lòng thanh toán công nợ trước khi đặt thêm xe.</p>
+                  </div>
+                </div>
+              )}
+
+              {debtApiAvailable && !isDebtExceeded() && dealerDebt > 0 && (
+                <div className="flex items-center gap-2 text-green-700 text-sm">
+                  <Info className="w-4 h-4" />
+                  <p>Đại lý trong hạn mức công nợ cho phép.</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Staff Info */}
-          <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
             <h3 className="font-medium text-gray-900 mb-2">Người tạo đơn</h3>
             <p className="text-gray-800">
               {staffInfo.firstName} {staffInfo.lastName}
             </p>
             <p className="text-gray-600 text-sm mt-1">Vai trò: {userRole}</p>
           </div>
+
+          {/* Lỗi công nợ */}
+          {errors.debt && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-red-700">
+                <AlertTriangle className="w-5 h-5" />
+                <div>
+                  <p className="font-medium">Không thể tạo đơn hàng</p>
+                  <p className="text-sm">{errors.debt}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Vehicle Selection */}
           <div>
@@ -278,7 +478,7 @@ export default function DealerOrderForm({
               value={formData.vehicleId}
               onChange={(e) => handleVehicleChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700"
-              disabled={!!order}
+              disabled={!!order || (debtApiAvailable && isDebtExceeded())}
             >
               <option value="">Chọn xe</option>
               {vehicles.map((vehicle) => (
@@ -352,6 +552,7 @@ export default function DealerOrderForm({
                 }))
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700"
+              disabled={debtApiAvailable && isDebtExceeded()}
             />
             {errors.quantity && (
               <p className="text-red-500 text-sm mt-1">{errors.quantity}</p>
@@ -391,23 +592,7 @@ export default function DealerOrderForm({
             </div>
           )}
 
-          {/* Loan Calculator */}
-          {selectedVehicle && (
-            <LoanCalculator 
-              vehiclePrice={getCurrentRetailPrice()}
-              compact={true}
-              onCalculationComplete={(result) => {
-                setFormData(prev => ({
-                  ...prev,
-                  installmentMonths: result.tenureMonths,
-                  monthlyPayment: result.monthlyPayment,
-                  interestRate: result.annualInterestRate
-                }));
-              }}
-            />
-          )}
-
-          {/* Promotion Manager */}
+          {/* Promotion Manager - CHỈ cho phép khuyến mãi từ hãng */}
           {selectedVehicle && (
             <PromotionManager
               vehicle={{
@@ -422,6 +607,7 @@ export default function DealerOrderForm({
               userId={userId}
               userName={`${staffInfo.firstName} ${staffInfo.lastName}`}
               dealerId={dealerId}
+              allowedPromotionSources={['MANUFACTURER']}
               onPromotionApplied={(promotion, finalPrice, profit) => {
                 setAppliedPromotion({ promotion, finalPrice, profit });
                 setFormData(prev => ({
@@ -441,6 +627,12 @@ export default function DealerOrderForm({
                 <div className="flex justify-between">
                   <span>Mã khuyến mãi:</span>
                   <span className="font-medium">{appliedPromotion.promotion.code}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Nguồn:</span>
+                  <span className="font-medium">
+                    {appliedPromotion.promotion.source === 'MANUFACTURER' ? 'Từ hãng' : 'Từ đại lý'}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Giá bán cuối:</span>
@@ -470,27 +662,6 @@ export default function DealerOrderForm({
             </div>
           )}
 
-          {selectedVehicle && (
-            <DeliveryScheduler
-              orderId={order?.id}
-              vehicleId={selectedVehicle.id}
-              customerInfo={{
-                name: dealerInfo.name,
-                phone: dealerInfo.phone || '0000000000' // ✅ LUÔN CÓ GIÁ TRỊ
-              }}
-              vehicleInfo={{
-                model: selectedVehicle.model || '',
-                variant: selectedVehicle.variant || '',
-                color: 'Xanh dương',
-                retailPrice: Number(selectedVehicle.retailPrice)
-              }}
-              compact={true}
-              onScheduleCreated={(schedule) => {
-                console.log('Delivery scheduled:', schedule);
-              }}
-            />
-          )}
-
           {/* Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -504,6 +675,7 @@ export default function DealerOrderForm({
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700"
               placeholder="Thêm ghi chú cho đơn hàng (tùy chọn)..."
+              disabled={debtApiAvailable && isDebtExceeded()}
             />
           </div>
 
@@ -538,6 +710,8 @@ export default function DealerOrderForm({
                 <Save className="w-4 h-4" />
               )}
               {order ? "Cập nhật" : "Tạo đơn hàng"}
+              {isDebtExceeded() && " (Bị chặn)"}
+              {!debtApiAvailable && " (Không kiểm tra công nợ)"}
             </button>
           </div>
         </div>

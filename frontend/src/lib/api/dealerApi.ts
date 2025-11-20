@@ -1,4 +1,5 @@
 import api from '../utils/axiosClient';
+import { fetchReport } from '@/lib/api/reportApi';
 
 export interface Dealer {
   id: string;
@@ -88,6 +89,20 @@ export interface DealerResponse {
   message?: string;
 }
 
+export interface DealerDebtInfo {
+  dealerId: string;
+  totalDebt: number;
+  overdueDebt: number;
+  creditLimit: number;
+  availableCredit: number;
+  lastUpdated: string;
+  _debug?: {
+    debtItemsCount: number;
+    reportSummary: any;
+    dataSource?: string;
+  };
+}
+
 class DealerApi {
   // Dealer CRUD
   async getAllDealers(filters: DealerFilters = {}, pagination: PaginationParams = {}): Promise<DealersListResponse> {
@@ -130,7 +145,6 @@ class DealerApi {
         message: error.message
       });
       
-      // Log chi tiết response từ server nếu có
       if (error.response?.data) {
         console.error('📡 [dealerApi] Server response data:', {
           message: error.response.data.message,
@@ -154,14 +168,14 @@ class DealerApi {
   // Staff Management
   async getDealerStaff(dealerId: string): Promise<{
       message: string; success: boolean; data: any[] 
-}> {
+  }> {
     const response = await api.get(`/dealers/${dealerId}/staff`);
     return response.data;
   }
 
   async addStaff(dealerId: string, staffData: any): Promise<{
       message: string | undefined; success: boolean; data: any 
-}> {
+  }> {
     const response = await api.post(`/dealers/${dealerId}/staff`, staffData);
     return response.data;
   }
@@ -200,7 +214,7 @@ class DealerApi {
   // Targets
   async getDealerTargets(dealerId: string, year?: number): Promise<{
       message: string; success: boolean; data: any[] 
-}> {
+  }> {
     const params = year ? { year } : {};
     const response = await api.get(`/dealers/${dealerId}/targets`, { params });
     return response.data;
@@ -208,7 +222,7 @@ class DealerApi {
 
   async setDealerTarget(dealerId: string, year: number, month: number, targetAmount: number): Promise<{
       message: string | undefined; success: boolean; data: any 
-}> {
+  }> {
     const response = await api.post(`/dealers/${dealerId}/targets`, {
       year,
       month,
@@ -221,18 +235,15 @@ class DealerApi {
     try {
       console.log(`🗑️ [dealerApi] Deleting dealer target: ${targetId}`);
       
-      // Thử endpoint chính
       const response = await api.delete(`/dealers/targets/${targetId}`);
       return response.data;
       
     } catch (error: any) {
       console.error('❌ [dealerApi] Failed to delete dealer target:', error);
       
-      // Nếu endpoint chính không tồn tại, thử endpoint khác
       if (error.response?.status === 404) {
         console.log('🔄 Trying alternative endpoint...');
         try {
-          // Thử endpoint thay thế
           const altResponse = await api.delete(`/dealer-targets/${targetId}`);
           return altResponse.data;
         } catch (altError) {
@@ -245,7 +256,6 @@ class DealerApi {
     }
   }
 
-  // Hoặc nếu backend không có API xóa, có thể dùng API cập nhật để "vô hiệu hóa" target
   async deactivateDealerTarget(targetId: string): Promise<{ success: boolean; message: string }> {
     try {
       console.log(`🔴 [dealerApi] Deactivating dealer target: ${targetId}`);
@@ -256,6 +266,147 @@ class DealerApi {
     } catch (error: any) {
       console.error('❌ [dealerApi] Failed to deactivate dealer target:', error);
       throw error;
+    }
+  }
+
+  async getDealerDebt(dealerId: string, userRole?: string): Promise<DealerDebtInfo> {
+    try {
+      console.log(`💰 [dealerApi] Fetching debt for dealer: ${dealerId}, userRole: ${userRole}`);
+      
+      // Cho phép Admin, EVM Staff, và Dealer Manager xem công nợ
+      const canAccessDebtReport = userRole === 'ADMIN' || userRole === 'EVM_STAFF' || userRole === 'DEALER_MANAGER';
+      
+      if (!canAccessDebtReport) {
+        console.log('🔒 [dealerApi] User not authorized for debt report, using zero debt');
+        return {
+          dealerId,
+          totalDebt: 0,
+          overdueDebt: 0,
+          creditLimit: 5000000000,
+          availableCredit: 5000000000,
+          lastUpdated: new Date().toISOString(),
+          _debug: {
+            debtItemsCount: 0,
+            reportSummary: { source: 'restricted_access' },
+            dataSource: 'restricted'
+          }
+        };
+      }
+      
+      // Nếu có quyền, thử API báo cáo công nợ đại lý
+      try {
+        const reportData = await fetchReport('dealer-debts', 'all', dealerId);
+        console.log('✅ [dealerApi] Debt data from report API:', reportData);
+        
+        // Tìm công nợ của dealer cụ thể từ báo cáo
+        return this.extractDealerDebtFromReport(reportData, dealerId);
+        
+      } catch (reportError: any) {
+        console.error('❌ [dealerApi] Debt report failed:', reportError.message);
+        // Nếu báo cáo công nợ bị lỗi, trả về công nợ = 0
+        return {
+          dealerId,
+          totalDebt: 0,
+          overdueDebt: 0,
+          creditLimit: 5000000000,
+          availableCredit: 5000000000,
+          lastUpdated: new Date().toISOString(),
+          _debug: {
+            debtItemsCount: 0,
+            reportSummary: { source: 'api_error' },
+            dataSource: 'error'
+          }
+        };
+      }
+      
+    } catch (error: any) {
+      console.error('❌ [dealerApi] Error fetching dealer debt:', error.message);
+      
+      // Fallback: sử dụng giá trị mặc định
+      return {
+        dealerId,
+        totalDebt: 0,
+        overdueDebt: 0,
+        creditLimit: 5000000000,
+        availableCredit: 5000000000,
+        lastUpdated: new Date().toISOString(),
+        _debug: {
+          debtItemsCount: 0,
+          reportSummary: { source: 'fallback' },
+          dataSource: 'fallback'
+        }
+      };
+    }
+  }
+
+  // Method để trích xuất công nợ của dealer cụ thể từ báo cáo
+  private extractDealerDebtFromReport(reportData: any, dealerId: string): DealerDebtInfo {
+    try {
+      const detailedDebts = reportData.detailedDebts || [];
+      const summary = reportData.summary || {};
+      
+      console.log('📊 [dealerApi] Processing report data:', {
+        detailedDebtsCount: detailedDebts.length,
+        summaryTotalDebt: summary.totalDebt
+      });
+
+      // Tìm công nợ của dealer cụ thể
+      const dealerDebts = detailedDebts.filter((debt: any) => {
+        const debtDealerId = debt.dealer?.id || debt.dealerId;
+        return debtDealerId === dealerId;
+      });
+
+      // Tính tổng công nợ
+      let totalDebt = 0;
+      if (summary.totalDebt && detailedDebts.length === 0) {
+        totalDebt = summary.totalDebt;
+      } else {
+        totalDebt = dealerDebts.reduce((sum: number, debt: any) => {
+          return sum + (debt.remainingBalance || debt.totalAmount || 0);
+        }, 0);
+      }
+
+      // Tính công nợ quá hạn
+      const overdueDebt = dealerDebts.reduce((sum: number, debt: any) => {
+        if (debt.isOverdue || debt.status === 'OVERDUE') {
+          return sum + (debt.remainingBalance || debt.totalAmount || 0);
+        }
+        return sum;
+      }, 0);
+
+      const creditLimit = 5000000000;
+      const availableCredit = Math.max(0, creditLimit - totalDebt);
+
+      const result: DealerDebtInfo = {
+        dealerId,
+        totalDebt,
+        overdueDebt,
+        creditLimit,
+        availableCredit,
+        lastUpdated: new Date().toISOString()
+      };
+
+      // Debug info
+      if (process.env.NODE_ENV === 'development') {
+        result._debug = {
+          debtItemsCount: dealerDebts.length,
+          reportSummary: summary,
+          dataSource: detailedDebts.length > 0 ? 'detailed' : 'summary'
+        };
+      }
+
+      return result;
+
+    } catch (error) {
+      console.error('❌ [dealerApi] Error extracting dealer debt from report:', error);
+      return {
+        dealerId,
+        totalDebt: 0,
+        overdueDebt: 0,
+        creditLimit: 5000000000,
+        availableCredit: 5000000000,
+        lastUpdated: new Date().toISOString()
+      };
     }
   }
 }
