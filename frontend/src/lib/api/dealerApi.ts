@@ -100,6 +100,9 @@ export interface DealerDebtInfo {
     debtItemsCount: number;
     reportSummary: any;
     dataSource?: string;
+    calculatedFrom?: string;
+    ordersCount?: number;
+    totalOrderValue?: number;
   };
 }
 
@@ -293,36 +296,104 @@ class DealerApi {
         };
       }
       
-      // Nếu có quyền, thử API báo cáo công nợ đại lý
+      // THAY THẾ PHẦN NÀY: Tính toán công nợ từ các order chưa thanh toán
       try {
-        const reportData = await fetchReport('dealer-debts', 'all', dealerId);
-        console.log('✅ [dealerApi] Debt data from report API:', reportData);
+        console.log(`🔄 [dealerApi] Calculating real debt from orders for dealer: ${dealerId}`);
         
-        // Tìm công nợ của dealer cụ thể từ báo cáo
-        return this.extractDealerDebtFromReport(reportData, dealerId);
-        
-      } catch (reportError: any) {
-        console.error('❌ [dealerApi] Debt report failed:', reportError.message);
-        // Nếu báo cáo công nợ bị lỗi, trả về công nợ = 0
-        return {
+        const orders = await this.getDealerOrdersForDebtCalculation(dealerId);
+
+        // Sau đó lọc các orders chưa thanh toán hết
+        const unpaidOrders = orders.filter((order: any) => {
+          const orderTotal = order.totalAmount || 0;
+          const paidAmount = order.paidAmount || 0;
+          const remainingDebt = orderTotal - paidAmount;
+          return remainingDebt > 0;
+        });
+
+        console.log(`📊 [dealerApi] Found ${unpaidOrders.length} unpaid orders out of ${orders.length} total orders`);
+        console.log(`📊 [dealerApi] Found ${orders.length} orders to calculate debt`);
+
+        let totalDebt = 0;
+        let overdueDebt = 0;
+        const creditLimit = 5000000000; // 5 tỷ
+        const now = new Date();
+
+        // Tính tổng công nợ từ các order chưa thanh toán hết
+        orders.forEach((order: any) => {
+          const orderTotal = order.totalAmount || 0;
+          const paidAmount = order.paidAmount || 0;
+          const remainingDebt = orderTotal - paidAmount;
+          
+          console.log(`📦 [dealerApi] Order ${order.id}: total=${orderTotal}, paid=${paidAmount}, remaining=${remainingDebt}`);
+          
+          if (remainingDebt > 0) {
+            totalDebt += remainingDebt;
+
+            // Kiểm tra nợ quá hạn (nếu có dueDate)
+            if (order.dueDate) {
+              const dueDate = new Date(order.dueDate);
+              if (dueDate < now) {
+                overdueDebt += remainingDebt;
+                console.log(`⏰ [dealerApi] Order ${order.id} is OVERDUE`);
+              }
+            }
+          }
+        });
+
+        const availableCredit = Math.max(0, creditLimit - totalDebt);
+
+        const debtData: DealerDebtInfo = {
           dealerId,
-          totalDebt: 0,
-          overdueDebt: 0,
-          creditLimit: 5000000000,
-          availableCredit: 5000000000,
+          totalDebt,
+          overdueDebt,
+          creditLimit,
+          availableCredit,
           lastUpdated: new Date().toISOString(),
           _debug: {
-            debtItemsCount: 0,
-            reportSummary: { source: 'api_error' },
-            dataSource: 'error'
+            debtItemsCount: orders.length,
+            reportSummary: {
+              calculatedFrom: 'orders',
+              ordersCount: orders.length,
+              totalOrderValue: orders.reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0)
+            },
+            dataSource: 'real_calculation'
           }
         };
+
+        console.log('✅ [dealerApi] Real debt calculation result:', debtData);
+        return debtData;
+        
+      } catch (calculationError: any) {
+        console.error('❌ [dealerApi] Error calculating debt from orders:', calculationError.message);
+        
+        // Fallback: thử dùng API báo cáo nếu tính toán trực tiếp thất bại
+        try {
+          console.log('🔄 [dealerApi] Trying report API as fallback...');
+          const reportData = await fetchReport('dealer-debts', 'all', dealerId);
+          return this.extractDealerDebtFromReport(reportData, dealerId);
+        } catch (reportError: any) {
+          console.error('❌ [dealerApi] All debt calculation methods failed:', reportError.message);
+          
+          // Cuối cùng trả về giá trị mặc định
+          return {
+            dealerId,
+            totalDebt: 0,
+            overdueDebt: 0,
+            creditLimit: 5000000000,
+            availableCredit: 5000000000,
+            lastUpdated: new Date().toISOString(),
+            _debug: {
+              debtItemsCount: 0,
+              reportSummary: { source: 'all_methods_failed' },
+              dataSource: 'fallback'
+            }
+          };
+        }
       }
       
     } catch (error: any) {
-      console.error('❌ [dealerApi] Error fetching dealer debt:', error.message);
+      console.error('❌ [dealerApi] Unexpected error in getDealerDebt:', error.message);
       
-      // Fallback: sử dụng giá trị mặc định
       return {
         dealerId,
         totalDebt: 0,
@@ -332,10 +403,32 @@ class DealerApi {
         lastUpdated: new Date().toISOString(),
         _debug: {
           debtItemsCount: 0,
-          reportSummary: { source: 'fallback' },
-          dataSource: 'fallback'
+          reportSummary: { source: 'unexpected_error' },
+          dataSource: 'error_fallback'
         }
       };
+    }
+  }
+
+  // Thêm vào class DealerApi
+  private async getDealerOrdersForDebtCalculation(dealerId: string): Promise<any[]> {
+    try {
+      // Thử endpoint chính
+      const response = await api.get(`/dealers/${dealerId}/orders`);
+      return response.data?.data || response.data || [];
+    } catch (error) {
+      console.error('❌ [dealerApi] Failed to get dealer orders:', error);
+      
+      // Fallback: thử endpoint khác
+      try {
+        const allOrdersResponse = await api.get('/orders');
+        const allOrders = allOrdersResponse.data?.data || allOrdersResponse.data || [];
+        // Lọc orders theo dealerId
+        return allOrders.filter((order: any) => order.dealerId === dealerId);
+      } catch (fallbackError) {
+        console.error('❌ [dealerApi] All order endpoints failed:', fallbackError);
+        return [];
+      }
     }
   }
 

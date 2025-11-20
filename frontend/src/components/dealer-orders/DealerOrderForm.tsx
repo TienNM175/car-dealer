@@ -351,7 +351,7 @@ export default function DealerOrderForm({
                 isDebtExceeded() ? 'text-red-900' : 
                 !debtApiAvailable ? 'text-yellow-900' : 'text-blue-900'
               }`}>
-                Thông tin đại lý & Công nợ
+                Thông tin đại lý
               </h3>
               {isDebtExceeded() && <AlertTriangle className="w-5 h-5 text-red-600" />}
               {!debtApiAvailable && <Info className="w-5 h-5 text-yellow-600" />}
@@ -375,8 +375,7 @@ export default function DealerOrderForm({
                 )}
               </div>
               
-              <div className="space-y-2">
-                {/* Hiển thị công nợ */}
+              {/* <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className={`text-sm font-medium ${
                     isDebtExceeded() ? 'text-red-700' : 
@@ -396,7 +395,6 @@ export default function DealerOrderForm({
                   </span>
                 </div>
 
-                {/* Hiển thị hạn mức tín dụng */}
                 {debtInfo && debtInfo.creditLimit && (
                   <div className="flex justify-between items-center text-sm">
                     <span className={
@@ -413,7 +411,7 @@ export default function DealerOrderForm({
                     </span>
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>
             
             {/* Thông báo trạng thái */}
