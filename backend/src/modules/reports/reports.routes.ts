@@ -11,9 +11,36 @@ const reportsController = new ReportsController();
 // ============================================
 
 /**
- * @route   GET /api/v1/reports/dashboard
- * @desc    Get dashboard overview with key metrics
- * @access  Private - Dealer Manager and above
+ * @swagger
+ * /api/v1/reports/dashboard:
+ *   get:
+ *     summary: Get dashboard overview with key metrics
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Dashboard overview data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  */
 router.get(
   "/dashboard",
@@ -39,9 +66,41 @@ router.get(
 // ============================================
 
 /**
- * @route   GET /api/v1/reports/sales
- * @desc    Get detailed sales report
- * @access  Private - Dealer Manager and above
+ * @swagger
+ * /api/v1/reports/sales:
+ *   get:
+ *     summary: Get detailed sales report
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [daily, weekly, monthly, yearly]
+ *     responses:
+ *       200:
+ *         description: Sales report data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  */
 router.get(
   "/sales",
