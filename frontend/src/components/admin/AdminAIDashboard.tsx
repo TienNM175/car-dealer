@@ -35,23 +35,18 @@ const AdminAIDashboard: React.FC = () => {
   }, [executiveSummary]);
 
   const handleGenerateExecutiveSummary = async (period: 'daily' | 'weekly' | 'monthly') => {
-  console.log('🚀 Calling generateExecutiveSummary with period:', period);
   
-  // ✅ Clear state cũ để tránh hiển thị data không đúng\
   setActivePeriod(period);
   setExecutiveSummary(null);
   
   const result = await generateExecutiveSummary(period);
-  console.log('📥 Received result:', result);
   
   if (result) {
-    console.log('✅ Setting executiveSummary state');
     setExecutiveSummary(result);
   }
 };
 
 const handleAnalyzeDealerPerformance = async (timeframe: 'month' | 'quarter' | 'year') => {
-  // ✅ Tương tự cho dealer performance
   setDealerPerformance(null);
   
   const result = await analyzeDealerPerformance(timeframe);
@@ -59,7 +54,6 @@ const handleAnalyzeDealerPerformance = async (timeframe: 'month' | 'quarter' | '
 };
 
 const handleAnalyzeMarketTrends = async () => {
-  // ✅ Tương tự cho market trends
   setMarketTrends(null);
   
   const result = await analyzeMarketTrends();
@@ -143,7 +137,7 @@ const handleAnalyzeMarketTrends = async () => {
                   disabled={loading}
                   className={`px-4 py-2 rounded-lg font-medium capitalize transition-all ${
                     activePeriod === p
-                      ? 'bg-blue-600 text-white shadow-lg' // ✅ Highlight button đang chọn
+                      ? 'bg-blue-600 text-white shadow-lg'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >

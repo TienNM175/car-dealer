@@ -64,12 +64,12 @@ export const ChatBot: React.FC<ChatBotProps> = ({ onClose, onNavigate }) => {
             id: 'welcome',
             role: 'assistant',
             content:
-              'Xin chào! Tôi là trợ lý AI của EVM. Tôi có thể giúp bạn:\n\n✅ Tư vấn chọn xe phù hợp\n✅ So sánh các mẫu xe\n✅ Tìm hiểu về xe điện\n\nBạn cần tôi hỗ trợ gì?',
+              'Xin chào! Tôi là trợ lý AI của EVM. Tôi có thể giúp bạn:\n\n Tư vấn chọn xe phù hợp\n So sánh các mẫu xe\n Tìm hiểu về xe điện\n\nBạn cần tôi hỗ trợ gì?',
             timestamp: new Date(),
             suggestedActions: [
-              { label: '🚗 Tư vấn xe', action: 'GET_RECOMMENDATION' },
-              { label: '📊 So sánh xe', action: 'COMPARE_VEHICLES' },
-              { label: '🔍 Xem tất cả xe', action: 'VIEW_ALL_VEHICLES' },
+              { label: ' Tư vấn xe', action: 'GET_RECOMMENDATION' },
+              { label: ' So sánh xe', action: 'COMPARE_VEHICLES' },
+              { label: ' Xem tất cả xe', action: 'VIEW_ALL_VEHICLES' },
             ],
           },
         ]);
@@ -294,8 +294,7 @@ interface MessageBubbleProps {
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onActionPress }) => {
   const isUser = message.role === 'user';
 
-  // ✅ Debug log
-  console.log('🎨 Rendering message:', {
+  console.log(' Rendering message:', {
     id: message.id,
     role: message.role,
     contentLength: message.content?.length,

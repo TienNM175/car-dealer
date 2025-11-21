@@ -2,7 +2,6 @@ import { Router } from "express";
 import { AuthMiddleware } from "../../middlewares/auth.middleware";
 import { RoleMiddleware } from "../../middlewares/role.middleware";
 
-console.log("🔄 debts.routes.ts is being loaded...");
 
 const router = Router();
 
@@ -11,16 +10,15 @@ let DebtsController;
 let debtsController;
 
 try {
-  console.log("🔧 Attempting to import DebtsController...");
+  console.log(" Attempting to import DebtsController...");
   const module = require("./debts.controller");
   DebtsController = module.DebtsController;
-  console.log("✅ DebtsController imported successfully");
+  console.log(" DebtsController imported successfully");
 } catch (error) {
-  console.error("❌ Failed to import DebtsController:", error);
-  // Tạo controller tạm thời để server không crash
+  console.error(" Failed to import DebtsController:", error);
   class TempDebtsController {
     constructor() {
-      console.log("🔧 TempDebtsController initialized");
+      console.log(" TempDebtsController initialized");
     }
     
     async getCustomerDebts(req, res, next) {
@@ -36,7 +34,6 @@ try {
     }
     
     async getDealerDebtsDetail(req, res, next) {
-      console.log("🎯 TempDebtsController.getDealerDebtsDetail called");
       return res.json({
         success: true,
         message: "This is a temporary response - DebtsController import failed",
@@ -58,18 +55,18 @@ try {
 }
 
 try {
-  console.log("🔧 Attempting to initialize DebtsController...");
+  console.log(" Attempting to initialize DebtsController...");
   debtsController = new DebtsController();
-  console.log("✅ DebtsController initialized successfully");
+  console.log(" DebtsController initialized successfully");
 } catch (error) {
-  console.error("❌ Failed to initialize DebtsController:", error);
+  console.error(" Failed to initialize DebtsController:", error);
   // Fallback để server không crash
   debtsController = {
     getCustomerDebts: (req, res, next) => res.status(500).json({ error: "Controller init failed" }),
     getDealerDebts: (req, res, next) => res.status(500).json({ error: "Controller init failed" }),
     getDebtOverview: (req, res, next) => res.status(500).json({ error: "Controller init failed" }),
     getDealerDebtsDetail: (req, res, next) => {
-      console.log("🎯 Fallback getDealerDebtsDetail called");
+      console.log(" Fallback getDealerDebtsDetail called");
       return res.json({
         success: true,
         message: "Fallback response - check server logs",
@@ -79,11 +76,10 @@ try {
   };
 }
 
-console.log("🔧 Initializing debts routes...");
 
-// ✅ ROUTE TEST - KHÔNG CẦN AUTH
+//  ROUTE TEST - KHÔNG CẦN AUTH
 router.get("/test", (req, res) => {
-  console.log("🎯 /debts/test route called!");
+  console.log(" /debts/test route called!");
   res.json({ 
     success: true, 
     message: "Debts routes are working!",

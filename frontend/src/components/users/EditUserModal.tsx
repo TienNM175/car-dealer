@@ -21,7 +21,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface EditUserModalProps {
   user: UserType;
   onClose: () => void;
-  onSuccess: (message?: string) => void; // ✅ Cập nhật prop
+  onSuccess: (message?: string) => void; 
 }
 
 export default function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
@@ -93,7 +93,6 @@ export default function EditUserModal({ user, onClose, onSuccess }: EditUserModa
 
       await usersApi.update(user.id, dataToSubmit);
 
-      // ✅ Gọi toast message qua onSuccess
       onSuccess('User đã được cập nhật thành công!');
     } catch (error: any) {
       setError(error.response?.data?.message || 'Có lỗi xảy ra khi cập nhật user');

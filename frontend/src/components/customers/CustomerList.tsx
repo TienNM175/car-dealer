@@ -15,7 +15,7 @@ import {
   TestTube,
   MessageSquare,
   AlertTriangle,
-  Eye, // 🔹 Thêm import Eye icon
+  Eye,
 } from "lucide-react";
 import { Customer } from "@/lib/api/customerApi";
 
@@ -30,9 +30,8 @@ interface CustomerListProps {
   onViewFeedbacksClick: (customer: Customer) => void;
   onViewComplaintsClick: (customer: Customer) => void;
   onEditClick: (customer: Customer) => void;
-  onDeleteClick: (customer: Customer) => void; // ✅ Giữ nguyên, nhưng giờ gọi mở modal
+  onDeleteClick: (customer: Customer) => void; 
   onExportClick: () => void;
-  // 🔹 Thêm prop cho xem chi tiết
   onViewDetailClick: (customer: Customer) => void;
   pagination: {
     page: number;
@@ -65,7 +64,6 @@ export default function CustomerList({
   onEditClick,
   onDeleteClick,
   onExportClick,
-  // 🔹 Nhận prop xem chi tiết
   onViewDetailClick,
   pagination,
   onPageChange,
@@ -199,7 +197,6 @@ export default function CustomerList({
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
                     Trạng thái
                   </th>
-                  {/* ✅ Cột phản hồi riêng */}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Phản hồi
                   </th>
@@ -276,10 +273,8 @@ export default function CustomerList({
                       </span>
                     </td>
 
-                    {/* ✅ Cột phản hồi */}
                     <td className="px-6 py-4 text-center">
                       <div className="flex flex-col gap-2 items-center">
-                        {/* Nút Feedback chỉ hiển thị khi có feedback */}
                         {(customer._count?.feedbacks ?? 0) > 0 && (
                           <button
                             onClick={() => onViewFeedbacksClick(customer)}
@@ -290,7 +285,6 @@ export default function CustomerList({
                           </button>
                         )}
 
-                        {/* Nút Khiếu nại chỉ hiển thị khi có complaints */}
                         {(customer._count?.complaints ?? 0) > 0 && (
                           <button
                             onClick={() => onViewComplaintsClick(customer)}
@@ -301,7 +295,6 @@ export default function CustomerList({
                           </button>
                         )}
 
-                        {/* Hiển thị dấu “—” nếu không có feedback hoặc complaints */}
                         {(customer._count?.feedbacks ?? 0) === 0 &&
                           (customer._count?.complaints ?? 0) === 0 && (
                             <span className="text-gray-400 text-sm">—</span>
@@ -309,10 +302,8 @@ export default function CustomerList({
                       </div>
                     </td>
 
-                    {/* ✅ Cột hành động riêng */}
                     <td className="px-6 py-4 text-center">
                       <div className="flex gap-3 justify-center">
-                        {/* 🔹 Thêm nút xem chi tiết */}
                         <button
                           onClick={() => onViewDetailClick(customer)}
                           className="text-blue-600 hover:text-blue-700"

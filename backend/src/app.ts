@@ -69,9 +69,8 @@ class App {
   }
 
   private setupRoutes(): void {
-    console.log("🔧 Setting up routes...");
 
-    // ✅ HEALTH CHECK - DIRECT ROUTE
+    //  HEALTH CHECK - DIRECT ROUTE
     this.app.get("/health", (_req, res) => {
       console.log(" /health route called");
       res.json({
@@ -81,7 +80,7 @@ class App {
       });
     });
 
-    // ✅ TEST DIRECT ROUTE
+    //  TEST DIRECT ROUTE
     this.app.get("/api/v1/direct", (_req, res) => {
       console.log(" /api/v1/direct route called");
       res.json({ 
@@ -91,10 +90,9 @@ class App {
       });
     });
 
-    // ✅ CREATE API ROUTER
     const apiRouter = express.Router();
 
-    // ✅ TEST ROUTE IN API ROUTER
+    // TEST ROUTE IN API ROUTER
     apiRouter.get("/test", (_req, res) => {
       console.log(" /api/v1/test route called");
       res.json({ 
@@ -104,47 +102,32 @@ class App {
       });
     });
 
-    // ✅ MOUNT ALL MODULE ROUTES
-    console.log("📦 Mounting module routes...");
-    
+    // MOUNT ALL MODULE ROUTES    
     apiRouter.use("/auth", authRoutes);
-    console.log(" /auth routes mounted");
     
     apiRouter.use("/vehicles", vehicleRoutes);
-    console.log(" /vehicles routes mounted");
     
     apiRouter.use("/dealers", dealerRoutes);
-    console.log(" /dealers routes mounted");
     
     apiRouter.use("/customers", customerRoutes);
-    console.log(" /customers routes mounted");
     
     apiRouter.use("/orders", orderRoutes);
-    console.log(" /orders routes mounted");
-    
+
     apiRouter.use("/contracts", contractRoutes);
-    console.log(" /contracts routes mounted");
     
     apiRouter.use("/inventory", inventoryRoutes);
-    console.log(" /inventory routes mounted");
     
     apiRouter.use("/test-drives", testDriveRoutes);
-    console.log(" /test-drives routes mounted");
     
     apiRouter.use("/reports", reportRoutes);
-    console.log(" /reports routes mounted");
     
     apiRouter.use("/quotations", quotationRoutes);
-    console.log(" /quotations routes mounted");
     
     apiRouter.use("/promotions", promotionRoutes);
-    console.log(" /promotions routes mounted");
     
     apiRouter.use("/ai/admin", aiAdminRoutes);
-    console.log(" /ai/admin routes mounted");
     
     apiRouter.use("/users", userRoutes);
-    console.log(" /users routes mounted");
     
     apiRouter.use("/public", publicRoutes);
     apiRouter.use("/public/chatbot", chatbotRoutes);
@@ -156,24 +139,20 @@ class App {
     apiRouter.use("/debts", debtsRoutes);
     console.log(" /debts routes mounted");
 
-    // ✅ MOUNT API ROUTER - ĐẶT TRƯỚC DEBUG MIDDLEWARE
     this.app.use("/api/v1", apiRouter);
-    console.log("🚀 apiRouter mounted at /api/v1");
 
-    // ✅ DEBUG MIDDLEWARE - ĐẶT SAU API ROUTER
     this.app.use("/api/v1", (req, res, next) => {
-      console.log(`🎯 API REQUEST: ${req.method} ${req.originalUrl}`);
+      console.log(` API REQUEST: ${req.method} ${req.originalUrl}`);
       next();
     });
 
-    console.log("✅ All routes setup completed");
+    console.log(" All routes setup completed");
   }
 
   private setupErrorHandling(): void {
     // 404 handler
     this.app.use(ErrorMiddleware.notFound);
 
-    // Global error handler
     this.app.use(ErrorMiddleware.handle);
   }
 }

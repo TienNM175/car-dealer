@@ -6,11 +6,9 @@ import { initScheduler, stopScheduler } from './utils/scheduler.util';
 const PORT = config.PORT;
 
 const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log('=================================');
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📝 Environment: ${config.NODE_ENV}`);
-  console.log(`🌐 API: http://localhost:${PORT}/api/v1`);
-  console.log('=================================');
+  console.log(`Server running on port ${PORT}`);
+  console.log(` Environment: ${config.NODE_ENV}`);
+  console.log(` API: http://localhost:${PORT}/api/v1`);
   
   // Initialize cron jobs
   initScheduler();

@@ -1,6 +1,3 @@
-// ============================================
-// 9. src/api/manufacturers.ts
-// ============================================
 import { apiClient } from './client';
 import { Manufacturer } from '../types/vehicle';
 

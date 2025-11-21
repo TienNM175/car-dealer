@@ -19,7 +19,6 @@ interface EnvironmentConfig {
   BCRYPT_ROUNDS: number;
   RATE_LIMIT_WINDOW_MS: number;
   RATE_LIMIT_MAX_REQUESTS: number;
-  // ✅ Thêm config email
   SMTP_USER: string;
   SMTP_PASSWORD: string;
   SMTP_REPLY_TO?: string;
@@ -31,7 +30,7 @@ const missingEnvVars = requiredEnvVars.filter(
 );
 
 if (missingEnvVars.length > 0) {
-  console.error("❌ Missing required environment variables:");
+  console.error("  Missing required environment variables:");
   console.error(missingEnvVars.join(", "));
   throw new Error(
     `Missing required environment variables: ${missingEnvVars.join(", ")}`
@@ -56,21 +55,19 @@ const config: EnvironmentConfig = {
     process.env.RATE_LIMIT_MAX_REQUESTS || "1000",
     10
   ),
-  // ✅ Email config
+  // Email config
   SMTP_USER: process.env.SMTP_USER || "",
   SMTP_PASSWORD: process.env.SMTP_PASSWORD || "",
   SMTP_REPLY_TO: process.env.SMTP_REPLY_TO,
 };
 
-// ✅ Warn nếu email không được cấu hình
+// Warn nếu email không được cấu hình
 if (!config.SMTP_USER || !config.SMTP_PASSWORD) {
-  console.warn("⚠️  Email service not configured. Test drive confirmation emails will not be sent.");
-  console.warn("ℹ️  Set SMTP_USER and SMTP_PASSWORD in .env to enable email notifications");
+  console.warn(" Email service not configured. Test drive confirmation emails will not be sent.");
+  console.warn("ℹ  Set SMTP_USER and SMTP_PASSWORD in .env to enable email notifications");
 } else {
-  console.log("✅ Email service configured");
+  console.log(" Email service configured");
 }
 
-console.log(`✅ Environment loaded: ${config.NODE_ENV}`);
-console.log(`✅ Database: ${config.DATABASE_URL?.substring(0, 50)}...`);
 
 export default config;

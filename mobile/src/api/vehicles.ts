@@ -1,6 +1,3 @@
-// ============================================
-// 6. src/api/vehicles.ts
-// ============================================
 import { apiClient } from './client';
 import { Vehicle } from '../types/vehicle';
 

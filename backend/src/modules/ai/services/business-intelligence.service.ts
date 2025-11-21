@@ -1,14 +1,8 @@
 // src/modules/ai/services/business-intelligence.service.ts
 import { GeminiClient } from '../../../utils/gemini-client.util';
 import prisma from '../../../config/database';
-
-/**
- * AI Business Intelligence Service for Admin
- */
 export class BusinessIntelligenceService {
-  /**
-   * 1. Generate Executive Summary
-   */
+// 1. Generate Executive Summary
   async generateExecutiveSummary(
     period: 'daily' | 'weekly' | 'monthly',
     baseDate?: string 
@@ -137,9 +131,7 @@ Return JSON in Vietnamese:
     };
   }
 
-  // =======================================================================
-  // Các hàm còn lại giữ nguyên logic cũ (Analyze Dealer Performance + Market)
-  // =======================================================================
+// 2. Analyze Dealer Performance
 
   async analyzeDealerPerformance(timeframe: 'month' | 'quarter' | 'year') {
     const now = new Date();
@@ -248,7 +240,7 @@ Return JSON in Vietnamese:
       generatedAt: new Date(),
     };
   }
-
+// 3. Analyze Market Trends
   async analyzeMarketTrends() {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);

@@ -1,6 +1,3 @@
-// ============================================
-// 5. src/api/client.ts
-// ============================================
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { API_CONFIG } from '../constants/config';
 

@@ -25,7 +25,6 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative bg-cover bg-center bg-[url('/images/bg.jpg')]">
-      {/* Overlay */}
       <div className="absolute inset-0 bg-black opacity-20"></div>
 
       {/* Login Card */}
@@ -59,7 +58,7 @@ const LoginPage: React.FC = () => {
               placeholder="example@email.com"
               className="w-full px-4 py-3 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
-              disabled={loading} // Vô hiệu hóa input khi loading
+              disabled={loading} 
             />
           </div>
 
@@ -79,7 +78,7 @@ const LoginPage: React.FC = () => {
               placeholder="••••••••"
               className="w-full px-4 py-3 border text-black border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
-              disabled={loading} // Vô hiệu hóa input khi loading
+              disabled={loading} 
             />
           </div>
 

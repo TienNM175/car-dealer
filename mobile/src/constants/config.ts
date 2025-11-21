@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  BASE_URL: 'http://192.168.1.4:5000/api/v1',
+  BASE_URL: 'http://172.20.10.2:5000/api/v1',
   TIMEOUT: 15000,
 };
 
