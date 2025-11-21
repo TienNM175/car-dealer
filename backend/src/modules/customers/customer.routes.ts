@@ -19,9 +19,46 @@ const customerController = new CustomerController();
 // ============================================
 
 /**
- * @route   GET /api/v1/customers
- * @desc    Get all customers with filters and pagination
- * @access  Private - Dealer Staff and above
+ * @swagger
+ * /api/v1/customers:
+ *   get:
+ *     summary: Get all customers with filters and pagination
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [ACTIVE, INACTIVE, BLACKLISTED]
+ *     responses:
+ *       200:
+ *         description: List of customers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     customers:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Customer'
  */
 router.get(
   '/',
@@ -57,9 +94,33 @@ router.get(
 );
 
 /**
- * @route   GET /api/v1/customers/:id
- * @desc    Get customer by ID
- * @access  Private - Dealer Staff and above
+ * @swagger
+ * /api/v1/customers/{id}:
+ *   get:
+ *     summary: Get customer by ID
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Customer details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Customer'
+ *       404:
+ *         description: Customer not found
  */
 router.get(
   '/:id',
@@ -71,9 +132,48 @@ router.get(
 );
 
 /**
- * @route   POST /api/v1/customers
- * @desc    Create new customer
- * @access  Private - Dealer Staff and above
+ * @swagger
+ * /api/v1/customers:
+ *   post:
+ *     summary: Create new customer
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - firstName
+ *               - lastName
+ *               - phone
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Customer created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Customer'
  */
 router.post(
   '/',
@@ -85,9 +185,40 @@ router.post(
 );
 
 /**
- * @route   PUT /api/v1/customers/:id
- * @desc    Update customer
- * @access  Private - Dealer Staff and above
+ * @swagger
+ * /api/v1/customers/{id}:
+ *   put:
+ *     summary: Update customer
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *                 enum: [ACTIVE, INACTIVE, BLACKLISTED]
+ *     responses:
+ *       200:
+ *         description: Customer updated successfully
  */
 router.put(
   '/:id',
@@ -149,9 +280,33 @@ router.post(
 // ============================================
 
 /**
- * @route   GET /api/v1/customers/:id/contracts
- * @desc    Get customer contracts
- * @access  Private - Dealer Staff and above
+ * @swagger
+ * /api/v1/customers/{id}/contracts:
+ *   get:
+ *     summary: Get customer contracts
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Customer contracts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Contract'
  */
 router.get(
   '/:id/contracts',

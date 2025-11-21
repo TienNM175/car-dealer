@@ -9,10 +9,29 @@ const router = Router();
 const quotationsController = new QuotationsController();
 
 /**
- * @route   GET /api/v1/quotations
- * @desc    Get all quotations with filters
- * @access  Private - Dealer Staff and above
- * @query   search, customerId, vehicleId, staffId, status, minPrice, maxPrice, validFrom, validTo, paymentType, page, limit, sortBy, sortOrder
+ * @swagger
+ * /api/v1/quotations:
+ *   get:
+ *     summary: Get all quotations with filters
+ *     tags: [Quotations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of quotations
  */
 router.get(
   '/',
@@ -82,9 +101,35 @@ router.get(
 );
 
 /**
- * @route   POST /api/v1/quotations
- * @desc    Create new quotation
- * @access  Private - Dealer Staff and above
+ * @swagger
+ * /api/v1/quotations:
+ *   post:
+ *     summary: Create new quotation
+ *     tags: [Quotations]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - customerId
+ *               - vehicleId
+ *               - basePrice
+ *             properties:
+ *               customerId:
+ *                 type: string
+ *               vehicleId:
+ *                 type: string
+ *               basePrice:
+ *                 type: number
+ *               discount:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Quotation created successfully
  */
 router.post(
   '/',

@@ -8,9 +8,47 @@ const router = Router();
 const vehicleController = new VehicleController();
 
 /**
- * @route   GET /api/v1/vehicles
- * @desc    Get all vehicles with filters and pagination
- * @access  Public
+ * @swagger
+ * /api/v1/vehicles:
+ *   get:
+ *     summary: Get all vehicles with filters and pagination
+ *     tags: [Vehicles]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: manufacturerId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of vehicles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     vehicles:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Vehicle'
  */
 router.get("/", vehicleController.getAllVehicles);
 
@@ -52,16 +90,81 @@ router.get(
 );
 
 /**
- * @route   GET /api/v1/vehicles/:id
- * @desc    Get vehicle by ID
- * @access  Public
+ * @swagger
+ * /api/v1/vehicles/{id}:
+ *   get:
+ *     summary: Get vehicle by ID
+ *     tags: [Vehicles]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vehicle details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Vehicle'
+ *       404:
+ *         description: Vehicle not found
  */
 router.get("/:id", vehicleController.getVehicleById);
 
 /**
- * @route   POST /api/v1/vehicles
- * @desc    Create new vehicle
- * @access  Private - EVM Staff, Admin
+ * @swagger
+ * /api/v1/vehicles:
+ *   post:
+ *     summary: Create new vehicle
+ *     tags: [Vehicles]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - manufacturerId
+ *               - model
+ *               - year
+ *               - price
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Toyota Camry 2024
+ *               manufacturerId:
+ *                 type: string
+ *               model:
+ *                 type: string
+ *                 example: Camry
+ *               year:
+ *                 type: number
+ *                 example: 2024
+ *               price:
+ *                 type: number
+ *                 example: 1000000000
+ *     responses:
+ *       201:
+ *         description: Vehicle created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Vehicle'
  */
 router.post(
   "/",
@@ -71,9 +174,36 @@ router.post(
 );
 
 /**
- * @route   PUT /api/v1/vehicles/:id
- * @desc    Update vehicle
- * @access  Private - EVM Staff, Admin
+ * @swagger
+ * /api/v1/vehicles/{id}:
+ *   put:
+ *     summary: Update vehicle
+ *     tags: [Vehicles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               status:
+ *                 type: string
+ *                 enum: [ACTIVE, INACTIVE, DISCONTINUED]
+ *     responses:
+ *       200:
+ *         description: Vehicle updated successfully
  */
 router.put(
   "/:id",
@@ -95,9 +225,24 @@ router.patch(
 );
 
 /**
- * @route   DELETE /api/v1/vehicles/:id
- * @desc    Delete vehicle
- * @access  Private - EVM Staff, Admin
+ * @swagger
+ * /api/v1/vehicles/{id}:
+ *   delete:
+ *     summary: Delete vehicle
+ *     tags: [Vehicles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vehicle deleted successfully
+ *       404:
+ *         description: Vehicle not found
  */
 router.delete(
   "/:id",
