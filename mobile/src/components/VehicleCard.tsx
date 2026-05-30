@@ -1,6 +1,3 @@
-// ============================================
-// Enhanced src/components/VehicleCard.tsx
-// ============================================
 import React, { useRef } from 'react';
 import {
   View,
@@ -19,7 +16,7 @@ interface VehicleCardProps {
   vehicle: Vehicle;
   onPress: () => void;
 }
-
+ 
 export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onPress }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const translateYAnim = useRef(new Animated.Value(0)).current;

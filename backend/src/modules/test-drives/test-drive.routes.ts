@@ -19,9 +19,29 @@ const testDriveController = new TestDriveController();
 // ============================================
 
 /**
- * @route   GET /api/v1/test-drives
- * @desc    Get all test drives with filters and pagination
- * @access  Private - Dealer Staff and above
+ * @swagger
+ * /api/v1/test-drives:
+ *   get:
+ *     summary: Get all test drives with filters and pagination
+ *     tags: [Test Drives]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of test drives
  */
 router.get(
   '/',
@@ -81,9 +101,34 @@ router.get(
 );
 
 /**
- * @route   POST /api/v1/test-drives
- * @desc    Create new test drive
- * @access  Private - Dealer Staff and above
+ * @swagger
+ * /api/v1/test-drives:
+ *   post:
+ *     summary: Create new test drive
+ *     tags: [Test Drives]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - customerId
+ *               - vehicleId
+ *               - scheduledDate
+ *             properties:
+ *               customerId:
+ *                 type: string
+ *               vehicleId:
+ *                 type: string
+ *               scheduledDate:
+ *                 type: string
+ *                 format: date-time
+ *     responses:
+ *       201:
+ *         description: Test drive created successfully
  */
 router.post(
   '/',

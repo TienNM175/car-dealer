@@ -15,10 +15,34 @@ const router = Router();
 const promotionsController = new PromotionsController();
 
 /**
- * @route   GET /api/v1/promotions
- * @desc    Get all promotions with filters
- * @access  Private - Dealer Staff and above
- * @query   search, dealerId, discountType, isActive, source, startDate, endDate, minDiscount, maxDiscount, page, limit, sortBy, sortOrder
+ * @swagger
+ * /api/v1/promotions:
+ *   get:
+ *     summary: Get all promotions with filters
+ *     tags: [Promotions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: source
+ *         schema:
+ *           type: string
+ *           enum: [DEALER, MANUFACTURER]
+ *     responses:
+ *       200:
+ *         description: List of promotions
  */
 router.get(
   "/",
@@ -124,9 +148,45 @@ router.get(
 );
 
 /**
- * @route   POST /api/v1/promotions
- * @desc    Create new promotion (Dealer creates DEALER; EVM/Admin can create MANUFACTURER)
- * @access  Private - Dealer Manager (for DEALER) or EVM Staff/Admin (for MANUFACTURER)
+ * @swagger
+ * /api/v1/promotions:
+ *   post:
+ *     summary: Create new promotion
+ *     tags: [Promotions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - discountType
+ *               - discountValue
+ *               - startDate
+ *               - endDate
+ *             properties:
+ *               name:
+ *                 type: string
+ *               discountType:
+ *                 type: string
+ *                 enum: [PERCENTAGE, FIXED]
+ *               discountValue:
+ *                 type: number
+ *               startDate:
+ *                 type: string
+ *                 format: date-time
+ *               endDate:
+ *                 type: string
+ *                 format: date-time
+ *               source:
+ *                 type: string
+ *                 enum: [DEALER, MANUFACTURER]
+ *     responses:
+ *       201:
+ *         description: Promotion created successfully
  */
 router.post(
   "/",

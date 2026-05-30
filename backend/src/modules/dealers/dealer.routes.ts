@@ -1,8 +1,8 @@
-import { Router } from 'express';
-import { DealerController } from './dealer.controller';
-import { AuthMiddleware } from '../../middlewares/auth.middleware';
-import { RoleMiddleware } from '../../middlewares/role.middleware';
-import { ValidationMiddleware } from '../../middlewares/validation.middleware';
+import { Router } from "express";
+import { DealerController } from "./dealer.controller";
+import { AuthMiddleware } from "../../middlewares/auth.middleware";
+import { RoleMiddleware } from "../../middlewares/role.middleware";
+import { ValidationMiddleware } from "../../middlewares/validation.middleware";
 import {
   createDealerValidation,
   updateDealerValidation,
@@ -11,7 +11,7 @@ import {
   updateStaffValidation,
   staffIdValidation,
   setTargetValidation,
-} from './dealer.validation';
+} from "./dealer.validation";
 
 const router = Router();
 const dealerController = new DealerController();
@@ -26,7 +26,7 @@ const dealerController = new DealerController();
  * @access  Private - All authenticated users
  */
 router.get(
-  '/regions',
+  "/regions",
   AuthMiddleware.authenticate,
   dealerController.getAllRegions
 );
@@ -36,23 +36,64 @@ router.get(
 // ============================================
 
 /**
- * @route   GET /api/v1/dealers
- * @desc    Get all dealers with filters and pagination
- * @access  Private - All authenticated users
+ * @swagger
+ * /api/v1/dealers:
+ *   get:
+ *     summary: Get all dealers with filters and pagination
+ *     tags: [Dealers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: List of dealers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     dealers:
+ *                       type: array
  */
-router.get(
-  '/',
-  AuthMiddleware.authenticate,
-  dealerController.getAllDealers
-);
+router.get("/", AuthMiddleware.authenticate, dealerController.getAllDealers);
 
 /**
- * @route   GET /api/v1/dealers/:id
- * @desc    Get dealer by ID
- * @access  Private - All authenticated users
+ * @swagger
+ * /api/v1/dealers/{id}:
+ *   get:
+ *     summary: Get dealer by ID
+ *     tags: [Dealers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Dealer details
+ *       404:
+ *         description: Dealer not found
  */
 router.get(
-  '/:id',
+  "/:id",
   AuthMiddleware.authenticate,
   dealerIdValidation,
   ValidationMiddleware.validate,
@@ -60,12 +101,37 @@ router.get(
 );
 
 /**
- * @route   POST /api/v1/dealers
- * @desc    Create new dealer
- * @access  Private - EVM Staff, Admin
+ * @swagger
+ * /api/v1/dealers:
+ *   post:
+ *     summary: Create new dealer
+ *     tags: [Dealers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - regionId
+ *             properties:
+ *               name:
+ *                 type: string
+ *               regionId:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Dealer created successfully
  */
 router.post(
-  '/',
+  "/",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   createDealerValidation,
@@ -79,7 +145,7 @@ router.post(
  * @access  Private - EVM Staff, Admin
  */
 router.put(
-  '/:id',
+  "/:id",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   updateDealerValidation,
@@ -93,7 +159,7 @@ router.put(
  * @access  Private - Admin only
  */
 router.delete(
-  '/:id',
+  "/:id",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireAdmin,
   dealerIdValidation,
@@ -111,7 +177,7 @@ router.delete(
  * @access  Private - Dealer Manager (own dealer), EVM Staff, Admin
  */
 router.get(
-  '/:id/staff',
+  "/:id/staff",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   dealerIdValidation,
@@ -125,7 +191,7 @@ router.get(
  * @access  Private - Dealer Manager (own dealer), EVM Staff, Admin
  */
 router.post(
-  '/:id/staff',
+  "/:id/staff",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   addStaffValidation,
@@ -139,7 +205,7 @@ router.post(
  * @access  Private - Dealer Manager (own dealer), EVM Staff, Admin
  */
 router.put(
-  '/:id/staff/:staffId',
+  "/:id/staff/:staffId",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   updateStaffValidation,
@@ -153,7 +219,7 @@ router.put(
  * @access  Private - Dealer Manager (own dealer), EVM Staff, Admin
  */
 router.delete(
-  '/:id/staff/:staffId',
+  "/:id/staff/:staffId",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   staffIdValidation,
@@ -171,7 +237,7 @@ router.delete(
  * @access  Private - Dealer Staff (own dealer), EVM Staff, Admin
  */
 router.get(
-  '/:id/inventory',
+  "/:id/inventory",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   dealerIdValidation,
@@ -185,7 +251,7 @@ router.get(
  * @access  Private - Dealer Staff (own dealer), EVM Staff, Admin
  */
 router.get(
-  '/:id/orders',
+  "/:id/orders",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerStaff,
   dealerIdValidation,
@@ -199,7 +265,7 @@ router.get(
  * @access  Private - Dealer Manager (own dealer), EVM Staff, Admin
  */
 router.get(
-  '/:id/sales-stats',
+  "/:id/sales-stats",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   dealerIdValidation,
@@ -217,7 +283,7 @@ router.get(
  * @access  Private - Dealer Manager (own dealer), EVM Staff, Admin
  */
 router.get(
-  '/:id/targets',
+  "/:id/targets",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireDealerManager,
   dealerIdValidation,
@@ -231,7 +297,7 @@ router.get(
  * @access  Private - EVM Staff, Admin
  */
 router.post(
-  '/:id/targets',
+  "/:id/targets",
   AuthMiddleware.authenticate,
   RoleMiddleware.requireEVMStaff,
   setTargetValidation,

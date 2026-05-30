@@ -1,6 +1,3 @@
-// ============================================
-// 6. src/components/TestDriveForm.tsx
-// ============================================
 import React, { useState } from "react";
 import {
   View,

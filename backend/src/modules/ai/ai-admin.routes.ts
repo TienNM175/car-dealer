@@ -8,10 +8,32 @@ const router = Router();
 const aiController = new AIAdminController();
 
 /**
- * @route   GET /api/v1/ai/admin/executive-summary
- * @desc    Generate AI executive summary (daily/weekly/monthly)
- * @access  Private - Admin/EVM Staff only
- * @query   period: 'daily' | 'weekly' | 'monthly'
+ * @swagger
+ * /api/v1/ai/admin/executive-summary:
+ *   get:
+ *     summary: Generate AI executive summary
+ *     tags: [AI Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [daily, weekly, monthly]
+ *           default: daily
+ *     responses:
+ *       200:
+ *         description: AI-generated executive summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  */
 router.get(
   '/executive-summary',
@@ -21,10 +43,23 @@ router.get(
 );
 
 /**
- * @route   GET /api/v1/ai/admin/dealer-performance
- * @desc    Analyze dealer performance with AI (month/quarter/year)
- * @access  Private - Admin/EVM Staff only
- * @query   timeframe: 'month' | 'quarter' | 'year'
+ * @swagger
+ * /api/v1/ai/admin/dealer-performance:
+ *   get:
+ *     summary: Analyze dealer performance with AI
+ *     tags: [AI Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: timeframe
+ *         schema:
+ *           type: string
+ *           enum: [month, quarter, year]
+ *           default: month
+ *     responses:
+ *       200:
+ *         description: AI-generated dealer performance analysis
  */
 router.get(
   '/dealer-performance',
@@ -34,9 +69,25 @@ router.get(
 );
 
 /**
- * @route   GET /api/v1/ai/admin/market-trends
- * @desc    Analyze market trends and forecast with AI
- * @access  Private - Admin/EVM Staff only
+ * @swagger
+ * /api/v1/ai/admin/market-trends:
+ *   get:
+ *     summary: Analyze market trends and forecast with AI
+ *     tags: [AI Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: AI-generated market trends analysis
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
  */
 router.get(
   '/market-trends',
