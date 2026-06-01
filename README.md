@@ -25,7 +25,7 @@ The system is structured as a monorepo-style workspace comprising three main com
 
 ### Web Frontend (Admin/Dealer Portal)
 *   **Core**: Next.js 15.5.9, React 19, TypeScript
-*   **State Management**: Redux Toolkit & React Redux
+*   **State Management**: React Context API
 *   **Form Validation**: React Hook Form, Zod (schema-based validation)
 *   **Charts & Visualization**: Recharts (sales targets, revenue performance)
 *   **HTTP Client**: Axios
@@ -103,7 +103,7 @@ evm-dealer-system/
 │   └── src/
 │       ├── app/            # Next.js App Router (pages and layouts)
 │       ├── components/     # Reusable UI components (Tables, Charts, Forms)
-│       ├── store/          # Redux Toolkit global state store
+│       ├── contexts/       # React Contexts (e.g., AuthContext for authentication)
 │       └── utils/          # Axios HTTP clients and helpers
 └── mobile/
     ├── assets/             # Images, icons, and custom fonts
