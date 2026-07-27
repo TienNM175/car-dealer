@@ -72,9 +72,6 @@ class App {
 
   private setupRoutes(): void {
 
-<<<<<<< HEAD
-    //  HEALTH CHECK - DIRECT ROUTE
-=======
     // ✅ SWAGGER DOCUMENTATION
     this.app.use(
       "/api-docs",
@@ -84,36 +81,9 @@ class App {
         customSiteTitle: "Car Dealer API Documentation",
       })
     );
-    console.log("📚 Swagger docs available at /api-docs");
 
     // ✅ HEALTH CHECK - DIRECT ROUTE
-    /**
-     * @swagger
-     * /health:
-     *   get:
-     *     summary: Health check endpoint
-     *     tags: [Health]
-     *     responses:
-     *       200:
-     *         description: Server is healthy
-     *         content:
-     *           application/json:
-     *             schema:
-     *               type: object
-     *               properties:
-     *                 status:
-     *                   type: string
-     *                   example: OK
-     *                 timestamp:
-     *                   type: string
-     *                   format: date-time
-     *                 environment:
-     *                   type: string
-     *                   example: development
-     */
->>>>>>> bd71091d4841a5a7c7e2a8e06b2e6a5b85082f1c
     this.app.get("/health", (_req, res) => {
-      console.log(" /health route called");
       res.json({
         status: "OK",
         timestamp: new Date().toISOString(),
@@ -123,7 +93,6 @@ class App {
 
     //  TEST DIRECT ROUTE
     this.app.get("/api/v1/direct", (_req, res) => {
-      console.log(" /api/v1/direct route called");
       res.json({
         success: true,
         message: "Direct route works!",
@@ -135,7 +104,6 @@ class App {
 
     // TEST ROUTE IN API ROUTER
     apiRouter.get("/test", (_req, res) => {
-      console.log(" /api/v1/test route called");
       res.json({
         success: true,
         message: "API Router test route works!",
@@ -143,78 +111,21 @@ class App {
       });
     });
 
-<<<<<<< HEAD
-    // MOUNT ALL MODULE ROUTES    
-    apiRouter.use("/auth", authRoutes);
-    
-    apiRouter.use("/vehicles", vehicleRoutes);
-    
-    apiRouter.use("/dealers", dealerRoutes);
-    
-    apiRouter.use("/customers", customerRoutes);
-    
-    apiRouter.use("/orders", orderRoutes);
-
-    apiRouter.use("/contracts", contractRoutes);
-    
-    apiRouter.use("/inventory", inventoryRoutes);
-    
-    apiRouter.use("/test-drives", testDriveRoutes);
-    
-    apiRouter.use("/reports", reportRoutes);
-    
-    apiRouter.use("/quotations", quotationRoutes);
-    
-    apiRouter.use("/promotions", promotionRoutes);
-    
-    apiRouter.use("/ai/admin", aiAdminRoutes);
-    
-    apiRouter.use("/users", userRoutes);
-    
-=======
     // ✅ MOUNT ALL MODULE ROUTES
-    console.log("📦 Mounting module routes...");
-
     apiRouter.use("/auth", authRoutes);
-    console.log(" /auth routes mounted");
-
     apiRouter.use("/vehicles", vehicleRoutes);
-    console.log(" /vehicles routes mounted");
-
     apiRouter.use("/dealers", dealerRoutes);
-    console.log(" /dealers routes mounted");
-
     apiRouter.use("/customers", customerRoutes);
-    console.log(" /customers routes mounted");
-
     apiRouter.use("/orders", orderRoutes);
-    console.log(" /orders routes mounted");
-
     apiRouter.use("/contracts", contractRoutes);
-    console.log(" /contracts routes mounted");
-
     apiRouter.use("/inventory", inventoryRoutes);
-    console.log(" /inventory routes mounted");
-
     apiRouter.use("/test-drives", testDriveRoutes);
-    console.log(" /test-drives routes mounted");
-
     apiRouter.use("/reports", reportRoutes);
-    console.log(" /reports routes mounted");
-
     apiRouter.use("/quotations", quotationRoutes);
-    console.log(" /quotations routes mounted");
-
     apiRouter.use("/promotions", promotionRoutes);
-    console.log(" /promotions routes mounted");
-
     apiRouter.use("/ai/admin", aiAdminRoutes);
-    console.log(" /ai/admin routes mounted");
-
     apiRouter.use("/users", userRoutes);
-    console.log(" /users routes mounted");
 
->>>>>>> bd71091d4841a5a7c7e2a8e06b2e6a5b85082f1c
     apiRouter.use("/public", publicRoutes);
     apiRouter.use("/public/chatbot", chatbotRoutes);
     apiRouter.use("/vehicle-units", vehicleUnitRoutes);
